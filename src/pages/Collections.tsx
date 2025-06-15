@@ -375,82 +375,82 @@ export default function Collections() {
               {pendingCustomers.map((c) => (
                 <li
                   key={c.id}
-                  className="flex justify-between items-center bg-white shadow rounded-lg mb-2 px-3 py-2 border"
+                  className="bg-white shadow rounded-lg mb-2 px-3 py-2 border"
+                  style={{ overflow: 'hidden' }}
                 >
-                  <div>
-                    <span className="font-semibold text-blue-900">{c.name}</span>
-                    <br />
-                    <span className="text-red-700 text-sm">Pending: ₹{c.pending}</span>
-                    {c.phone ? (
-                      <div className="mt-1 text-xs text-gray-500">Phone: {c.phone}</div>
-                    ) : null}
-                    {/* ADD: Display selected collection date */}
-                    <div className="mt-1 flex items-center gap-2 text-xs text-blue-900">
-                      <CalendarIcon size={16} className="inline mr-1" />
-                      Collect on:&nbsp;
-                      <span className="font-semibold">
-                        {customerDates[c.id] ? displayDate(customerDates[c.id]) : displayDate(addDays(new Date(), 1))}
-                      </span>
-                      {/* Three-dot button: open date picker popover */}
-                      <Popover open={!!dateMenuOpen[c.id]} onOpenChange={(open) => setDateMenuOpen((prev) => ({ ...prev, [c.id]: open }))}>
-                        <PopoverTrigger asChild>
-                          <button
-                            type="button"
-                            className="ml-1 rounded-full p-1 border hover:bg-gray-200"
-                            aria-label="Change date"
-                            onClick={e => { e.stopPropagation(); openDateMenu(c.id); }}
-                          >
-                            <MoreHorizontal size={16} />
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0 z-50" align="start" side="bottom">
-                          <Calendar
-                            mode="single"
-                            selected={customerDates[c.id] || addDays(new Date(), 1)}
-                            onSelect={(date) => {
-                              if (date) handleDateChangeForCustomer(c.id, date);
-                            }}
-                            initialFocus
-                            className={cn("p-3 pointer-events-auto")}
-                          />
-                        </PopoverContent>
-                      </Popover>
+                  <div className="flex flex-col sm:flex-row justify-between items-stretch w-full gap-2 sm:gap-0">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-blue-900 break-words">{c.name}</div>
+                      <div className="text-red-700 text-sm font-medium break-words">
+                        Pending: ₹{c.pending}
+                      </div>
+                      {c.phone ? (
+                        <div className="mt-1 text-xs text-gray-500 break-all">Phone: {c.phone}</div>
+                      ) : null}
+                      {/* Collection date row */}
+                      <div className="mt-1 flex items-center gap-2 text-xs text-blue-900 flex-wrap">
+                        <CalendarIcon size={16} className="inline mr-1 min-w-[16px]" />
+                        Collect on:&nbsp;
+                        <span className="font-semibold">
+                          {customerDates[c.id] ? displayDate(customerDates[c.id]) : displayDate(addDays(new Date(), 1))}
+                        </span>
+                        <Popover open={!!dateMenuOpen[c.id]} onOpenChange={(open) => setDateMenuOpen((prev) => ({ ...prev, [c.id]: open }))}>
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              className="ml-1 rounded-full p-1 border hover:bg-gray-200"
+                              aria-label="Change date"
+                              onClick={e => { e.stopPropagation(); openDateMenu(c.id); }}
+                            >
+                              <MoreHorizontal size={16} />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0 z-50" align="start" side="bottom">
+                            <Calendar
+                              mode="single"
+                              selected={customerDates[c.id] || addDays(new Date(), 1)}
+                              onSelect={(date) => {
+                                if (date) handleDateChangeForCustomer(c.id, date);
+                              }}
+                              initialFocus
+                              className={cn("p-3 pointer-events-auto")}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex flex-row items-center gap-2 mt-2 sm:mt-0">
-                    {/* Collect button: blue theme */}
-                    <Button
-                      variant="default"
-                      size="sm"
-                      className="bg-blue-700 hover:bg-blue-800 focus:bg-blue-800 text-white font-medium px-4 py-2 rounded transition"
-                      onClick={() => {
-                        // Use selected date for this customer in form!
-                        setForm({
-                          customer_id: c.id,
-                          amount: c.pending ? String(c.pending) : "",
-                          remarks: "",
-                          order_id:
-                            customerDeliveredOrders[c.id] && customerDeliveredOrders[c.id].length === 1
-                              ? customerDeliveredOrders[c.id][0].id
-                              : "",
-                          // Use per-customer date (if set), otherwise default
-                          collection_date: customerDates[c.id] ?? addDays(new Date(), 1),
-                        });
-                        setShowForm(true);
-                      }}
-                      disabled={isAdding}
-                    >
-                      Collect
-                    </Button>
-                    {/* Send Reminder button: amber/orange theme */}
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="bg-amber-500 hover:bg-amber-600 focus:bg-amber-600 text-white font-medium flex items-center gap-1 px-3 py-2 rounded transition text-xs"
-                      onClick={() => handleOpenReminderModal(c)}
-                    >
-                      <MessageSquare size={16} /> Send Reminder
-                    </Button>
+                    {/* Actions - On mobile, stack vertically; desktop, show horizontally */}
+                    <div className="flex flex-col sm:flex-row gap-2 sm:items-center justify-end min-w-[120px] mt-2 sm:mt-0 w-full sm:w-auto">
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="bg-blue-700 hover:bg-blue-800 focus:bg-blue-800 text-white font-medium px-4 py-2 rounded transition w-full sm:w-auto"
+                        onClick={() => {
+                          setForm({
+                            customer_id: c.id,
+                            amount: c.pending ? String(c.pending) : "",
+                            remarks: "",
+                            order_id:
+                              customerDeliveredOrders[c.id] && customerDeliveredOrders[c.id].length === 1
+                                ? customerDeliveredOrders[c.id][0].id
+                                : "",
+                            collection_date: customerDates[c.id] ?? addDays(new Date(), 1),
+                          });
+                          setShowForm(true);
+                        }}
+                        disabled={isAdding}
+                      >
+                        Collect
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="bg-amber-500 hover:bg-amber-600 focus:bg-amber-600 text-white font-medium flex items-center gap-1 px-3 py-2 rounded transition text-xs w-full sm:w-auto"
+                        onClick={() => handleOpenReminderModal(c)}
+                      >
+                        <MessageSquare size={16} /> Send Reminder
+                      </Button>
+                    </div>
                   </div>
                 </li>
               ))}
