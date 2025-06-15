@@ -37,12 +37,12 @@ const getKPIs = () => {
 
 const Index = () => {
   const [unlocked, setUnlocked] = useState(false);
+  const navigate = useNavigate(); // moved up here, always called
 
   if (!unlocked) {
     return <PinLock onUnlock={() => setUnlocked(true)} />;
   }
 
-  const navigate = useNavigate();
   const { totalSales, totalCredit, ordersPending, totalCustomers } = getKPIs();
 
   return (
