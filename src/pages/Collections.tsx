@@ -1,4 +1,3 @@
-
 import { AppLayout } from "@/components/AppLayout";
 import { useCollections } from "@/hooks/useCollections";
 import { useSession } from "@/hooks/useSession";
@@ -42,15 +41,16 @@ export default function Collections() {
     loadCustomers();
   }, [user]);
 
-  // Calculate pending payments per customer (all orders minus collections)
+  // Calculate pending payments per customer (only for UDHAAR on delivered orders)
   const calculatePending = useCallback(async () => {
     if (!user) return;
 
-    // Fetch all orders for the user
+    // Fetch all delivered orders for the user
     const { data: orders } = await supabase
       .from("orders")
-      .select("id, customer_id, qty, product_id, advance_amount")
-      .eq("user_id", user.id);
+      .select("id, customer_id, qty, product_id, advance_amount, status")
+      .eq("user_id", user.id)
+      .eq("status", "delivered");
 
     if (!orders) {
       setPendingCustomers([]);
@@ -66,39 +66,41 @@ export default function Collections() {
       (products || []).map((p: any) => [p.id, Number(p.price) || 0])
     );
 
-    // Map of orderId -> total
-    const orderTotals: { [orderId: string]: { customer_id: string; amount: number } } = {};
+    // Map of orderId -> { customer_id, udhaar }
+    const deliveredOrderUdhaar: { [orderId: string]: { customer_id: string; amount: number } } = {};
     for (const o of orders) {
       const price = priceMap.get(o.product_id) || 0;
       const amt = price * (Number(o.qty) || 0) - (Number(o.advance_amount) || 0);
-      if (!orderTotals[o.id]) {
-        orderTotals[o.id] = {
-          customer_id: o.customer_id,
-          amount: 0,
-        };
-      }
-      orderTotals[o.id].amount += amt;
+      deliveredOrderUdhaar[o.id] = {
+        customer_id: o.customer_id,
+        amount: amt > 0 ? amt : 0 // only positive udhaar
+      };
     }
 
-    // Aggregate per customer
-    const pendingMap = new Map<string, number>();
-    Object.values(orderTotals).forEach(({ customer_id, amount }) => {
-      const prev = pendingMap.get(customer_id) || 0;
-      pendingMap.set(customer_id, prev + amount);
-    });
+    // Sum collections for delivered orders only
+    const { data: collectionsData } = await supabase
+      .from("collections")
+      .select("id, order_id, customer_id, amount")
+      .eq("user_id", user.id);
 
-    // Subtract all collections for each customer
-    (collections || []).forEach((c) => {
-      if (pendingMap.has(c.customer_id)) {
-        const prev = pendingMap.get(c.customer_id) || 0;
-        pendingMap.set(
-          c.customer_id,
-          prev - (Number(c.amount) || 0)
-        );
+    // Subtract collections from each delivered order
+    (collectionsData || []).forEach((c: any) => {
+      if (c.order_id && deliveredOrderUdhaar[c.order_id]) {
+        deliveredOrderUdhaar[c.order_id].amount -= Number(c.amount) || 0;
+        if (deliveredOrderUdhaar[c.order_id].amount < 0) deliveredOrderUdhaar[c.order_id].amount = 0;
       }
     });
 
-    // Only keep where pending > 0
+    // Aggregate udhaar per customer, only for delivered orders
+    const pendingMap = new Map<string, number>();
+    Object.values(deliveredOrderUdhaar).forEach(({ customer_id, amount }) => {
+      if (amount > 0) {
+        const prev = pendingMap.get(customer_id) || 0;
+        pendingMap.set(customer_id, prev + amount);
+      }
+    });
+
+    // Only keep where udhaar > 0 and customer exists
     const result: CustomerWithPending[] = [];
     for (const [id, pending] of pendingMap.entries()) {
       if (pending > 0 && customers.some((c) => c.id === id)) {

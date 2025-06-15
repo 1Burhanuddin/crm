@@ -355,15 +355,22 @@ export function OrderList() {
   // Always pass {} not null/undefined
   const safeInitialData = billInitialData && typeof billInitialData === "object" ? billInitialData : {};
 
-  // Helper for calculating order total & pending/credit (UPDATED)
+  // Helper for calculating order total & pending/udhaar (CHANGED)
   function orderTotals(order: Order) {
     const product = products.find(p => p.id === order.productId);
     const total = product ? product.price * order.qty : 0;
     const advance = order.advanceAmount || 0;
-    // Subtract collections recorded for this order (if order.id in collectionsPerOrder)
     const collected = collectionsPerOrder[order.id] || 0;
-    const pending = Math.max(0, total - advance - collected);
-    return { total, pending, collected };
+    if (order.status === "pending") {
+      // Pending amount while order is not delivered
+      const pending = Math.max(0, total - advance - collected);
+      return { total, advance, pending, udhaar: 0, collected };
+    } else if (order.status === "delivered") {
+      // Udhaar after delivered
+      const udhaar = Math.max(0, total - advance - collected);
+      return { total, advance, pending: 0, udhaar, collected };
+    }
+    return { total, advance, pending: 0, udhaar: 0, collected };
   }
 
   // Loading/error UI
@@ -396,7 +403,7 @@ export function OrderList() {
       </div>
       <ul>
         {orders.map((o) => {
-          const { total, pending, collected } = orderTotals(o);
+          const { total, pending, udhaar, collected } = orderTotals(o);
           // Highlight cards with missing refs
           const missingCustomer = !customers.find((c) => c.id === o.customerId);
           const missingProduct = !products.find((p) => p.id === o.productId);
@@ -425,12 +432,18 @@ export function OrderList() {
                     )}
                   </div>
                 </div>
-                {/* show pending credit if > 0 */}
                 <div className="flex gap-2 items-center ml-auto">
-                  {/* show pending credit if > 0 */}
-                  {pending > 0 && (
+                  {/* Show pending credit/udhaar appropriately
+                      - Pending status: Pending: ₹pending
+                      - Delivered: Udhaar: ₹udhaar (only if >0) */}
+                  {o.status === "pending" && pending > 0 && (
+                    <span className="inline-flex items-center bg-yellow-100 text-yellow-800 rounded px-2 py-0.5 text-xs font-semibold">
+                      Pending: ₹{pending}
+                    </span>
+                  )}
+                  {o.status === "delivered" && udhaar > 0 && (
                     <span className="inline-flex items-center bg-red-100 text-red-700 rounded px-2 py-0.5 text-xs font-semibold">
-                      Udhaar: ₹{pending}
+                      Udhaar: ₹{udhaar}
                     </span>
                   )}
                   {o.status === "delivered" && (
@@ -479,6 +492,12 @@ export function OrderList() {
                 {o.advanceAmount > 0 && (
                   <span className="text-xs text-green-700 ml-1">
                     Advance: ₹{o.advanceAmount}
+                  </span>
+                )}
+                {/* Optionally display amount collected */}
+                {collected > 0 && (
+                  <span className="text-xs text-emerald-700 ml-1">
+                    Collected: ₹{collected}
                   </span>
                 )}
               </div>

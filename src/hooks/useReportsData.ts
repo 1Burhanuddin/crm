@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
@@ -19,7 +18,7 @@ export function useReportsData() {
     queryFn: async () => {
       if (!user) throw new Error("Not signed in");
 
-      // 1. SALES (as before)
+      // SALES (as before)
       let { data: sales, error: salesError } = await supabase
         .from("transactions")
         .select("amount")
@@ -31,12 +30,12 @@ export function useReportsData() {
           ? sales.reduce((a: number, t: any) => a + (Number(t.amount) || 0), 0)
           : 0;
 
-      // --- Credit: sum pending on orders minus collections ---
-      // Fetch all orders:
-      let { data: orderData, error: orderErr } = await supabase
+      // Fetch all delivered orders only (for udhaar calculation)
+      let { data: deliveredOrders, error: orderErr } = await supabase
         .from("orders")
         .select("id, product_id, qty, advance_amount, status")
-        .eq("user_id", user.id);
+        .eq("user_id", user.id)
+        .eq("status", "delivered");
       if (orderErr) throw orderErr;
 
       // Fetch all products: price lookup
@@ -53,31 +52,44 @@ export function useReportsData() {
         ])
       );
 
-      // 1st: Calculate total udhaar on orders = SUM(max(orderTotal - advance, 0))
-      const totalOrderUdhaar = Array.isArray(orderData)
-        ? orderData.reduce((sum: number, o: any) => {
+      // 1st: Calculate udhaar on delivered orders only = SUM(max(orderTotal - advance, 0))
+      const orderUdhaarMap: Record<string, number> = {};
+      const totalOrderUdhaar = Array.isArray(deliveredOrders)
+        ? deliveredOrders.reduce((sum: number, o: any) => {
             const price = priceMap.get(o.product_id) || 0;
             const qty = Number(o.qty) || 0;
             const orderTotal = price * qty;
             const advance = Number(o.advance_amount) || 0;
             const pending = orderTotal - advance;
-            return sum + (pending > 0 ? pending : 0);
+            const udhaar = pending > 0 ? pending : 0;
+            orderUdhaarMap[o.id] = udhaar;
+            return sum + udhaar;
           }, 0)
         : 0;
 
-      // 2nd: Fetch total amount collected (collections table)
+      // Fetch collections for delivered orders only
       let { data: collections, error: collErr } = await supabase
         .from("collections")
-        .select("amount")
+        .select("amount, order_id")
         .eq("user_id", user.id);
       if (collErr) throw collErr;
-      const totalCollections =
-        Array.isArray(collections)
-          ? collections.reduce((sum: number, c: any) => sum + (Number(c.amount) || 0), 0)
-          : 0;
 
-      // 3rd: Net credit = udhaar (all orders) - collections
-      const totalCredit = Math.max(0, totalOrderUdhaar - totalCollections);
+      // Map of order_id -> collections
+      const collectionsMap: Record<string, number> = {};
+      (collections || []).forEach((c: any) => {
+        if (c.order_id && orderUdhaarMap[c.order_id] !== undefined) {
+          collectionsMap[c.order_id] =
+            (collectionsMap[c.order_id] || 0) + (Number(c.amount) || 0);
+        }
+      });
+
+      // Calculate net outstanding udhaar for delivered orders only
+      let totalDeliveredCredit = 0;
+      Object.keys(orderUdhaarMap).forEach((orderId) => {
+        const collected = collectionsMap[orderId] || 0;
+        const udhaarLeft = Math.max(0, orderUdhaarMap[orderId] - collected);
+        totalDeliveredCredit += udhaarLeft;
+      });
 
       // Pending orders count (status = pending)
       let { count: ordersPending, error: pendingCountErr } = await supabase
@@ -89,7 +101,7 @@ export function useReportsData() {
 
       return {
         totalSales,
-        totalCredit,
+        totalCredit: totalDeliveredCredit,
         ordersPending: ordersPending || 0,
       };
     },
