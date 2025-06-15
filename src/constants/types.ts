@@ -1,4 +1,3 @@
-
 export type TransactionType = "udhaar" | "paid";
 export interface Customer {
   id: string;
@@ -35,3 +34,9 @@ export interface Order {
   photoUrl?: string;
 }
 
+export interface Supplier {
+  id: string;
+  name: string;
+  phone: string;
+  // You can add more fields if needed in the future
+}
