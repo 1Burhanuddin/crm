@@ -1,5 +1,5 @@
 
-import { DEMO_ORDERS, DEMO_CUSTOMERS, DEMO_PRODUCTS } from "@/constants/demoData";
+import { DEMO_ORDERS, DEMO_CUSTOMERS } from "@/constants/demoData";
 import { Order } from "@/constants/types";
 import { Plus, Edit } from "lucide-react";
 import { useState } from "react";
@@ -19,8 +19,26 @@ export function OrderList() {
   }
   
   function productName(id: string) {
-    const p = DEMO_PRODUCTS.find((p) => p.id === id);
-    return p ? p.name : id;
+    // Handle new product ID format from the enhanced selection
+    if (id.includes('-')) {
+      const parts = id.split('-');
+      const category = parts[0];
+      const type = parts[1];
+      const specs = parts[2];
+      
+      if (category === 'glass') {
+        if (type === 'mirror') {
+          return `Mirror ${specs}`;
+        } else if (type === 'plain') {
+          return `Float Glass ${specs}`;
+        }
+      } else if (category === 'aluminum') {
+        return `Aluminum Frame (${specs})`;
+      }
+    }
+    
+    // Fallback for existing orders
+    return id;
   }
 
   function handleAddOrder(orderData: Omit<Order, 'id'>) {
