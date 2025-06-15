@@ -1,4 +1,3 @@
-
 import { useSession } from "@/hooks/useSession";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -335,6 +334,8 @@ export function OrderList() {
         open={showAdd}
         onOpenChange={setShowAdd}
         onAdd={handleAddOrder}
+        customers={customers}
+        products={products}
       />
       <EditOrderModal
         open={showEdit}
