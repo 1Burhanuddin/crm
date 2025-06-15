@@ -1,4 +1,3 @@
-
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { useState, useEffect } from "react";
@@ -54,14 +53,6 @@ const DASH_ACTIONS = [
     hover: "hover:bg-yellow-100 active:bg-yellow-200",
     color: "text-yellow-700",
     route: "/products",
-  },
-  {
-    title: "Reports",
-    desc: "Sales & pending summary",
-    bg: "bg-gray-50",
-    hover: "hover:bg-gray-100 active:bg-gray-200",
-    color: "text-gray-700",
-    route: "/profile", // Changed from "/customers" to "/profile"
   },
   {
     title: "Bills",

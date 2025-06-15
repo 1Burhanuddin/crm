@@ -1,4 +1,3 @@
-
 import { useSession } from "@/hooks/useSession";
 import { useState, useEffect, ChangeEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -135,115 +134,121 @@ export default function ProfilePage() {
 
   return (
     <AppLayout title="Profile">
-      <div className="max-w-md mx-auto p-4 relative">
-        {/* Logout button: only in Profile, top-right */}
-        {status === "signed_in" && user && (
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={signOut}
-            className="absolute right-2 top-2 z-20 bg-white text-blue-900 hover:bg-blue-100 border border-blue-800 shadow"
-            title="Logout"
-          >
-            <LogOut className="h-5 w-5" />
-            <span className="sr-only">Logout</span>
-          </Button>
-        )}
-        <Card className="p-4 mb-6">
-          <div className="flex flex-col items-center gap-2">
-            <Avatar className="h-20 w-20">
-              <AvatarImage
-                src={
-                  newImageFile
-                    ? URL.createObjectURL(newImageFile)
-                    : profile?.profile_image_url || undefined
-                }
-                alt={profile?.name ?? profile?.email ?? "U"}
-              />
-              <AvatarFallback>
-                {(profile?.name || profile?.email || "U")[0]}
-              </AvatarFallback>
-            </Avatar>
-            <div className="font-bold text-lg text-blue-900">
-              {profile?.shop_name || <span className="text-gray-400 italic">No shop/enterprise</span>}
-            </div>
-            <div className="text-sm text-gray-700">
-              {profile?.name || <span className="text-gray-400 italic">No name</span>}
-            </div>
-            <div className="text-xs text-gray-500">{profile?.email}</div>
-            {editing && (
-              <>
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  disabled={imageUploading}
-                  className="mt-2"
+      {loading ? (
+        <div className="flex flex-col items-center justify-center min-h-[60vh]">
+          <div className="text-blue-800 text-lg font-semibold">Loading...</div>
+        </div>
+      ) : (
+        <div className="max-w-md mx-auto p-4 relative">
+          {/* Logout button: only in Profile, top-right */}
+          {status === "signed_in" && user && (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={signOut}
+              className="absolute right-2 top-2 z-20 bg-white text-blue-900 hover:bg-blue-100 border border-blue-800 shadow"
+              title="Logout"
+            >
+              <LogOut className="h-5 w-5" />
+              <span className="sr-only">Logout</span>
+            </Button>
+          )}
+          <Card className="p-4 mb-6">
+            <div className="flex flex-col items-center gap-2">
+              <Avatar className="h-20 w-20">
+                <AvatarImage
+                  src={
+                    newImageFile
+                      ? URL.createObjectURL(newImageFile)
+                      : profile?.profile_image_url || undefined
+                  }
+                  alt={profile?.name ?? profile?.email ?? "U"}
                 />
-                {newImageFile && (
-                  <span className="text-xs text-blue-800 mt-1">
-                    {newImageFile.name}
-                  </span>
-                )}
-                <Input
-                  type="text"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  className="mt-2"
-                  maxLength={50}
-                  placeholder="Name"
-                />
-                <Input
-                  type="text"
-                  value={newShopName}
-                  onChange={(e) => setNewShopName(e.target.value)}
-                  className="mt-2"
-                  maxLength={60}
-                  placeholder="Shop/Enterprise Name"
-                />
-                <Input
-                  type="email"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  className="mt-2"
-                  placeholder="Email"
-                />
-              </>
-            )}
-            <div className="flex gap-2 mt-4">
-              {editing ? (
+                <AvatarFallback>
+                  {(profile?.name || profile?.email || "U")[0]}
+                </AvatarFallback>
+              </Avatar>
+              <div className="font-bold text-lg text-blue-900">
+                {profile?.shop_name || <span className="text-gray-400 italic">No shop/enterprise</span>}
+              </div>
+              <div className="text-sm text-gray-700">
+                {profile?.name || <span className="text-gray-400 italic">No name</span>}
+              </div>
+              <div className="text-xs text-gray-500">{profile?.email}</div>
+              {editing && (
                 <>
-                  <Button
-                    variant="outline"
-                    type="button"
-                    onClick={handleSave}
-                    disabled={loading || imageUploading}
-                  >
-                    {loading || imageUploading ? "Saving..." : "Save"}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    type="button"
-                    onClick={() => setEditing(false)}
-                    disabled={loading || imageUploading}
-                  >
-                    Cancel
-                  </Button>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    disabled={imageUploading}
+                    className="mt-2"
+                  />
+                  {newImageFile && (
+                    <span className="text-xs text-blue-800 mt-1">
+                      {newImageFile.name}
+                    </span>
+                  )}
+                  <Input
+                    type="text"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    className="mt-2"
+                    maxLength={50}
+                    placeholder="Name"
+                  />
+                  <Input
+                    type="text"
+                    value={newShopName}
+                    onChange={(e) => setNewShopName(e.target.value)}
+                    className="mt-2"
+                    maxLength={60}
+                    placeholder="Shop/Enterprise Name"
+                  />
+                  <Input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    className="mt-2"
+                    placeholder="Email"
+                  />
                 </>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleEdit}
-                >
-                  Edit Profile
-                </Button>
               )}
+              <div className="flex gap-2 mt-4">
+                {editing ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      type="button"
+                      onClick={handleSave}
+                      disabled={loading || imageUploading}
+                    >
+                      {loading || imageUploading ? "Saving..." : "Save"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      type="button"
+                      onClick={() => setEditing(false)}
+                      disabled={loading || imageUploading}
+                    >
+                      Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleEdit}
+                  >
+                    Edit Profile
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-        </Card>
-        <ProfileTabs initialTab="customers" />
-      </div>
+          </Card>
+          <ProfileTabs initialTab="customers" />
+        </div>
+      )}
     </AppLayout>
   );
 }
