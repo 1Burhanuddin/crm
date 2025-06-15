@@ -5,22 +5,31 @@ import { DEMO_CUSTOMERS } from "@/constants/demoData";
 import { Customer } from "@/constants/types";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
+import { AddCustomerDialog } from "./AddCustomerDialog";
 
 export function CustomerList() {
   const [filter, setFilter] = useState("");
   const [customers, setCustomers] = useState<Customer[]>(DEMO_CUSTOMERS);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
   const navigate = useNavigate();
 
   const displayedCustomers = customers.filter((c) =>
     c.name.toLowerCase().includes(filter.toLowerCase())
   );
 
-  function handleAdd() {
-    const name = prompt("Customer Name?");
-    if (!name) return;
+  function handleAddCustomer(name: string, phone: string) {
+    // Basic uniqueness by name (case-insensitive)
+    if (customers.some((c) => c.name.toLowerCase() === name.toLowerCase())) {
+      toast({
+        title: "Customer already exists",
+        description: `A customer named "${name}" already exists.`,
+        variant: "destructive",
+      });
+      return;
+    }
     setCustomers((prev) => [
       ...prev,
-      { id: "c" + (prev.length + 1), name, phone: "" },
+      { id: "c" + (prev.length + 1), name, phone },
     ]);
     toast({
       title: "Customer Added",
@@ -32,7 +41,10 @@ export function CustomerList() {
     <div className="p-4 pb-24">
       <div className="mb-5 flex items-center justify-between">
         <h2 className="text-xl font-semibold text-blue-900">Customers</h2>
-        <button onClick={handleAdd} className="bg-blue-800 text-white px-3 py-1 rounded flex items-center gap-1 text-sm shadow hover:bg-blue-900">
+        <button
+          onClick={() => setAddDialogOpen(true)}
+          className="bg-blue-800 text-white px-3 py-1 rounded flex items-center gap-1 text-sm shadow hover:bg-blue-900"
+        >
           <Plus size={18} /> Add
         </button>
       </div>
@@ -61,6 +73,11 @@ export function CustomerList() {
           </li>
         ))}
       </ul>
+      <AddCustomerDialog
+        open={addDialogOpen}
+        onOpenChange={setAddDialogOpen}
+        onAdd={handleAddCustomer}
+      />
     </div>
   );
 }
