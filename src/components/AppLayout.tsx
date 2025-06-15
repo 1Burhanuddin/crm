@@ -5,6 +5,7 @@ import { OfflineBanner } from "./OfflineBanner";
 import { toast } from "@/hooks/use-toast";
 import { useSession } from "@/hooks/useSession";
 import { AppSidebar } from "./AppSidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -37,14 +38,16 @@ export function AppLayout({ children, title, shopName, loadingTitle }: AppLayout
         )}
       </header>
       <OfflineBanner show={isOffline} />
-      <div className="flex-1 flex w-full">
-        {/* Only show AppSidebar on md+ (pc/large screens) */}
-        <div className="hidden md:block">
-          <AppSidebar />
+      <SidebarProvider>
+        <div className="flex-1 flex w-full">
+          {/* Only show AppSidebar on md+ (pc/large screens) */}
+          <div className="hidden md:block">
+            <AppSidebar />
+          </div>
+          {/* Main content adjusts based on sidebar */}
+          <main className="flex-1 overflow-y-auto">{children}</main>
         </div>
-        {/* Main content adjusts based on sidebar */}
-        <main className="flex-1 overflow-y-auto">{children}</main>
-      </div>
+      </SidebarProvider>
       {/* Only show BottomNav on mobile */}
       <div className="md:hidden">
         <BottomNav />
