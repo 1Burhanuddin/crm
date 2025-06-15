@@ -8,6 +8,7 @@ import { toast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import { AppLayout } from "@/components/AppLayout";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { ProfileTabs } from "@/components/ProfileTabs";
 
 export default function ProfilePage() {
   const { user, status, refresh } = useSession();
@@ -134,132 +135,100 @@ export default function ProfilePage() {
   return (
     <AppLayout title="Profile">
       <div className="max-w-md mx-auto p-4">
-        <Card className="p-4">
-          <h1 className="text-2xl font-bold mb-6 text-blue-900">My Profile</h1>
-          {loading ? (
-            <div>Loading...</div>
-          ) : profile ? (
-            <div>
-              <div className="flex flex-col items-center mb-6 gap-2">
-                <Avatar className="h-20 w-20">
-                  <AvatarImage
-                    src={
-                      newImageFile
-                        ? URL.createObjectURL(newImageFile)
-                        : profile.profile_image_url || undefined
-                    }
-                    alt={profile.name ?? profile.email}
-                  />
-                  <AvatarFallback>
-                    {(profile.name || profile.email || "U")[0]}
-                  </AvatarFallback>
-                </Avatar>
-                {editing && (
-                  <>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      disabled={imageUploading}
-                      className="mt-2"
-                    />
-                    {newImageFile && (
-                      <span className="text-xs text-blue-800 mt-1">
-                        {newImageFile.name}
-                      </span>
-                    )}
-                  </>
-                )}
-              </div>
-              {/* Name */}
-              <div className="mb-4">
-                <label className="block text-sm text-gray-700 font-medium">
-                  Name
-                </label>
-                {editing ? (
-                  <Input
-                    type="text"
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    className="mt-1"
-                    maxLength={50}
-                  />
-                ) : (
-                  <div className="mt-1">{profile.name || <span className="text-gray-400 italic">No name</span>}</div>
-                )}
-              </div>
-              {/* Shop Name */}
-              <div className="mb-4">
-                <label className="block text-sm text-gray-700 font-medium">
-                  Shop/Enterprise Name
-                </label>
-                {editing ? (
-                  <Input
-                    type="text"
-                    value={newShopName}
-                    onChange={(e) => setNewShopName(e.target.value)}
-                    className="mt-1"
-                    maxLength={60}
-                  />
-                ) : (
-                  <div className="mt-1">{profile.shop_name || <span className="text-gray-400 italic">No shop/enterprise</span>}</div>
-                )}
-              </div>
-              {/* Email */}
-              <div className="mb-4">
-                <label className="block text-sm text-gray-700 font-medium">
-                  Email
-                </label>
-                {editing ? (
-                  <Input
-                    type="email"
-                    value={newEmail}
-                    onChange={(e) => setNewEmail(e.target.value)}
-                    className="mt-1"
-                  />
-                ) : (
-                  <div className="flex items-center gap-2 mt-1">
-                    <span>{profile.email}</span>
-                  </div>
-                )}
-              </div>
-              <div className="flex gap-2">
-                {editing ? (
-                  <>
-                    <Button
-                      variant="outline"
-                      type="button"
-                      onClick={handleSave}
-                      disabled={loading || imageUploading}
-                    >
-                      {loading || imageUploading ? "Saving..." : "Save"}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      type="button"
-                      onClick={() => setEditing(false)}
-                      disabled={loading || imageUploading}
-                    >
-                      Cancel
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleEdit}
-                  >
-                    Edit Profile
-                  </Button>
-                )}
-              </div>
-              {/* Optionally render PIN change below */}
-              {/* <div>...PIN change UI (future)...</div> */}
+        <Card className="p-4 mb-6">
+          <div className="flex flex-col items-center gap-2">
+            <Avatar className="h-20 w-20">
+              <AvatarImage
+                src={
+                  newImageFile
+                    ? URL.createObjectURL(newImageFile)
+                    : profile?.profile_image_url || undefined
+                }
+                alt={profile?.name ?? profile?.email ?? "U"}
+              />
+              <AvatarFallback>
+                {(profile?.name || profile?.email || "U")[0]}
+              </AvatarFallback>
+            </Avatar>
+            <div className="font-bold text-lg text-blue-900">
+              {profile?.shop_name || <span className="text-gray-400 italic">No shop/enterprise</span>}
             </div>
-          ) : (
-            <div>No profile data found.</div>
-          )}
+            <div className="text-sm text-gray-700">
+              {profile?.name || <span className="text-gray-400 italic">No name</span>}
+            </div>
+            <div className="text-xs text-gray-500">{profile?.email}</div>
+            {editing && (
+              <>
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  disabled={imageUploading}
+                  className="mt-2"
+                />
+                {newImageFile && (
+                  <span className="text-xs text-blue-800 mt-1">
+                    {newImageFile.name}
+                  </span>
+                )}
+                <Input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  className="mt-2"
+                  maxLength={50}
+                  placeholder="Name"
+                />
+                <Input
+                  type="text"
+                  value={newShopName}
+                  onChange={(e) => setNewShopName(e.target.value)}
+                  className="mt-2"
+                  maxLength={60}
+                  placeholder="Shop/Enterprise Name"
+                />
+                <Input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  className="mt-2"
+                  placeholder="Email"
+                />
+              </>
+            )}
+            <div className="flex gap-2 mt-4">
+              {editing ? (
+                <>
+                  <Button
+                    variant="outline"
+                    type="button"
+                    onClick={handleSave}
+                    disabled={loading || imageUploading}
+                  >
+                    {loading || imageUploading ? "Saving..." : "Save"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    type="button"
+                    onClick={() => setEditing(false)}
+                    disabled={loading || imageUploading}
+                  >
+                    Cancel
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleEdit}
+                >
+                  Edit Profile
+                </Button>
+              )}
+            </div>
+          </div>
         </Card>
+        <ProfileTabs initialTab="customers" />
       </div>
     </AppLayout>
   );
