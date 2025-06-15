@@ -1,20 +1,36 @@
 
 import { DEMO_ORDERS, DEMO_CUSTOMERS, DEMO_PRODUCTS } from "@/constants/demoData";
+import { Order } from "@/constants/types";
 import { Plus } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { toast } from "@/hooks/use-toast";
+import { AddOrderModal } from "./AddOrderModal";
 
 export function OrderList() {
-  const navigate = useNavigate();
+  const [orders, setOrders] = useState<Order[]>(DEMO_ORDERS);
   const [showAdd, setShowAdd] = useState(false);
 
   function customerName(id: string) {
     const c = DEMO_CUSTOMERS.find((c) => c.id === id);
     return c ? c.name : id;
   }
+  
   function productName(id: string) {
     const p = DEMO_PRODUCTS.find((p) => p.id === id);
     return p ? p.name : id;
+  }
+
+  function handleAddOrder(orderData: Omit<Order, 'id'>) {
+    const newOrder: Order = {
+      ...orderData,
+      id: "o" + (orders.length + 1)
+    };
+    
+    setOrders(prev => [newOrder, ...prev]);
+    toast({
+      title: "Order Added",
+      description: "New order has been added successfully.",
+    });
   }
 
   return (
@@ -29,7 +45,7 @@ export function OrderList() {
         </button>
       </div>
       <ul>
-        {DEMO_ORDERS.map((o) => (
+        {orders.map((o) => (
           <li
             key={o.id}
             className="mb-4 bg-white rounded-lg px-4 py-3 shadow border"
@@ -57,11 +73,14 @@ export function OrderList() {
           </li>
         ))}
       </ul>
-      {DEMO_ORDERS.length === 0 && (
+      {orders.length === 0 && (
         <div className="text-gray-500 mt-10 text-center">No orders found.</div>
       )}
-      {/* AddOrderModal can be wired up here */}
-      {/* {showAdd && <AddOrderModal />} */}
+      <AddOrderModal
+        open={showAdd}
+        onOpenChange={setShowAdd}
+        onAdd={handleAddOrder}
+      />
     </div>
   );
 }
