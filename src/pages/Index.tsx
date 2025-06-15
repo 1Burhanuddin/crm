@@ -72,6 +72,14 @@ const DASH_ACTIONS = [
     color: "text-gray-700",
     route: "/customers",
   },
+  {
+    title: "Bills",
+    desc: "Create and manage customer bills",
+    bg: "bg-purple-50",
+    hover: "hover:bg-purple-100 active:bg-purple-200",
+    color: "text-purple-900",
+    route: "/bills",
+  },
 ];
 
 const UNLOCK_KEY = "unlocked_v2"; // changed key for user-based unlock
