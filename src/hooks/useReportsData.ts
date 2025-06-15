@@ -28,7 +28,7 @@ export function useReportsData() {
       if (salesError) throw salesError;
       const totalSales =
         Array.isArray(sales)
-          ? sales.reduce((a, t: any) => a + (t.amount || 0), 0)
+          ? sales.reduce((a: number, t: any) => a + (Number(t.amount) || 0), 0)
           : 0;
 
       // Sum all 'udhaar' transactions for user (totalCredit)
@@ -40,7 +40,7 @@ export function useReportsData() {
       if (creditError) throw creditError;
       const totalCredit =
         Array.isArray(credit)
-          ? credit.reduce((a, t: any) => a + (t.amount || 0), 0)
+          ? credit.reduce((a: number, t: any) => a + (Number(t.amount) || 0), 0)
           : 0;
 
       // Count orders with status "pending" for user

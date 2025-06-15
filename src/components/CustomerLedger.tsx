@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { AddTransactionModal } from "./AddTransactionModal";
 import { supabase } from "@/integrations/supabase/client";
 import { Transaction } from "@/constants/types";
+import { useSession } from "@/hooks/useSession";
 
 export function CustomerLedger() {
   const { id } = useParams();
@@ -16,19 +17,25 @@ export function CustomerLedger() {
   const [loading, setLoading] = useState(true);
 
   const [showAdd, setShowAdd] = useState(false);
+  const { user } = useSession();
 
-  // Fetch transactions from Supabase
+  // Fetch transactions from Supabase filtered by current user and customer
   async function fetchTransactions() {
     setLoading(true);
+    if (!user) {
+      setTransactions([]);
+      setLoading(false);
+      return;
+    }
     const { data, error } = await supabase
       .from("transactions")
       .select("*")
       .eq("customer_id", id ?? "")
+      .eq("user_id", user.id)
       .order("date", { ascending: false });
     if (error) {
       setTransactions([]);
     } else {
-      // Map DB fields (snake_case) to our Transaction type (camelCase)
       setTransactions(
         (data || []).map((t: any) => ({
           id: t.id,
@@ -44,11 +51,10 @@ export function CustomerLedger() {
   }
 
   useEffect(() => {
-    if (id) fetchTransactions();
+    if (id && user) fetchTransactions();
     // eslint-disable-next-line
-  }, [id, showAdd]);
+  }, [id, showAdd, user]);
 
-  // Calculate balance using Supabase transactions
   const balance =
     transactions.reduce(
       (sum, t) => sum + (t.type === "udhaar" ? Number(t.amount) : -Number(t.amount)),

@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useSession } from "@/hooks/useSession";
 
 export type TransactionType = "udhaar" | "paid";
 
@@ -26,6 +27,7 @@ export function AddTransactionModal({
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
+  const { user } = useSession();
 
   function resetForm() {
     setType("udhaar");
@@ -40,13 +42,18 @@ export function AddTransactionModal({
       toast({ title: "Invalid Amount", description: "Amount must be a positive number." });
       return;
     }
+    if (!user) {
+      toast({ title: "Not signed in" });
+      return;
+    }
     setLoading(true);
     const { error } = await supabase.from("transactions").insert({
       customer_id: customerId,
       date,
       amount: Number(amount),
       type,
-      note
+      note,
+      user_id: user.id,
     });
     setLoading(false);
     if (error) {
