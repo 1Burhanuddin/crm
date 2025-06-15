@@ -8,6 +8,7 @@ import { BillCreateModal } from "@/components/BillCreateModal";
 import { BillPdfDoc } from "@/components/BillPdf";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { Download } from "lucide-react";
+import { BackButton } from "@/components/BackButton";
 
 type Bill = {
   id: string;
@@ -18,11 +19,34 @@ type Bill = {
   total: number;
 };
 
+// type for profile info
+type ProfileInfo = {
+  name: string | null;
+  shop_name: string | null;
+};
+
 export function BillList() {
   const { user } = useSession();
   const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [profile, setProfile] = useState<ProfileInfo>({ name: null, shop_name: null });
+
+  // Fetch profile info for user
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user) return;
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("name,shop_name")
+        .eq("id", user.id)
+        .single();
+      if (!error && data) {
+        setProfile({ name: data.name, shop_name: data.shop_name });
+      }
+    };
+    fetchProfile();
+  }, [user]);
 
   const fetchBills = async () => {
     if (!user) return;
@@ -52,6 +76,9 @@ export function BillList() {
 
   return (
     <div className="w-full">
+      <div className="mb-2">
+        <BackButton />
+      </div>
       <div className="flex justify-between items-center mb-6">
         <div className="text-xl font-bold text-blue-900">Bills</div>
         <Button onClick={() => setShowCreate(true)}>+ New Bill</Button>
@@ -82,7 +109,13 @@ export function BillList() {
                   {/* PDF Export Button */}
                   <div className="mt-2 flex justify-end">
                     <PDFDownloadLink
-                      document={<BillPdfDoc bill={bill} />}
+                      document={
+                        <BillPdfDoc
+                          bill={bill}
+                          userName={profile.name || ""}
+                          shopName={profile.shop_name || ""}
+                        />
+                      }
                       fileName={`Bill_${bill.id.slice(0, 8)}.pdf`}
                       className="inline-flex"
                     >
