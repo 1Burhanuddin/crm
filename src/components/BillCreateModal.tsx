@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -26,11 +25,16 @@ export function BillCreateModal({
   initialData?: InitialData;
 }) {
   const { user } = useSession();
+  // Only initialize with a default item if there are NO valid initialData.items
   const [customerName, setCustomerName] = useState(initialData.customerName || "");
   const [customerPhone, setCustomerPhone] = useState(initialData.customerPhone || "");
+  // New logic: Check if initialData.items exists, has length, and at least one item has a non-empty name
+  const hasValidItems = Array.isArray(initialData.items)
+    && initialData.items.length > 0
+    && initialData.items.some(it => it && it.name);
   const [items, setItems] = useState<Item[]>(
-    initialData.items && initialData.items.length
-      ? initialData.items
+    hasValidItems
+      ? initialData.items!
       : [{ name: "", qty: 1, price: 0 }]
   );
   const [loading, setLoading] = useState(false);
@@ -40,9 +44,12 @@ export function BillCreateModal({
     if (open) {
       setCustomerName(initialData.customerName || "");
       setCustomerPhone(initialData.customerPhone || "");
+      const valid = Array.isArray(initialData.items)
+        && initialData.items.length > 0
+        && initialData.items.some(it => it && it.name);
       setItems(
-        initialData.items && initialData.items.length
-          ? initialData.items
+        valid
+          ? initialData.items!
           : [{ name: "", qty: 1, price: 0 }]
       );
     }
