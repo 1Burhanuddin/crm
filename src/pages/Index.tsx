@@ -1,13 +1,14 @@
+
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { useState, useEffect } from "react";
 import { PinLock } from "@/components/PinLock";
-import { DEMO_CUSTOMERS, DEMO_TRANSACTIONS, DEMO_ORDERS } from "@/constants/demoData";
 import { useSession } from "@/hooks/useSession";
 import { supabase } from "@/integrations/supabase/client";
 import { sha256 } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { SetPinDialog } from "@/components/SetPinDialog";
+import { useReportsData } from "@/hooks/useReportsData";
 
 const KPICard = ({
   title,
@@ -27,17 +28,7 @@ const KPICard = ({
   </div>
 );
 
-const getKPIs = () => {
-  const totalSales = DEMO_TRANSACTIONS
-    .filter((t) => t.type === "paid")
-    .reduce((sum, t) => sum + t.amount, 0);
-  const totalCredit = DEMO_TRANSACTIONS
-    .filter((t) => t.type === "udhaar")
-    .reduce((sum, t) => sum + t.amount, 0);
-  const ordersPending = DEMO_ORDERS.filter((o) => o.status === "pending").length;
-  const totalCustomers = DEMO_CUSTOMERS.length;
-  return { totalSales, totalCredit, ordersPending, totalCustomers };
-};
+// Removed getKPIs that used demo data
 
 const DASH_ACTIONS = [
   {
@@ -70,7 +61,7 @@ const DASH_ACTIONS = [
     bg: "bg-gray-50",
     hover: "hover:bg-gray-100 active:bg-gray-200",
     color: "text-gray-700",
-    route: "/customers",
+    route: "/profile", // Changed from "/customers" to "/profile"
   },
   {
     title: "Bills",
@@ -91,6 +82,9 @@ const Index = () => {
   const [showSetPin, setShowSetPin] = useState(false);
   const [profileChecked, setProfileChecked] = useState(false);
   const navigate = useNavigate();
+
+  // Added: fetch live KPI data
+  const { data: reportData, isLoading: reportLoading, error: reportError } = useReportsData();
 
   // On initial mount, check session
   useEffect(() => {
@@ -189,8 +183,6 @@ const Index = () => {
     return <PinLock onUnlock={handleUnlock} />;
   }
 
-  const { totalSales, totalCredit, ordersPending } = getKPIs();
-
   return (
     <AppLayout title="Glass Shop - Khata">
       <div className="p-3 pb-24 w-full max-w-md mx-auto">
@@ -198,10 +190,38 @@ const Index = () => {
           Welcome! Track your orders, sales and credits.
         </div>
         <div className="flex flex-wrap gap-y-2 mb-4 w-full">
-          <KPICard title="Total Sales" value={`₹${totalSales}`} color="text-green-700" />
-          <KPICard title="Credit (Udhaar)" value={`₹${totalCredit}`} color="text-red-600" />
-          <KPICard title="Pending Orders" value={ordersPending} color="text-yellow-600" />
-          {/* Removed the Customers KPICard */}
+          {/* Show real data for KPIs */}
+          {reportLoading ? (
+            <>
+              <KPICard title="Total Sales" value="..." color="text-green-700" />
+              <KPICard title="Credit (Udhaar)" value="..." color="text-red-600" />
+              <KPICard title="Pending Orders" value="..." color="text-yellow-600" />
+            </>
+          ) : reportError ? (
+            <>
+              <KPICard title="Total Sales" value="Err" color="text-green-700" />
+              <KPICard title="Credit (Udhaar)" value="Err" color="text-red-600" />
+              <KPICard title="Pending Orders" value="Err" color="text-yellow-600" />
+            </>
+          ) : (
+            <>
+              <KPICard
+                title="Total Sales"
+                value={`₹${reportData?.totalSales ?? 0}`}
+                color="text-green-700"
+              />
+              <KPICard
+                title="Credit (Udhaar)"
+                value={`₹${reportData?.totalCredit ?? 0}`}
+                color="text-red-600"
+              />
+              <KPICard
+                title="Pending Orders"
+                value={reportData?.ordersPending ?? 0}
+                color="text-yellow-600"
+              />
+            </>
+          )}
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 w-full mx-auto mt-2">
           {DASH_ACTIONS.map((action) => (
