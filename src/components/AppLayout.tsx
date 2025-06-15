@@ -44,11 +44,11 @@ export function AppLayout({ children, title, shopName, loadingTitle }: AppLayout
           <span className="ml-2 px-2 py-1 rounded bg-yellow-500 text-xs font-medium animate-pulse shadow">Offline</span>
         )}
       </header>
-      {/* Add top padding to main content to make room for header */}
-      <div style={{ paddingTop: HEADER_HEIGHT }}>
+      {/* Add top padding to make room for header for ALL content, including sidebar */}
+      <div>
         <OfflineBanner show={isOffline} />
         <SidebarProvider>
-          <div className="flex-1 flex w-full">
+          <div className="flex w-full" style={{ paddingTop: HEADER_HEIGHT }}>
             {/* Only show AppSidebar on md+ (pc/large screens) */}
             <div className="hidden md:block">
               <AppSidebar />
@@ -58,7 +58,7 @@ export function AppLayout({ children, title, shopName, loadingTitle }: AppLayout
           </div>
         </SidebarProvider>
         {/* Only show BottomNav on mobile */}
-        <div className="md:hidden">
+        <div className="md:hidden" style={{ paddingTop: HEADER_HEIGHT }}>
           <BottomNav />
         </div>
       </div>
