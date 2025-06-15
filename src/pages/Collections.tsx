@@ -15,7 +15,7 @@ import {
 import { CollectionEditModal } from "@/components/CollectionEditModal";
 import { BackButton } from "@/components/BackButton";
 import { Button } from "@/components/ui/button";
-import { format, parseISO, isToday, isAfter, isBefore } from "date-fns";
+import { format, parseISO, isToday, isAfter, isBefore, addDays } from "date-fns";
 import {
   Popover,
   PopoverTrigger,
@@ -57,6 +57,11 @@ export default function Collections() {
     Record<string, DeliveredOrder[]>
   >({});
 
+  // --- Add per-customer collection date state ---
+  const [customerDates, setCustomerDates] = useState<Record<string, Date>>({});
+  // For menu popovers controlling which one is open
+  const [dateMenuOpen, setDateMenuOpen] = useState<{ [id: string]: boolean }>({});
+
   // Form state, now includes order_id
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
@@ -64,7 +69,7 @@ export default function Collections() {
     amount: "",
     remarks: "",
     order_id: "",
-    collection_date: new Date(), // default to today
+    collection_date: new Date(), // not actually needed in the modal if date managed outside!
   });
 
   // Added: SendReminderModal modal state
@@ -182,6 +187,29 @@ export default function Collections() {
     setCustomerDeliveredOrders(deliveredOrdersMap);
   }, [user, collections, customers]);
 
+  // Calculate per-customer collection date: set once when pendingCustomers is calculated.
+  // Default: today + 1 day
+  useEffect(() => {
+    if (pendingCustomers.length > 0) {
+      setCustomerDates(prev => {
+        const next: Record<string, Date> = { ...prev };
+        pendingCustomers.forEach((c) => {
+          // Only set if not already selected, so don't stomp user-chosen date
+          if (!next[c.id]) {
+            next[c.id] = addDays(new Date(), 1);
+          }
+        });
+        // Remove entries for customers no longer visible
+        Object.keys(next).forEach((id) => {
+          if (!pendingCustomers.some((c) => c.id === id)) {
+            delete next[id];
+          }
+        });
+        return next;
+      });
+    }
+  }, [pendingCustomers]);
+
   useEffect(() => {
     if (customers.length > 0) calculatePending();
     // eslint-disable-next-line
@@ -199,7 +227,8 @@ export default function Collections() {
       amount: amount ? String(amount) : "",
       remarks: "",
       order_id,
-      collection_date: new Date(),
+      // Use the selected date for the customer, or today+1 by default
+      collection_date: customerId ? (customerDates[customerId] ?? addDays(new Date(), 1)) : addDays(new Date(), 1),
     });
     setShowForm(true);
   };
@@ -229,6 +258,23 @@ export default function Collections() {
     setForm({ ...form, order_id: e.target.value });
   };
 
+  // --- Handler for changing a customer's target collection date ---
+  const handleDateChangeForCustomer = (customerId: string, date: Date) => {
+    setCustomerDates(prev => ({
+      ...prev,
+      [customerId]: date,
+    }));
+    setDateMenuOpen(prev => ({ ...prev, [customerId]: false }));
+  };
+
+  // --- Handler for opening/closing the date menu ---
+  const openDateMenu = (customerId: string) => {
+    setDateMenuOpen(prev => ({ ...prev, [customerId]: true }));
+  };
+  const closeDateMenu = (customerId: string) => {
+    setDateMenuOpen(prev => ({ ...prev, [customerId]: false }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.customer_id || !form.amount) {
@@ -239,11 +285,11 @@ export default function Collections() {
       });
       return;
     }
-    // Save date as ISO string in yyyy-MM-dd format
-    const collectionDate =
-      form.collection_date instanceof Date
-        ? format(form.collection_date, "yyyy-MM-dd")
-        : form.collection_date || format(new Date(), "yyyy-MM-dd");
+    // If opened from the pending list, "form.collection_date" is already the correct one.
+    // Still, format and submit
+    const collectionDate = form.collection_date
+      ? format(form.collection_date as Date, "yyyy-MM-dd")
+      : format(new Date(), "yyyy-MM-dd");
     await addCollection({
       customer_id: form.customer_id,
       amount: Number(form.amount),
@@ -258,7 +304,7 @@ export default function Collections() {
       amount: "",
       remarks: "",
       order_id: "",
-      collection_date: new Date(),
+      collection_date: addDays(new Date(), 1),
     });
   };
 
@@ -307,6 +353,11 @@ export default function Collections() {
       isToday(parseISO(c.collection_date))
   );
 
+  // Helper: format date nicely for display (eg "Jun 15, 2025")
+  const displayDate = (date: Date) => {
+    return format(date, "PPP");
+  };
+
   return (
     <AppLayout title="Collections">
       <div className="p-4 max-w-lg mx-auto">
@@ -333,6 +384,38 @@ export default function Collections() {
                     {c.phone ? (
                       <div className="mt-1 text-xs text-gray-500">Phone: {c.phone}</div>
                     ) : null}
+                    {/* ADD: Display selected collection date */}
+                    <div className="mt-1 flex items-center gap-2 text-xs text-blue-900">
+                      <CalendarIcon size={16} className="inline mr-1" />
+                      Collect on:&nbsp;
+                      <span className="font-semibold">
+                        {customerDates[c.id] ? displayDate(customerDates[c.id]) : displayDate(addDays(new Date(), 1))}
+                      </span>
+                      {/* Three-dot button: open date picker popover */}
+                      <Popover open={!!dateMenuOpen[c.id]} onOpenChange={(open) => setDateMenuOpen((prev) => ({ ...prev, [c.id]: open }))}>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            className="ml-1 rounded-full p-1 border hover:bg-gray-200"
+                            aria-label="Change date"
+                            onClick={e => { e.stopPropagation(); openDateMenu(c.id); }}
+                          >
+                            <MoreHorizontal size={16} />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0 z-50" align="start" side="bottom">
+                          <Calendar
+                            mode="single"
+                            selected={customerDates[c.id] || addDays(new Date(), 1)}
+                            onSelect={(date) => {
+                              if (date) handleDateChangeForCustomer(c.id, date);
+                            }}
+                            initialFocus
+                            className={cn("p-3 pointer-events-auto")}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                   </div>
                   <div className="flex flex-row items-center gap-2 mt-2 sm:mt-0">
                     {/* Collect button: blue theme */}
@@ -340,7 +423,21 @@ export default function Collections() {
                       variant="default"
                       size="sm"
                       className="bg-blue-700 hover:bg-blue-800 focus:bg-blue-800 text-white font-medium px-4 py-2 rounded transition"
-                      onClick={() => handleOpenForm(c.id, c.pending)}
+                      onClick={() => {
+                        // Use selected date for this customer in form!
+                        setForm({
+                          customer_id: c.id,
+                          amount: c.pending ? String(c.pending) : "",
+                          remarks: "",
+                          order_id:
+                            customerDeliveredOrders[c.id] && customerDeliveredOrders[c.id].length === 1
+                              ? customerDeliveredOrders[c.id][0].id
+                              : "",
+                          // Use per-customer date (if set), otherwise default
+                          collection_date: customerDates[c.id] ?? addDays(new Date(), 1),
+                        });
+                        setShowForm(true);
+                      }}
                       disabled={isAdding}
                     >
                       Collect
@@ -366,9 +463,7 @@ export default function Collections() {
           onOpenChange={(open) => setReminderModalOpen(open)}
           customer={reminderCustomer}
         />
-        {/* Manual Add Collection as fallback */}
-
-        {/* Add Collection Modal */}
+        {/* Add Collection Modal (disabled date when coming from pending list, so not shown) */}
         {showForm && (
           <div className="fixed inset-0 flex items-center justify-center z-30 bg-black/30">
             <div className="bg-white rounded-lg shadow p-6 min-w-[300px] max-w-[90vw]">
@@ -383,6 +478,7 @@ export default function Collections() {
                   onChange={handleFormChange}
                   className="w-full border px-2 py-1 rounded mb-3"
                   required
+                  disabled // Disable changing customer when coming from pending
                 >
                   <option value="">Select Customer</option>
                   {customers.map((c) => (
@@ -421,45 +517,16 @@ export default function Collections() {
                   onChange={handleFormChange}
                   className="w-full border px-2 py-1 rounded mb-3"
                   required
+                  disabled // Disable changing amount to keep pending accurate
                 />
 
-                {/* Date Picker for collection_date (optional, defaults to today) */}
-                <label className="block mb-2 text-sm font-medium">Collection Date</label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      className={cn(
-                        "w-full border px-2 py-2 rounded mb-3 flex items-center justify-between",
-                        !form.collection_date && "text-muted-foreground"
-                      )}
-                    >
-                      <span>
-                        {form.collection_date
-                          ? format(form.collection_date as Date, "PPP")
-                          : "Pick a date"}
-                      </span>
-                      <CalendarIcon className="ml-2 opacity-60" size={18} />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={typeof form.collection_date === "string"
-                        ? parseISO(form.collection_date)
-                        : form.collection_date}
-                      onSelect={(date) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          collection_date: date ?? new Date()
-                        }))
-                      }
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
-
+                {/* Show the chosen collection date for info only (not editable here) */}
+                <div className="mb-3">
+                  <label className="block mb-2 text-sm font-medium">Collection Date</label>
+                  <div className="w-full border px-2 py-2 rounded bg-gray-100 text-blue-900">
+                    {displayDate(form.collection_date as Date)}
+                  </div>
+                </div>
                 <label className="block mb-2 text-sm font-medium">Remarks</label>
                 <input
                   name="remarks"
