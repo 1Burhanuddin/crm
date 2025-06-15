@@ -35,7 +35,7 @@ export function useCollections() {
     },
   });
 
-  // Add a new collection
+  // Add a new collection + a corresponding "paid" transaction
   const mutation = useMutation({
     mutationFn: async (payload: {
       customer_id: string;
@@ -45,7 +45,9 @@ export function useCollections() {
       transaction_id?: string | null;
     }) => {
       if (!user) throw new Error("User not logged in");
-      const { error } = await supabase
+
+      // Insert into collections first
+      const { data, error } = await supabase
         .from("collections")
         .insert([
           {
@@ -54,10 +56,42 @@ export function useCollections() {
             amount: payload.amount,
             remarks: payload.remarks || "",
             order_id: payload.order_id || null,
-            transaction_id: payload.transaction_id || null,
+            transaction_id: null, // set after transaction insert
           }
-        ]);
+        ])
+        .select("id")
+        .single();
+
       if (error) throw error;
+
+      // Insert 'paid' transaction and update the collection's transaction_id
+      const collectionId = data?.id;
+      if (collectionId) {
+        const { data: txnRow, error: txnErr } = await supabase
+          .from("transactions")
+          .insert([
+            {
+              user_id: user.id,
+              customer_id: payload.customer_id,
+              type: "paid",
+              amount: payload.amount,
+              collection_id: collectionId,
+              order_id: payload.order_id || null,
+            }
+          ])
+          .select("id")
+          .single();
+        if (txnErr) throw txnErr;
+        const txnId = txnRow?.id;
+        if (txnId) {
+          // Update the collection's transaction_id
+          const { error: updateErr } = await supabase
+            .from("collections")
+            .update({ transaction_id: txnId })
+            .eq("id", collectionId);
+          if (updateErr) throw updateErr;
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["collections", user?.id] });
