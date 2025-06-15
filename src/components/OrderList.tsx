@@ -38,6 +38,23 @@ const fetchProducts = async (user_id?: string): Promise<Product[]> => {
   return (data || []) as Product[];
 };
 
+// Add this type for correct typing of the fetched Supabase order rows
+type SupabaseOrderRow = {
+  assigned_to: string | null;
+  created_at: string;
+  customer_id: string;
+  id: string;
+  job_date: string;
+  photo_url: string | null;
+  product_id: string;
+  qty: number;
+  site_address: string | null;
+  status: string;
+  updated_at: string;
+  user_id: string;
+  advance_amount?: number; // <-- allow this as optional (if null or missing)
+};
+
 // Helper: fetch orders for current user
 const fetchOrders = async (user_id: string): Promise<Order[]> => {
   const { data, error } = await supabase
@@ -46,19 +63,22 @@ const fetchOrders = async (user_id: string): Promise<Order[]> => {
     .eq("user_id", user_id)
     .order("created_at", { ascending: false });
   if (error) throw error;
-  // Cast for compatibility: Supabase returns snake_case, our UI expects camelCase
-  return (data || []).map((o) => ({
-    id: o.id,
-    customerId: o.customer_id,
-    productId: o.product_id,
-    qty: o.qty,
-    status: o.status as "pending" | "delivered",
-    jobDate: o.job_date,
-    assignedTo: o.assigned_to || "",
-    siteAddress: o.site_address || "",
-    photoUrl: o.photo_url || "",
-    advanceAmount: typeof o.advance_amount === "number" ? o.advance_amount : 0, // ADDED HANDLING HERE!
-  }));
+  // Cast each row as your new SupabaseOrderRow
+  return (data || []).map((o) => {
+    const row = o as SupabaseOrderRow;
+    return {
+      id: row.id,
+      customerId: row.customer_id,
+      productId: row.product_id,
+      qty: row.qty,
+      status: row.status as "pending" | "delivered",
+      jobDate: row.job_date,
+      assignedTo: row.assigned_to || "",
+      siteAddress: row.site_address || "",
+      photoUrl: row.photo_url || "",
+      advanceAmount: typeof row.advance_amount === "number" ? row.advance_amount : 0,
+    };
+  });
 };
 
 export function OrderList() {
