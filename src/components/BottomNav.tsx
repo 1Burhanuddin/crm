@@ -1,12 +1,12 @@
 
-import { ClipboardList, Home, Layers, UserCircle } from "lucide-react";
+import { ClipboardList, Home, FileText, UserCircle } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-// customers and suppliers removed
+// Swapped "Products" for "Bills"
 const navItems = [
   { title: "Home", icon: Home, path: "/" },
   { title: "Orders", icon: ClipboardList, path: "/orders" },
-  { title: "Products", icon: Layers, path: "/products" },
+  { title: "Bills", icon: FileText, path: "/bills" },
   { title: "Profile", icon: UserCircle, path: "/profile" },
 ];
 
