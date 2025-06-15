@@ -117,7 +117,12 @@ export default function Bills() {
       toast({ title: "Error fetching bills", description: error.message, variant: "destructive" });
       setBills([]);
     } else {
-      setBills(data || []);
+      // Explicitly convert items: Json to items: any[]
+      const typedBills: Bill[] = (data || []).map(bill => ({
+        ...bill,
+        items: Array.isArray(bill.items) ? bill.items : [],
+      }));
+      setBills(typedBills);
     }
     setLoading(false);
   };
