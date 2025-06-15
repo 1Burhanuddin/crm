@@ -1,0 +1,67 @@
+
+import { DEMO_ORDERS, DEMO_CUSTOMERS, DEMO_PRODUCTS } from "@/constants/demoData";
+import { Plus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+
+export function OrderList() {
+  const navigate = useNavigate();
+  const [showAdd, setShowAdd] = useState(false);
+
+  function customerName(id: string) {
+    const c = DEMO_CUSTOMERS.find((c) => c.id === id);
+    return c ? c.name : id;
+  }
+  function productName(id: string) {
+    const p = DEMO_PRODUCTS.find((p) => p.id === id);
+    return p ? p.name : id;
+  }
+
+  return (
+    <div className="p-4 pb-24">
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="text-xl font-semibold text-blue-900">Orders</h2>
+        <button
+          onClick={() => setShowAdd(true)}
+          className="bg-blue-700 text-white px-3 py-1 rounded flex items-center gap-1 text-sm shadow hover:bg-blue-800"
+        >
+          <Plus size={18} /> Add
+        </button>
+      </div>
+      <ul>
+        {DEMO_ORDERS.map((o) => (
+          <li
+            key={o.id}
+            className="mb-4 bg-white rounded-lg px-4 py-3 shadow border"
+          >
+            <div className="font-bold text-blue-900">{customerName(o.customerId)}</div>
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <span className="text-sm text-gray-700">{productName(o.productId)}</span>
+              <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                Qty: {o.qty}
+              </span>
+              <span
+                className={`text-xs px-2 py-1 rounded ${
+                  o.status === "pending"
+                    ? "bg-yellow-200 text-yellow-900"
+                    : "bg-green-200 text-green-900"
+                }`}
+              >
+                {o.status === "pending" ? "Pending" : "Delivered"}
+              </span>
+              <span className="text-gray-400 text-xs">{o.jobDate}</span>
+            </div>
+            {o.siteAddress && (
+              <div className="text-xs text-gray-500">{o.siteAddress}</div>
+            )}
+          </li>
+        ))}
+      </ul>
+      {DEMO_ORDERS.length === 0 && (
+        <div className="text-gray-500 mt-10 text-center">No orders found.</div>
+      )}
+      {/* AddOrderModal can be wired up here */}
+      {/* {showAdd && <AddOrderModal />} */}
+    </div>
+  );
+}
