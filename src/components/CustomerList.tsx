@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { Plus, Search, Edit, Trash2, UserPlus } from "lucide-react";
+import { Plus, Search, Edit, Trash2, UserPlus, MoreHorizontal } from "lucide-react";
 import { Customer } from "@/constants/types";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -8,6 +8,7 @@ import { AddCustomerDialog } from "./AddCustomerDialog";
 import { EditCustomerDialog } from "./EditCustomerDialog";
 import { DeleteCustomerDialog } from "./DeleteCustomerDialog";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { useAddCustomerFromContacts } from "./hooks/useAddCustomerFromContacts";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
@@ -23,6 +24,7 @@ export function CustomerList() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const navigate = useNavigate();
   const { user, status } = useSession();
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   // Fetch customers from Supabase when user logged in
   useEffect(() => {
@@ -99,6 +101,7 @@ export function CustomerList() {
   function handleEditStart(customer: Customer) {
     setSelectedCustomer(customer);
     setEditDialogOpen(true);
+    setOpenMenuId(null);
   }
 
   async function handleEditCustomer(id: string, name: string, phone: string) {
@@ -123,6 +126,7 @@ export function CustomerList() {
   function handleDeleteStart(customer: Customer) {
     setSelectedCustomer(customer);
     setDeleteDialogOpen(true);
+    setOpenMenuId(null);
   }
 
   async function handleDeleteCustomer(id: string) {
@@ -194,36 +198,53 @@ export function CustomerList() {
       {displayedCustomers.length === 0 && (
         <div className="text-center text-gray-500 mt-8">No customers found.</div>
       )}
-      <ul>
+      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
         {displayedCustomers.map((c) => (
           <li
             key={c.id}
-            className="bg-white shadow rounded-lg mb-3 px-4 py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center cursor-pointer hover:bg-blue-50 border transition group"
+            className="bg-white shadow-sm border border-blue-100 rounded-xl px-5 py-4 flex flex-col min-h-[105px] relative transition hover:shadow-md hover:scale-[1.01] hover:bg-blue-50/30 duration-150 group"
             onClick={() => navigate(`/customers/${c.id}`)}
+            tabIndex={0}
+            aria-label={`View details for ${c.name}`}
+            style={{ cursor: "pointer" }}
           >
-            <div className="flex-1">
-              <span className="font-medium text-blue-900">{c.name}</span>
-              {c.phone && <span className="block text-gray-500 text-xs">{c.phone}</span>}
+            {/* Three dot menu in top-right */}
+            <div className="absolute right-2 top-2 z-10">
+              <DropdownMenu open={openMenuId === c.id} onOpenChange={(open) => setOpenMenuId(open ? c.id : null)}>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="p-1.5 rounded-full hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-400 border transition"
+                    onClick={e => { e.stopPropagation(); setOpenMenuId(c.id); }}
+                    aria-label="Customer actions"
+                  >
+                    <MoreHorizontal size={20} />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="z-30 min-w-[130px] bg-white border shadow-lg rounded-md py-1">
+                  <DropdownMenuItem
+                    onSelect={e => {
+                      e.preventDefault();
+                      handleEditStart(c);
+                    }}
+                    className="flex items-center gap-2 text-blue-900 hover:bg-blue-50 cursor-pointer"
+                  >
+                    <Edit size={16} /> Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={e => {
+                      e.preventDefault();
+                      handleDeleteStart(c);
+                    }}
+                    className="flex items-center gap-2 text-red-600 hover:bg-red-50 cursor-pointer"
+                  >
+                    <Trash2 size={16} /> Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-            <div className="flex gap-1 mt-2 sm:mt-0 opacity-70 group-hover:opacity-100">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-blue-600"
-                onClick={e => { e.stopPropagation(); handleEditStart(c); }}
-                aria-label="Edit"
-              >
-                <Edit size={16} />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-red-600"
-                onClick={e => { e.stopPropagation(); handleDeleteStart(c); }}
-                aria-label="Delete"
-              >
-                <Trash2 size={16} />
-              </Button>
+            <div className="flex-1 flex flex-col justify-center">
+              <span className="font-semibold text-blue-900 text-lg">{c.name}</span>
+              {c.phone && <span className="block text-gray-500 text-sm mt-1">{c.phone}</span>}
             </div>
           </li>
         ))}
@@ -256,3 +277,4 @@ export function CustomerList() {
 }
 
 // NOTE: This file is now getting quite large (250+ lines). Consider refactoring it into smaller files/components after this!
+
