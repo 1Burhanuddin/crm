@@ -4,11 +4,20 @@ import { ProductCatalog } from "@/components/ProductCatalog";
 import { BackButton } from "@/components/BackButton";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import React, { useState } from "react";
+import { AddProductModal } from "@/components/AddProductModal";
 
 export default function Products() {
+  const [addModalOpen, setAddModalOpen] = useState(false);
+
   const handleAddProduct = () => {
-    // TODO: Implement add product modal
-    alert("Add product functionality coming soon!");
+    setAddModalOpen(true);
+  };
+
+  // Optionally handle creation logic here (currently just logs to console)
+  const handleProductSubmit = (product: { name: string; price: number; unit: string }) => {
+    console.log("Product submitted:", product);
+    // TODO: Add logic to save new product
   };
 
   return (
@@ -25,6 +34,11 @@ export default function Products() {
           </Button>
         </div>
         <ProductCatalog />
+        <AddProductModal
+          open={addModalOpen}
+          onOpenChange={setAddModalOpen}
+          onSubmit={handleProductSubmit}
+        />
       </div>
     </AppLayout>
   );
