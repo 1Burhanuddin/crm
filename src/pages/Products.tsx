@@ -6,18 +6,42 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import React, { useState } from "react";
 import { AddProductModal } from "@/components/AddProductModal";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 export default function Products() {
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const queryClient = useQueryClient();
+
+  const addProductMutation = useMutation({
+    mutationFn: async (product: { name: string; price: number; unit: string }) => {
+      const { error } = await supabase.from("products").insert([product]);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Product added", description: "Product has been added successfully." });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      setAddModalOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Could not add product.",
+        variant: "destructive",
+      });
+    },
+    meta: {
+      onError: true,
+    }
+  });
 
   const handleAddProduct = () => {
     setAddModalOpen(true);
   };
 
-  // Optionally handle creation logic here (currently just logs to console)
   const handleProductSubmit = (product: { name: string; price: number; unit: string }) => {
-    console.log("Product submitted:", product);
-    // TODO: Add logic to save new product
+    addProductMutation.mutate(product);
   };
 
   return (
