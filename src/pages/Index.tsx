@@ -1,12 +1,8 @@
+
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { useState, useEffect } from "react";
-import { PinLock } from "@/components/PinLock";
 import { useSession } from "@/hooks/useSession";
-import { supabase } from "@/integrations/supabase/client";
-import { sha256 } from "@/lib/utils";
-import { toast } from "@/hooks/use-toast";
-import { SetPinDialog } from "@/components/SetPinDialog";
 import { useReportsData } from "@/hooks/useReportsData";
 
 const KPICard = ({
@@ -26,8 +22,6 @@ const KPICard = ({
     {sub && <span className="text-xs text-blue-900">{sub}</span>}
   </div>
 );
-
-// Removed getKPIs that used demo data
 
 const DASH_ACTIONS = [
   {
@@ -64,14 +58,9 @@ const DASH_ACTIONS = [
   },
 ];
 
-const UNLOCK_KEY = "unlocked_v2"; // changed key for user-based unlock
-
 const Index = () => {
   const { user, status } = useSession();
-  const [unlocked, setUnlocked] = useState<boolean>(false);
   const [checking, setChecking] = useState(true); // for auth state loading
-  const [showSetPin, setShowSetPin] = useState(false);
-  const [profileChecked, setProfileChecked] = useState(false);
   const navigate = useNavigate();
 
   // Added: fetch live KPI data
@@ -94,84 +83,9 @@ const Index = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checking, status, user]);
 
-  // Sync unlocked state with localStorage per user
-  useEffect(() => {
-    if (user) {
-      const unlockedForUser = localStorage.getItem(`${UNLOCK_KEY}:${user.id}`) === "true";
-      setUnlocked(unlockedForUser);
-    } else {
-      setUnlocked(false);
-    }
-  }, [user]);
-
-  // NEW: On mount & user, check if user has pin_hash set. If not, prompt to set PIN.
-  useEffect(() => {
-    async function checkProfileNeedsPin() {
-      if (user) {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("pin_hash, email")
-          .eq("id", user.id)
-          .maybeSingle();
-        if (!data || !data.pin_hash) {
-          setShowSetPin(true);
-        } else {
-          setShowSetPin(false);
-        }
-        setProfileChecked(true);
-      }
-    }
-    if (status === "signed_in" && user) {
-      checkProfileNeedsPin();
-    }
-  }, [status, user]);
-
-  // If loading session/profile, show loading spinner
-  if (checking || status === "loading" || (status === "signed_in" && user && !profileChecked)) {
+  // If loading session, show loading spinner
+  if (checking || status === "loading") {
     return <div className="h-screen flex items-center justify-center text-blue-900">Loading...</div>;
-  }
-
-  // If user has no PIN, show PIN setup dialog (blocks app usage)
-  if (showSetPin && user) {
-    return (
-      <SetPinDialog
-        open={showSetPin}
-        onClose={() => {}}
-        userId={user.id}
-        email={user.email}
-        onPinSet={() => {
-          setShowSetPin(false);
-          setUnlocked(false); // Will force PinLock
-        }}
-      />
-    );
-  }
-
-  // Handle unlock
-  async function handleUnlock(pin: string) {
-    if (!user) return;
-    // Fetch hashed PIN for user
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("pin_hash")
-      .eq("id", user.id)
-      .maybeSingle();
-    if (error || !data) {
-      toast({ title: "Error", description: "Could not verify PIN.", variant: "destructive" });
-      return;
-    }
-    const inputHash = await sha256(pin);
-    if (inputHash === data.pin_hash) {
-      localStorage.setItem(`${UNLOCK_KEY}:${user.id}`, "true");
-      setUnlocked(true);
-      toast({ title: "App Unlocked" });
-    } else {
-      toast({ title: "Wrong PIN", description: "Please enter the correct PIN.", variant: "destructive" });
-    }
-  }
-
-  if (!unlocked) {
-    return <PinLock onUnlock={handleUnlock} />;
   }
 
   return (
