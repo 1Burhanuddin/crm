@@ -6,12 +6,16 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import React, { useState } from "react";
 import { AddProductModal } from "@/components/AddProductModal";
+import { EditProductModal } from "@/components/EditProductModal";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { Product } from "@/constants/types";
 
 export default function Products() {
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const queryClient = useQueryClient();
 
   const addProductMutation = useMutation({
@@ -36,12 +40,52 @@ export default function Products() {
     }
   });
 
+  const updateProductMutation = useMutation({
+    mutationFn: async (product: { id: string; name: string; price: number; unit: string }) => {
+      const { error } = await supabase
+        .from("products")
+        .update({
+          name: product.name,
+          price: product.price,
+          unit: product.unit,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", product.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Product updated", description: "Product has been updated successfully." });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      setEditModalOpen(false);
+      setProductToEdit(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Could not update product.",
+        variant: "destructive",
+      });
+    },
+    meta: {
+      onError: true,
+    }
+  });
+
   const handleAddProduct = () => {
     setAddModalOpen(true);
   };
 
   const handleProductSubmit = (product: { name: string; price: number; unit: string }) => {
     addProductMutation.mutate(product);
+  };
+
+  const handleEditProduct = (product: Product) => {
+    setProductToEdit(product);
+    setEditModalOpen(true);
+  };
+
+  const handleEditProductSubmit = (product: { id: string; name: string; price: number; unit: string }) => {
+    updateProductMutation.mutate(product);
   };
 
   return (
@@ -57,11 +101,26 @@ export default function Products() {
             <Plus size={18} /> Add Product
           </Button>
         </div>
-        <ProductCatalog />
+        <ProductCatalog onEdit={handleEditProduct} />
         <AddProductModal
           open={addModalOpen}
           onOpenChange={setAddModalOpen}
           onSubmit={handleProductSubmit}
+        />
+        <EditProductModal
+          open={editModalOpen}
+          onOpenChange={setEditModalOpen}
+          onSubmit={handleEditProductSubmit}
+          initialProduct={
+            productToEdit
+              ? {
+                  id: productToEdit.id,
+                  name: productToEdit.name,
+                  price: productToEdit.price,
+                  unit: productToEdit.unit,
+                }
+              : null
+          }
         />
       </div>
     </AppLayout>
