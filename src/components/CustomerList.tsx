@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Plus, Search, Edit, Trash2 } from "lucide-react";
 import { DEMO_CUSTOMERS } from "@/constants/demoData";
@@ -9,6 +8,7 @@ import { AddCustomerDialog } from "./AddCustomerDialog";
 import { EditCustomerDialog } from "./EditCustomerDialog";
 import { DeleteCustomerDialog } from "./DeleteCustomerDialog";
 import { Button } from "@/components/ui/button";
+import { useAddCustomerFromContacts } from "./hooks/useAddCustomerFromContacts";
 
 export function CustomerList() {
   const [filter, setFilter] = useState("");
@@ -73,16 +73,27 @@ export function CustomerList() {
     setDeleteDialogOpen(false);
   }
 
+  const addFromContacts = useAddCustomerFromContacts(handleAddCustomer);
+
   return (
     <div className="p-4 pb-24">
       <div className="mb-5 flex items-center justify-between">
         <h2 className="text-xl font-semibold text-blue-900">Customers</h2>
-        <button
-          onClick={() => setAddDialogOpen(true)}
-          className="bg-blue-800 text-white px-3 py-1 rounded flex items-center gap-1 text-sm shadow hover:bg-blue-900"
-        >
-          <Plus size={18} /> Add
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setAddDialogOpen(true)}
+            className="bg-blue-800 text-white px-3 py-1 rounded flex items-center gap-1 text-sm shadow hover:bg-blue-900"
+          >
+            <Plus size={18} /> Add
+          </button>
+          <button
+            onClick={addFromContacts}
+            className="bg-blue-500 text-white px-3 py-1 rounded flex items-center gap-1 text-sm shadow hover:bg-blue-600"
+          >
+            {/* Only allowed Lucide icon: "contact" */}
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="7" r="4"/><path d="M18 21v-2a4 4 0 0 0-4-4h-4a4 4 0 0 0-4 4v2"/></svg> Add From Contacts
+          </button>
+        </div>
       </div>
       <div className="mb-3 flex items-center gap-2">
         <Search size={18} className="text-gray-400" />
