@@ -308,7 +308,7 @@ export default function Collections() {
           handleDateChangeForCustomer={handleDateChangeForCustomer}
           displayDate={displayDate}
           customerDeliveredOrders={customerDeliveredOrders}
-          setFormAndShowForm={(c) => {
+          setFormAndShowForm={(c) =>
             setForm({
               customer_id: c.id,
               amount: c.pending ? String(c.pending) : "",
@@ -318,9 +318,8 @@ export default function Collections() {
                   ? customerDeliveredOrders[c.id][0].id
                   : "",
               collection_date: customerDates[c.id] ?? addDays(new Date(), 1),
-            });
-            setShowForm(true);
-          }}
+            }) || setShowForm(true)
+          }
           isAdding={isAdding}
           handleOpenReminderModal={handleOpenReminderModal}
         />
