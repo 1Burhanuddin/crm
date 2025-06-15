@@ -1,4 +1,3 @@
-
 import { AppLayout } from "@/components/AppLayout";
 import { ProductCatalog } from "@/components/ProductCatalog";
 import { BackButton } from "@/components/BackButton";
@@ -147,7 +146,7 @@ export default function Products() {
             <Plus size={18} /> Add Product
           </Button>
         </div>
-        <ProductCatalog onEdit={handleEditProduct} onDelete={handleDeleteProduct} />
+        <ProductCatalog onEdit={handleEditProduct} onDelete={handleDeleteProduct} userId={user?.id ?? null} />
         <AddProductModal
           open={addModalOpen}
           onOpenChange={setAddModalOpen}

@@ -2,29 +2,35 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Product } from "@/constants/types";
-import { Pencil } from "lucide-react";
+import { Pencil, Delete } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import React, { useState } from "react";
-import { Delete } from "lucide-react";
+import React from "react";
 
 type ProductCatalogProps = {
   onEdit: (product: Product) => void;
-  onDelete?: (product: Product) => void; // optionally provide a delete handler
+  onDelete?: (product: Product) => void;
+  userId?: string | null;
 };
 
-async function fetchProducts(): Promise<Product[]> {
-  const { data, error } = await supabase
+async function fetchProducts(userId?: string | null): Promise<Product[]> {
+  let query = supabase
     .from("products")
     .select("*")
     .order("created_at", { ascending: false });
+
+  if (userId) {
+    query = query.eq("user_id", userId);
+  }
+
+  const { data, error } = await query;
   if (error) throw error;
   return data || [];
 }
 
-export function ProductCatalog({ onEdit, onDelete }: ProductCatalogProps) {
+export function ProductCatalog({ onEdit, onDelete, userId }: ProductCatalogProps) {
   const { data: products, isLoading, error } = useQuery({
-    queryKey: ["products"],
-    queryFn: fetchProducts,
+    queryKey: ["products", userId],
+    queryFn: () => fetchProducts(userId),
   });
 
   if (isLoading) {
@@ -48,7 +54,6 @@ export function ProductCatalog({ onEdit, onDelete }: ProductCatalogProps) {
               key={prod.id}
               className="bg-white rounded-xl shadow border flex flex-row items-center justify-between relative px-3 py-2 min-h-[60px] active:scale-[0.98] hover:shadow-lg transition-all"
             >
-              {/* Edit/Delete buttons - right side */}
               <div className="absolute top-2 right-2 flex gap-2">
                 <Button
                   size="icon"
@@ -89,3 +94,4 @@ export function ProductCatalog({ onEdit, onDelete }: ProductCatalogProps) {
     </div>
   );
 }
+
