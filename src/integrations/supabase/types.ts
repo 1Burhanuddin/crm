@@ -74,19 +74,28 @@ export type Database = {
           created_at: string
           email: string
           id: string
+          name: string | null
           pin_hash: string
+          profile_image_url: string | null
+          shop_name: string | null
         }
         Insert: {
           created_at?: string
           email: string
           id: string
+          name?: string | null
           pin_hash: string
+          profile_image_url?: string | null
+          shop_name?: string | null
         }
         Update: {
           created_at?: string
           email?: string
           id?: string
+          name?: string | null
           pin_hash?: string
+          profile_image_url?: string | null
+          shop_name?: string | null
         }
         Relationships: []
       }
