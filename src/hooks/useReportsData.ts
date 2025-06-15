@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
@@ -12,7 +13,6 @@ export interface ReportsData {
 export function useReportsData() {
   const { user } = useSession();
 
-  // Removing generic parameter from useQuery to avoid TS "deep and possibly infinite" error.
   return useQuery({
     queryKey: ["reports-summary", user?.id],
     enabled: !!user?.id,
@@ -51,14 +51,12 @@ export function useReportsData() {
         .eq("status", "pending");
       if (orderErr) throw orderErr;
 
-      // Prevent type inference recursion by asserting structure at runtime here:
-      const result = {
+      // Don't use any type assertion or ReportsData here
+      return {
         totalSales,
         totalCredit,
         ordersPending: ordersPending || 0,
-      } as ReportsData; // assertion to satisfy consumers
-
-      return result;
+      };
     },
   });
 }
