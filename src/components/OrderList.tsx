@@ -47,7 +47,7 @@ const fetchOrders = async (user_id: string): Promise<Order[]> => {
     customerId: o.customer_id,
     productId: o.product_id,
     qty: o.qty,
-    status: o.status,
+    status: o.status as "pending" | "delivered",  // Cast string to OrderStatus
     jobDate: o.job_date,
     assignedTo: o.assigned_to || "",
     siteAddress: o.site_address || "",
