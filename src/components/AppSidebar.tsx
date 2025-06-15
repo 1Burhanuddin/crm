@@ -10,7 +10,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { Menu } from "lucide-react";
 
 const navItems = [
   {
@@ -42,8 +44,14 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarContent>
+        {/* Sidebar collapse/expand trigger for large screens */}
+        <div className="hidden md:flex items-center justify-end px-2 pt-4 pb-2">
+          <SidebarTrigger className="rounded-md border border-sidebar-border p-1.5 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition">
+            <Menu size={22} />
+          </SidebarTrigger>
+        </div>
         <SidebarGroup>
-          <SidebarGroupLabel className="pt-6 pb-1 pl-2 text-xs text-sidebar-foreground/60 font-semibold uppercase tracking-wide">
+          <SidebarGroupLabel className="pt-2 pb-1 pl-2 text-xs text-sidebar-foreground/60 font-semibold uppercase tracking-wide">
             Main Menu
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -73,4 +81,3 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
-
