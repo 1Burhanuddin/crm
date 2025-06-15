@@ -100,7 +100,7 @@ export function PendingCollectionsPanel({
                   <Button
                     variant="default"
                     size="sm"
-                    className="bg-blue-700 hover:bg-blue-800 focus:bg-blue-800 text-white font-medium px-4 py-2 rounded transition w-full sm:w-auto"
+                    className="bg-blue-700 hover:bg-blue-800 focus:bg-blue-800 text-white font-medium px-4 py-2 rounded-lg transition w-full sm:w-auto"
                     onClick={() => setFormAndShowForm(c)}
                     disabled={isAdding}
                   >
@@ -109,7 +109,7 @@ export function PendingCollectionsPanel({
                   <Button
                     variant="secondary"
                     size="sm"
-                    className="bg-amber-500 hover:bg-amber-600 focus:bg-amber-600 text-white font-medium flex items-center gap-1 px-3 py-2 rounded transition text-xs w-full sm:w-auto"
+                    className="bg-amber-500 hover:bg-amber-600 focus:bg-amber-600 text-white font-medium flex items-center gap-1 px-3 py-2 rounded-lg transition text-xs w-full sm:w-auto"
                     onClick={() => handleOpenReminderModal(c)}
                   >
                     <MessageSquare size={16} /> Send Reminder
@@ -123,3 +123,4 @@ export function PendingCollectionsPanel({
     </div>
   );
 }
+
