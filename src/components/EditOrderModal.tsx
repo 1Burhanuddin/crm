@@ -34,7 +34,11 @@ export function EditOrderModal({ open, onOpenChange, onEdit, order }: EditOrderM
       setAssignedTo(order.assignedTo);
       setSiteAddress(order.siteAddress || "");
       setStatus(order.status);
-      setAdvanceAmount(order.advanceAmount?.toString() || "");
+      setAdvanceAmount(
+        typeof order.advanceAmount === "number"
+          ? order.advanceAmount.toString()
+          : ""
+      );
     }
   }, [order, open]);
 

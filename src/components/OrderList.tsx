@@ -63,9 +63,23 @@ const fetchOrders = async (user_id: string): Promise<Order[]> => {
     .eq("user_id", user_id)
     .order("created_at", { ascending: false });
   if (error) throw error;
-  // Cast each row as your new SupabaseOrderRow
   return (data || []).map((o) => {
-    const row = o as SupabaseOrderRow;
+    // Use the Supabase field directly; fallback to zero if missing or null
+    const row = o as {
+      assigned_to: string | null;
+      created_at: string;
+      customer_id: string;
+      id: string;
+      job_date: string;
+      photo_url: string | null;
+      product_id: string;
+      qty: number;
+      site_address: string | null;
+      status: string;
+      updated_at: string;
+      user_id: string;
+      advance_amount?: number | null;
+    };
     return {
       id: row.id,
       customerId: row.customer_id,
@@ -76,7 +90,10 @@ const fetchOrders = async (user_id: string): Promise<Order[]> => {
       assignedTo: row.assigned_to || "",
       siteAddress: row.site_address || "",
       photoUrl: row.photo_url || "",
-      advanceAmount: typeof row.advance_amount === "number" ? row.advance_amount : 0,
+      advanceAmount:
+        typeof row.advance_amount === "number" && !isNaN(row.advance_amount)
+          ? row.advance_amount
+          : 0,
     };
   });
 };
