@@ -1,3 +1,4 @@
+
 import { useSession } from "@/hooks/useSession";
 import { useState, useEffect, ChangeEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +10,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ProfileTabs } from "@/components/ProfileTabs";
 import { LogOut } from "lucide-react";
+import { BackButton } from "@/components/BackButton";
 
 export default function ProfilePage() {
   const { user, status, refresh, signOut } = useSession();
@@ -134,6 +136,9 @@ export default function ProfilePage() {
 
   return (
     <AppLayout title="Profile">
+      <div className="mb-2">
+        <BackButton toMainScreen />
+      </div>
       {loading ? (
         <div className="flex flex-col items-center justify-center min-h-[60vh]">
           <div className="text-blue-800 text-lg font-semibold">Loading...</div>

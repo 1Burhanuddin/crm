@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
@@ -55,7 +56,7 @@ export default function Bills() {
     <AppLayout title="Bills">
       <div className="p-4 max-w-2xl mx-auto">
         <div className="mb-2">
-          <BackButton />
+          <BackButton toMainScreen />
         </div>
         <div className="flex justify-between items-center mb-6">
           <div className="text-xl font-bold text-blue-900">Bills</div>
