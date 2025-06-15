@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from "react";
 import { Plus, Search, Edit, Trash2 } from "lucide-react";
-import { DEMO_CUSTOMERS } from "@/constants/demoData";
 import { Customer } from "@/constants/types";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -10,42 +9,71 @@ import { EditCustomerDialog } from "./EditCustomerDialog";
 import { DeleteCustomerDialog } from "./DeleteCustomerDialog";
 import { Button } from "@/components/ui/button";
 import { useAddCustomerFromContacts } from "./hooks/useAddCustomerFromContacts";
-
-const LOCAL_STORAGE_KEY = "customers_v1";
+import { supabase } from "@/integrations/supabase/client";
+import { useSession } from "@/hooks/useSession";
 
 export function CustomerList() {
   const [filter, setFilter] = useState("");
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const navigate = useNavigate();
+  const { user, status } = useSession();
 
-  // Load from localStorage on mount
+  // Fetch customers from Supabase when user logged in
   useEffect(() => {
-    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (stored) {
-      try {
-        setCustomers(JSON.parse(stored) as Customer[]);
-      } catch {
-        setCustomers(DEMO_CUSTOMERS);
+    async function fetchCustomers() {
+      setLoading(true);
+      setError(null);
+      if (!user) {
+        setCustomers([]);
+        setLoading(false);
+        return;
       }
-    } else {
-      setCustomers(DEMO_CUSTOMERS);
+      const { data, error } = await supabase
+        .from("customers")
+        .select("id, name, phone")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      if (error) {
+        setError("Could not fetch customers.");
+        setCustomers([]);
+      } else if (data) {
+        setCustomers(data);
+      }
+      setLoading(false);
     }
-  }, []);
-
-  // Save to localStorage when customers change
-  useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(customers));
-  }, [customers]);
+    fetchCustomers();
+  }, [user]);
 
   const displayedCustomers = customers.filter((c) =>
     c.name.toLowerCase().includes(filter.toLowerCase())
   );
 
-  function handleAddCustomer(name: string, phone: string) {
+  async function reloadCustomers() {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from("customers")
+      .select("id, name, phone")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+    if (!error && data) setCustomers(data);
+  }
+
+  async function handleAddCustomer(name: string, phone: string) {
+    if (!user) {
+      toast({
+        title: "Not signed in",
+        description: "Please log in to add customers.",
+        variant: "destructive",
+      });
+      return;
+    }
+    // Check duplicate name (case-insensitive)
     if (customers.some((c) => c.name.toLowerCase() === name.toLowerCase())) {
       toast({
         title: "Customer already exists",
@@ -54,14 +82,18 @@ export function CustomerList() {
       });
       return;
     }
-    setCustomers((prev) => [
-      ...prev,
-      { id: "c" + (prev.length + 1), name, phone },
-    ]);
+    const { error } = await supabase
+      .from("customers")
+      .insert([{ name, phone, user_id: user.id }]);
+    if (error) {
+      toast({ title: "Error", description: "Could not add customer.", variant: "destructive" });
+      return;
+    }
     toast({
       title: "Customer Added",
       description: name + " added successfully.",
     });
+    await reloadCustomers();
   }
 
   function handleEditStart(customer: Customer) {
@@ -69,15 +101,23 @@ export function CustomerList() {
     setEditDialogOpen(true);
   }
 
-  function handleEditCustomer(id: string, name: string, phone: string) {
-    setCustomers((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, name, phone } : c))
-    );
+  async function handleEditCustomer(id: string, name: string, phone: string) {
+    if (!user) return;
+    const { error } = await supabase
+      .from("customers")
+      .update({ name, phone })
+      .eq("id", id)
+      .eq("user_id", user.id);
+    if (error) {
+      toast({ title: "Error", description: "Could not update customer.", variant: "destructive" });
+      return;
+    }
     toast({
       title: "Customer Updated",
       description: `${name}'s details updated successfully.`,
     });
     setEditDialogOpen(false);
+    await reloadCustomers();
   }
 
   function handleDeleteStart(customer: Customer) {
@@ -85,17 +125,36 @@ export function CustomerList() {
     setDeleteDialogOpen(true);
   }
 
-  function handleDeleteCustomer(id: string) {
-    setCustomers((prev) => prev.filter((c) => c.id !== id));
+  async function handleDeleteCustomer(id: string) {
+    if (!user) return;
+    const { error } = await supabase
+      .from("customers")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", user.id);
+    if (error) {
+      toast({ title: "Error", description: "Could not delete customer.", variant: "destructive" });
+      return;
+    }
     toast({
       title: "Customer Deleted",
       description: "Customer deleted successfully.",
       variant: "destructive"
     });
     setDeleteDialogOpen(false);
+    await reloadCustomers();
   }
 
+  // Hook for Add from Contacts (uses new version)
   const addFromContacts = useAddCustomerFromContacts(handleAddCustomer);
+
+  // Show loading and error state
+  if (status === "loading" || loading) {
+    return <div className="p-6 text-center text-gray-500">Loading customers…</div>;
+  }
+  if (error) {
+    return <div className="p-6 text-center text-red-700">{error}</div>;
+  }
 
   return (
     <div className="p-4 pb-24">
@@ -112,7 +171,6 @@ export function CustomerList() {
             onClick={addFromContacts}
             className="bg-blue-500 text-white px-3 py-1 rounded flex items-center gap-1 text-sm shadow hover:bg-blue-600"
           >
-            {/* Only allowed Lucide icon: "contact" */}
             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="7" r="4"/><path d="M18 21v-2a4 4 0 0 0-4-4h-4a4 4 0 0 0-4 4v2"/></svg> Add From Contacts
           </button>
         </div>
@@ -167,21 +225,26 @@ export function CustomerList() {
       <AddCustomerDialog
         open={addDialogOpen}
         onOpenChange={setAddDialogOpen}
-        onAdd={handleAddCustomer}
+        onAdd={async (name, phone) => {
+          await handleAddCustomer(name, phone);
+        }}
       />
       <EditCustomerDialog
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
         customer={selectedCustomer}
-        onEdit={handleEditCustomer}
+        onEdit={async (id, name, phone) => {
+          await handleEditCustomer(id, name, phone);
+        }}
       />
       <DeleteCustomerDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         customer={selectedCustomer}
-        onDelete={handleDeleteCustomer}
+        onDelete={async (id) => {
+          await handleDeleteCustomer(id);
+        }}
       />
     </div>
   );
 }
-
