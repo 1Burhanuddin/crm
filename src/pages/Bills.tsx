@@ -99,10 +99,35 @@ export default function Bills() {
             {bills.map((bill) => (
               <div
                 key={bill.id}
-                className="bg-white rounded-xl shadow-md border border-gray-200 p-4 w-full max-w-md mx-auto transition-all"
+                className="bg-white rounded-xl shadow-md border border-gray-200 p-4 w-full max-w-md mx-auto transition-all relative"
               >
+                {/* Export PDF top-right */}
+                <div className="absolute right-4 top-4">
+                  <PDFDownloadLink
+                    document={
+                      <BillPdfDoc
+                        bill={bill}
+                        shopName={profile.shop_name || ""}
+                        userName={profile.name || ""}
+                      />
+                    }
+                    fileName={`Bill_${bill.id.slice(0, 8)}.pdf`}
+                    className="inline-flex"
+                  >
+                    {({ loading: pdfLoading }) => (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="bg-blue-50 border border-blue-100 text-blue-900 hover:bg-blue-100 hover:text-blue-900 shadow-none font-medium px-3 py-1 rounded-md transition"
+                      >
+                        <Download size={15} className="mr-1" />
+                        {pdfLoading ? "Generating..." : "Export PDF"}
+                      </Button>
+                    )}
+                  </PDFDownloadLink>
+                </div>
                 {/* Bill Header */}
-                <div className="flex flex-col gap-0.5">
+                <div className="flex flex-col gap-0.5 pr-[130px] min-h-[60px]">
                   <span className="font-bold text-base text-blue-900">INVOICE</span>
                   <span className="font-medium text-[1.02rem] text-zinc-800 truncate">
                     {profile.shop_name || bill.customer_name || "No Name"}
@@ -118,34 +143,10 @@ export default function Bills() {
                     </div>
                     <div>
                       Bill #:{" "}
-                      <span className="font-mono text-[13px] text-blue-900">
+                      <span className="font-mono text-[13px] text-blue-900 underline decoration-blue-200 underline-offset-4">
                         {bill.id.slice(0, 8).toUpperCase()}
                       </span>
                     </div>
-                  </div>
-                  <div className="mt-2 sm:mt-0 flex-shrink-0">
-                    <PDFDownloadLink
-                      document={
-                        <BillPdfDoc
-                          bill={bill}
-                          shopName={profile.shop_name || ""}
-                          userName={profile.name || ""}
-                        />
-                      }
-                      fileName={`Bill_${bill.id.slice(0, 8)}.pdf`}
-                      className="inline-flex"
-                    >
-                      {({ loading: pdfLoading }) => (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex gap-1 items-center border-[1.5px] border-blue-200"
-                        >
-                          <Download size={15} />
-                          {pdfLoading ? "Generating..." : "Export PDF"}
-                        </Button>
-                      )}
-                    </PDFDownloadLink>
                   </div>
                 </div>
                 {/* Bill Items Table */}
