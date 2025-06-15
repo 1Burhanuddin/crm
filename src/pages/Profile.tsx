@@ -250,7 +250,8 @@ export default function ProfilePage() {
               </div>
             </div>
           </Card>
-          <ProfileTabs initialTab="customers" />
+          {/* Only render tabs once not loading */}
+          <ProfileTabs initialTab="reports" />
         </div>
       )}
     </AppLayout>
