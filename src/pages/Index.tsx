@@ -1,4 +1,3 @@
-
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { useState, useEffect } from "react";
@@ -106,7 +105,7 @@ const Index = () => {
           <KPICard title="Total Sales" value={`₹${totalSales}`} color="text-green-700" />
           <KPICard title="Credit (Udhaar)" value={`₹${totalCredit}`} color="text-red-600" />
           <KPICard title="Pending Orders" value={ordersPending} color="text-yellow-600" />
-          <KPICard title="Customers" value={totalCustomers} color="text-blue-800" />
+          {/* Removed the Customers KPICard */}
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 w-full mx-auto mt-2">
           {DASH_ACTIONS.map((action) => (
