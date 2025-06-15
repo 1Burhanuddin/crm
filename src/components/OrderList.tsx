@@ -52,11 +52,12 @@ const fetchOrders = async (user_id: string): Promise<Order[]> => {
     customerId: o.customer_id,
     productId: o.product_id,
     qty: o.qty,
-    status: o.status as "pending" | "delivered",  // Cast string to OrderStatus
+    status: o.status as "pending" | "delivered",
     jobDate: o.job_date,
     assignedTo: o.assigned_to || "",
     siteAddress: o.site_address || "",
     photoUrl: o.photo_url || "",
+    advanceAmount: Number(o.advance_amount) || 0,
   }));
 };
 
@@ -119,6 +120,7 @@ export function OrderList() {
           assigned_to: orderData.assignedTo,
           site_address: orderData.siteAddress,
           photo_url: orderData.photoUrl || "",
+          advance_amount: orderData.advanceAmount || 0,
         }
       ]);
       if (error) throw error;
@@ -149,6 +151,7 @@ export function OrderList() {
           site_address: updatedOrder.siteAddress,
           photo_url: updatedOrder.photoUrl || "",
           updated_at: new Date().toISOString(),
+          advance_amount: updatedOrder.advanceAmount || 0,
         })
         .eq("id", updatedOrder.id)
         .eq("user_id", user.id);
@@ -278,6 +281,14 @@ export function OrderList() {
   // Always pass {} not null/undefined
   const safeInitialData = billInitialData && typeof billInitialData === "object" ? billInitialData : {};
 
+  // Helper for calculating order total & pending/credit
+  function orderTotals(order: Order) {
+    const product = products.find(p => p.id === order.productId);
+    const total = product ? product.price * order.qty : 0;
+    const pending = Math.max(0, total - (order.advanceAmount || 0));
+    return { total, pending };
+  }
+
   // Loading/error UI
   if (loadingCustomers || loadingProducts || loadingOrders) {
     return (
@@ -307,58 +318,76 @@ export function OrderList() {
         </button>
       </div>
       <ul>
-        {orders.map((o) => (
-          <li
-            key={o.id}
-            className="mb-4 bg-white rounded-lg px-4 py-3 shadow border"
-          >
-            {/* Reworked flex to put actions menu consistently at the end */}
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex-1 min-w-0">
-                <div className="font-bold text-blue-900 text-base truncate">{customerName(o.customerId)}</div>
-                <div className="text-sm text-gray-700 truncate">{productName(o.productId)}</div>
+        {orders.map((o) => {
+          const { total, pending } = orderTotals(o);
+          return (
+            <li
+              key={o.id}
+              className="mb-4 bg-white rounded-lg px-4 py-3 shadow border"
+            >
+              {/* Reworked flex to put actions menu consistently at the end */}
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-blue-900 text-base truncate">{customerName(o.customerId)}</div>
+                  <div className="text-sm text-gray-700 truncate">{productName(o.productId)}</div>
+                </div>
+                <div className="flex gap-2 items-center ml-auto">
+                  {/* show pending credit if > 0 */}
+                  {pending > 0 && (
+                    <span className="inline-flex items-center bg-red-100 text-red-700 rounded px-2 py-0.5 text-xs font-semibold">
+                      Udhaar: ₹{pending}
+                    </span>
+                  )}
+                  {o.status === "delivered" && (
+                    <button
+                      className="border border-green-200 text-green-700 hover:bg-green-50 px-3 py-1 rounded text-xs flex items-center gap-1 font-medium transition-all"
+                      onClick={() => openBillModalFromOrder(o)}
+                      title="Generate Bill"
+                    >
+                      <Receipt size={14} /> Generate Bill
+                    </button>
+                  )}
+                  <OrderActionsMenu
+                    onEdit={() => openEditModal(o)}
+                    onDelete={() => handleDeleteOrder(o.id)}
+                    canMarkDelivered={o.status === "pending"}
+                    onMarkDelivered={o.status === "pending" ? () => handleMarkDelivered(o) : undefined}
+                  />
+                </div>
               </div>
-              <div className="flex gap-2 items-center ml-auto">
-                {o.status === "delivered" && (
-                  <button
-                    className="border border-green-200 text-green-700 hover:bg-green-50 px-3 py-1 rounded text-xs flex items-center gap-1 font-medium transition-all"
-                    onClick={() => openBillModalFromOrder(o)}
-                    title="Generate Bill"
-                  >
-                    <Receipt size={14} /> Generate Bill
-                  </button>
+              {/* Row: ID for debugging */}
+              <div className="text-xs font-mono my-1 break-all text-gray-600">{o.id}</div>
+              {/* Info ROW: Qty, status, assignment, job date */}
+              <div className="flex flex-wrap items-center gap-2 mt-1">
+                <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                  Qty: {o.qty}
+                </span>
+                <span
+                  className={`text-xs px-2 py-1 rounded ${
+                    o.status === "pending"
+                      ? "bg-yellow-200 text-yellow-900"
+                      : "bg-green-200 text-green-900"
+                  }`}
+                >
+                  {o.status === "pending" ? "Pending" : "Delivered"}
+                </span>
+                {o.assignedTo && (
+                  <span className="text-xs text-gray-700">Assigned to: {o.assignedTo}</span>
                 )}
-                <OrderActionsMenu
-                  onEdit={() => openEditModal(o)}
-                  onDelete={() => handleDeleteOrder(o.id)}
-                  canMarkDelivered={o.status === "pending"}
-                  onMarkDelivered={o.status === "pending" ? () => handleMarkDelivered(o) : undefined}
-                />
+                <span className="text-gray-400 text-xs">{o.jobDate}</span>
+                {/* always show total/advance if relevant */}
+                <span className="text-xs text-blue-700 ml-2">
+                  Total: ₹{total}
+                </span>
+                {o.advanceAmount > 0 && (
+                  <span className="text-xs text-green-700 ml-1">
+                    Advance: ₹{o.advanceAmount}
+                  </span>
+                )}
               </div>
-            </div>
-            {/* Row: ID for debugging */}
-            <div className="text-xs font-mono my-1 break-all text-gray-600">{o.id}</div>
-            {/* Info ROW: Qty, status, assignment, job date */}
-            <div className="flex flex-wrap items-center gap-2 mt-1">
-              <span className="text-xs bg-gray-100 px-2 py-1 rounded">
-                Qty: {o.qty}
-              </span>
-              <span
-                className={`text-xs px-2 py-1 rounded ${
-                  o.status === "pending"
-                    ? "bg-yellow-200 text-yellow-900"
-                    : "bg-green-200 text-green-900"
-                }`}
-              >
-                {o.status === "pending" ? "Pending" : "Delivered"}
-              </span>
-              {o.assignedTo && (
-                <span className="text-xs text-gray-700">Assigned to: {o.assignedTo}</span>
-              )}
-              <span className="text-gray-400 text-xs">{o.jobDate}</span>
-            </div>
-          </li>
-        ))}
+            </li>
+          );
+        })}
       </ul>
       {orders.length === 0 && (
         <div className="text-gray-500 mt-10 text-center">No orders found.</div>

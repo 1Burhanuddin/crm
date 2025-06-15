@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "./ui/dialog";
 import { Input } from "./ui/input";
@@ -23,6 +22,7 @@ export function EditOrderModal({ open, onOpenChange, onEdit, order }: EditOrderM
   const [assignedTo, setAssignedTo] = useState("");
   const [siteAddress, setSiteAddress] = useState("");
   const [status, setStatus] = useState<"pending" | "delivered">("pending");
+  const [advanceAmount, setAdvanceAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -34,8 +34,16 @@ export function EditOrderModal({ open, onOpenChange, onEdit, order }: EditOrderM
       setAssignedTo(order.assignedTo);
       setSiteAddress(order.siteAddress || "");
       setStatus(order.status);
+      setAdvanceAmount(order.advanceAmount?.toString() || "");
     }
   }, [order, open]);
+
+  // Helper to get product price for preview
+  const selectedProduct = DEMO_PRODUCTS.find((p) => p.id === productId);
+  const qtyNum = qty ? parseInt(qty) : 0;
+  const advanceNum = advanceAmount ? parseFloat(advanceAmount) : 0;
+  const total = selectedProduct ? selectedProduct.price * qtyNum : 0;
+  const pending = Math.max(0, total - advanceNum);
 
   const handleEdit = async () => {
     if (!order) return;
@@ -60,6 +68,22 @@ export function EditOrderModal({ open, onOpenChange, onEdit, order }: EditOrderM
       toast({ title: "Required", description: "Please enter who the job is assigned to.", variant: "destructive" });
       return;
     }
+    if (advanceAmount && parseFloat(advanceAmount) < 0) {
+      toast({
+        title: "Invalid Advance",
+        description: "Advance amount cannot be negative.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (advanceNum > total) {
+      toast({
+        title: "Too Much Advance",
+        description: "Advance cannot exceed total order amount.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setSubmitting(true);
     
@@ -71,7 +95,8 @@ export function EditOrderModal({ open, onOpenChange, onEdit, order }: EditOrderM
       status,
       jobDate,
       assignedTo: assignedTo.trim(),
-      siteAddress: siteAddress.trim()
+      siteAddress: siteAddress.trim(),
+      advanceAmount: advanceNum,
     };
 
     onEdit(updatedOrder);
@@ -79,7 +104,7 @@ export function EditOrderModal({ open, onOpenChange, onEdit, order }: EditOrderM
     onOpenChange(false);
   };
 
-  const isFormValid = customerId && productId && qty && parseInt(qty) > 0 && jobDate && assignedTo.trim();
+  const isFormValid = customerId && productId && qty && parseInt(qty) > 0 && jobDate && assignedTo.trim() && advanceNum >= 0 && advanceNum <= total;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -171,6 +196,27 @@ export function EditOrderModal({ open, onOpenChange, onEdit, order }: EditOrderM
               onChange={e => setSiteAddress(e.target.value)}
               maxLength={200}
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Advance Amount (₹)
+            </label>
+            <Input
+              type="number"
+              placeholder="Advance amount"
+              value={advanceAmount}
+              onChange={e => setAdvanceAmount(e.target.value)}
+              min="0"
+              max={total}
+            />
+            <div className="text-xs text-gray-500 mt-1">
+              Total: ₹{total} &nbsp;
+              {advanceNum > 0 && (
+                <span>
+                  | Advance: ₹{advanceNum} | Pending: <span className={pending > 0 ? "text-red-600" : "text-green-700"}>₹{pending}</span>
+                </span>
+              )}
+            </div>
           </div>
         </div>
         <DialogFooter className="gap-2 pt-2">

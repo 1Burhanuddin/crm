@@ -32,6 +32,7 @@ export interface Order {
   assignedTo: string;
   siteAddress: string;
   photoUrl?: string;
+  advanceAmount: number; // New, required field!
 }
 
 export interface Supplier {
@@ -40,3 +41,4 @@ export interface Supplier {
   phone: string;
   // You can add more fields if needed in the future
 }
+
