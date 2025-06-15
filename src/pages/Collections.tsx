@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { CollectionEditModal } from "@/components/CollectionEditModal";
 import { BackButton } from "@/components/BackButton";
+import { Button } from "@/components/ui/button";
 
 interface CustomerWithPending {
   id: string;
@@ -305,19 +306,23 @@ export default function Collections() {
                     ) : null}
                   </div>
                   <div className="flex flex-row items-center gap-2 mt-2 sm:mt-0">
-                    <button
-                      className="bg-green-700 text-white px-3 py-1.5 rounded hover:bg-green-800 transition disabled:opacity-60"
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="bg-green-700 hover:bg-green-800 text-white font-medium px-4 py-2 rounded transition"
                       onClick={() => handleOpenForm(c.id, c.pending)}
                       disabled={isAdding}
                     >
                       Collect
-                    </button>
-                    <button
-                      className="bg-emerald-600 text-white px-3 py-1 flex items-center gap-1 rounded hover:bg-emerald-700 transition text-xs"
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium flex items-center gap-1 px-3 py-2 rounded transition text-xs"
                       onClick={() => handleOpenReminderModal(c)}
                     >
                       <MessageSquare size={16} /> Send Reminder
-                    </button>
+                    </Button>
                   </div>
                 </li>
               ))}
@@ -331,14 +336,7 @@ export default function Collections() {
           customer={reminderCustomer}
         />
         {/* Manual Add Collection as fallback */}
-        <div className="mt-6 mb-2">
-          <button
-            className="bg-green-600 text-white px-4 py-2 rounded mb-1 hover:bg-green-700 transition"
-            onClick={() => handleOpenForm()}
-          >
-            + Add Collection (Manual)
-          </button>
-        </div>
+
         {/* Add Collection Modal */}
         {showForm && (
           <div className="fixed inset-0 flex items-center justify-center z-30 bg-black/30">
