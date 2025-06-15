@@ -1,9 +1,10 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { useState } from "react";
+import { useState, Suspense, lazy } from "react";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Customers from "./pages/Customers";
@@ -13,6 +14,8 @@ import Orders from "./pages/Orders";
 import AuthPage from "./pages/Auth";
 import { SessionProvider } from "@/hooks/useSession";
 import Bills from "./pages/Bills";
+
+const Profile = lazy(() => import("./pages/Profile"));
 
 const App = () => {
   const [queryClient] = useState(() => new QueryClient({
@@ -39,7 +42,14 @@ const App = () => {
               <Route path="/products" element={<Products />} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/bills" element={<Bills />} />
-              <Route path="/profile" element={<(await import('./pages/Profile')).default />} />
+              <Route
+                path="/profile"
+                element={
+                  <Suspense fallback={<div>Loading...</div>}>
+                    <Profile />
+                  </Suspense>
+                }
+              />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
