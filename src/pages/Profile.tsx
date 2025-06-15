@@ -1,4 +1,3 @@
-
 import { useSession } from "@/hooks/useSession";
 import { useState, useEffect, ChangeEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { AppLayout } from "@/components/AppLayout";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ProfileTabs } from "@/components/ProfileTabs";
-import { LogOut } from "lucide-react";
+import { LogOut, User, Store, AtSign, Edit2 } from "lucide-react";
 import { BackButton } from "@/components/BackButton";
 
 export default function ProfilePage() {
@@ -30,8 +29,6 @@ export default function ProfilePage() {
   const [newShopName, setNewShopName] = useState("");
   const [newImageFile, setNewImageFile] = useState<File | null>(null);
   const [imageUploading, setImageUploading] = useState(false);
-
-  // Store pin_hash for update payload
   const [currentPinHash, setCurrentPinHash] = useState<string | null>(null);
 
   useEffect(() => {
@@ -70,7 +67,6 @@ export default function ProfilePage() {
     if (!user) return;
     setLoading(true);
 
-    // Upload image if a new file has been selected
     let profile_image_url = profile?.profile_image_url ?? null;
     if (newImageFile) {
       setImageUploading(true);
@@ -90,15 +86,12 @@ export default function ProfilePage() {
         });
         return;
       }
-      // Get public URL for the uploaded image
       const { data } = supabase.storage.from("avatars").getPublicUrl(filePath);
       profile_image_url = data.publicUrl;
     }
 
-    // Fetch and use existing pin_hash (required field)
     let pin_hash = currentPinHash;
     if (!pin_hash) {
-      // As fallback, fetch again from the DB if missing for any reason
       const { data, error } = await supabase
         .from("profiles")
         .select("pin_hash")
@@ -125,7 +118,7 @@ export default function ProfilePage() {
         name: newName,
         shop_name: newShopName,
         profile_image_url,
-        pin_hash, // include pin_hash in update payload
+        pin_hash,
       })
       .eq("id", user.id);
 
@@ -164,6 +157,7 @@ export default function ProfilePage() {
     }
   }
 
+  // UI for profile
   return (
     <AppLayout
       shopName={profile?.shop_name || undefined}
@@ -185,79 +179,109 @@ export default function ProfilePage() {
               variant="outline"
               size="icon"
               onClick={signOut}
-              className="absolute right-2 top-2 z-20 bg-white text-blue-900 hover:bg-blue-100 border border-blue-800 shadow"
+              className="absolute right-2 top-2 z-20 bg-white text-blue-900 hover:bg-blue-100 border border-blue-800 shadow-lg animate-pop"
               title="Logout"
             >
               <LogOut className="h-5 w-5" />
               <span className="sr-only">Logout</span>
             </Button>
           )}
-          <Card className="p-4 mb-6">
-            <div className="flex flex-col items-center gap-2">
-              <Avatar className="h-20 w-20">
-                <AvatarImage
-                  src={
-                    newImageFile
-                      ? URL.createObjectURL(newImageFile)
-                      : profile?.profile_image_url || undefined
-                  }
-                  alt={profile?.name ?? profile?.email ?? "U"}
-                />
-                <AvatarFallback>
-                  {(profile?.name || profile?.email || "U")[0]}
-                </AvatarFallback>
-              </Avatar>
-              <div className="font-bold text-lg text-blue-900">
-                {profile?.shop_name || <span className="text-gray-400 italic">No shop/enterprise</span>}
-              </div>
-              <div className="text-sm text-gray-700">
-                {profile?.name || <span className="text-gray-400 italic">No name</span>}
-              </div>
-              <div className="text-xs text-gray-500">{profile?.email}</div>
-              {editing && (
-                <>
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    disabled={imageUploading}
-                    className="mt-2"
+          <Card className="p-0 shadow-xl border border-gray-200">
+            {/* Profile header */}
+            <div className="flex flex-col items-center justify-center rounded-t-lg bg-gradient-to-r from-blue-100 via-indigo-50 to-purple-100 pb-2 pt-5">
+              <div className="relative">
+                <Avatar className="h-24 w-24 border-4 border-white shadow-lg bg-gradient-to-br from-indigo-100 to-blue-200">
+                  <AvatarImage
+                    src={
+                      newImageFile
+                        ? URL.createObjectURL(newImageFile)
+                        : profile?.profile_image_url || undefined
+                    }
+                    alt={profile?.name ?? profile?.email ?? "U"}
                   />
-                  {newImageFile && (
-                    <span className="text-xs text-blue-800 mt-1">
-                      {newImageFile.name}
-                    </span>
-                  )}
+                  <AvatarFallback>
+                    {(profile?.name || profile?.email || "U")[0]}
+                  </AvatarFallback>
+                </Avatar>
+                {/* Upload image during edit */}
+                {editing && (
+                  <div className="absolute bottom-0 right-0">
+                    <label className="cursor-pointer bg-white rounded-full shadow px-2 py-1 text-xs border border-gray-300 hover:bg-gray-100 transition">
+                      <Edit2 className="h-4 w-4 inline-block mr-1 text-blue-700" />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        disabled={imageUploading}
+                        className="hidden"
+                      />
+                      Change
+                    </label>
+                  </div>
+                )}
+              </div>
+              <span className="font-bold text-2xl text-blue-900 mt-2 flex items-center gap-2">
+                <User className="w-5 h-5 text-blue-400" />
+                {editing ? (
                   <Input
                     type="text"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    className="mt-2"
+                    className="w-[160px] font-bold text-center border-blue-200"
                     maxLength={50}
                     placeholder="Name"
                   />
+                ) : profile?.name ? (
+                  profile.name
+                ) : (
+                  <span className="text-gray-400 italic">No name</span>
+                )}
+              </span>
+              <span className="text-sm text-indigo-700 font-semibold flex gap-2 items-center mt-1">
+                <Store className="w-4 h-4 text-indigo-400" />
+                {editing ? (
                   <Input
                     type="text"
                     value={newShopName}
                     onChange={(e) => setNewShopName(e.target.value)}
-                    className="mt-2"
+                    className="w-[160px] text-center border-blue-100"
                     maxLength={60}
                     placeholder="Shop/Enterprise Name"
                   />
+                ) : profile?.shop_name ? (
+                  profile.shop_name
+                ) : (
+                  <span className="text-gray-300 italic">No shop/enterprise</span>
+                )}
+              </span>
+              <span className="text-xs text-gray-500 mt-1 flex gap-2 items-center">
+                <AtSign className="w-4 h-4 text-blue-300" />
+                {editing ? (
                   <Input
                     type="email"
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
-                    className="mt-2"
+                    className="w-[190px] text-center border-blue-100"
                     placeholder="Email"
                   />
-                </>
+                ) : (
+                  profile?.email
+                )}
+              </span>
+            </div>
+            {/* Edit Actions */}
+            <div className="flex flex-col items-center px-6 pt-2 pb-6">
+              {editing && newImageFile && (
+                <span className="text-xs text-blue-800 mt-1">
+                  {newImageFile.name}
+                </span>
               )}
-              <div className="flex gap-2 mt-4">
+              <div className={`flex flex-col w-full gap-2 mt-5`}>
                 {editing ? (
-                  <>
+                  <div className="flex w-full gap-3 flex-col sm:flex-row">
                     <Button
-                      variant="outline"
+                      className="w-full bg-blue-600 text-white hover:bg-blue-700 shadow"
+                      variant="default"
                       type="button"
                       onClick={handleSave}
                       disabled={loading || imageUploading}
@@ -265,18 +289,20 @@ export default function ProfilePage() {
                       {loading || imageUploading ? "Saving..." : "Save"}
                     </Button>
                     <Button
-                      variant="ghost"
+                      className="w-full"
+                      variant="outline"
                       type="button"
                       onClick={() => setEditing(false)}
                       disabled={loading || imageUploading}
                     >
                       Cancel
                     </Button>
-                  </>
+                  </div>
                 ) : (
                   <Button
-                    size="sm"
-                    variant="outline"
+                    className="w-full bg-gradient-to-r from-blue-400 to-violet-400 text-white font-semibold shadow hover:from-blue-500 hover:to-violet-500 transition"
+                    size="lg"
+                    variant="default"
                     onClick={handleEdit}
                   >
                     Edit Profile
