@@ -368,7 +368,8 @@ export function OrderList() {
         onOpenChange={setShowAdd}
         onAdd={handleAddOrder}
         customers={customers}
-        products={products} {/* Already user-specific from query */}
+        {/* Already user-specific from query */}
+        products={products}
       />
       <EditOrderModal
         open={showEdit}
