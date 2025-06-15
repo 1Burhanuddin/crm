@@ -9,9 +9,10 @@ import { Card } from "@/components/ui/card";
 import { AppLayout } from "@/components/AppLayout";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ProfileTabs } from "@/components/ProfileTabs";
+import { LogOut } from "lucide-react";
 
 export default function ProfilePage() {
-  const { user, status, refresh } = useSession();
+  const { user, status, refresh, signOut } = useSession();
   const [profile, setProfile] = useState<{
     email: string;
     name: string | null;
@@ -134,7 +135,20 @@ export default function ProfilePage() {
 
   return (
     <AppLayout title="Profile">
-      <div className="max-w-md mx-auto p-4">
+      <div className="max-w-md mx-auto p-4 relative">
+        {/* Logout button: only in Profile, top-right */}
+        {status === "signed_in" && user && (
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={signOut}
+            className="absolute right-2 top-2 z-20 bg-white text-blue-900 hover:bg-blue-100 border border-blue-800 shadow"
+            title="Logout"
+          >
+            <LogOut className="h-5 w-5" />
+            <span className="sr-only">Logout</span>
+          </Button>
+        )}
         <Card className="p-4 mb-6">
           <div className="flex flex-col items-center gap-2">
             <Avatar className="h-20 w-20">
