@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 
@@ -28,7 +27,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     color: "#232323"
   },
-  // Tally-like header
   headerBlock: {
     border: "1 solid #000",
     padding: 12,
@@ -63,25 +61,61 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     padding: 6,
   },
-  // Customer & bill info rows
+  // Refined row for info (buyer+invoice)
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: 6,
-    gap: 16,
+    marginTop: 10,
+    gap: 32,
   },
-  infoSection: {
-    flex: 1,
+  customerInvoiceBlock: {
+    flex: 1.5,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 24,
   },
-  label: {
+  buyerLine: {
+    flexDirection: "row",
+    alignItems: "center",
+    fontSize: 11,
+    gap: 4,
+  },
+  buyerLabel: {
     fontWeight: "bold",
+    marginRight: 4,
+  },
+  phoneLabel: {
+    marginLeft: 12,
+    fontSize: 10,
+    color: "#333",
+  },
+  invoiceBlock: {
+    flex: 1,
+    flexDirection: "column",
+    alignItems: "flex-end",
+    gap: 2,
+    minWidth: 130,
+  },
+  invoiceLabel: {
+    fontWeight: "bold",
+    fontSize: 11,
+    marginBottom: 2,
+  },
+  invoiceNo: {
+    fontSize: 10,
+    fontFamily: "Courier",
+    marginBottom: 3,
+  },
+  invoiceDate: {
+    fontSize: 10,
   },
   tiny: {
     fontSize: 9,
     color: "#444",
     fontFamily: "Courier",
   },
-  // Table
   tableWrap: {
     marginTop: 10,
     border: "1 solid #000",
@@ -138,7 +172,6 @@ const styles = StyleSheet.create({
     minWidth: 70,
     textAlign: "right",
   },
-  // Amount in words
   wordsBlock: {
     fontSize: 10,
     color: "#434343",
@@ -146,7 +179,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 4,
   },
-  // Footer
   footerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -248,7 +280,6 @@ export function BillPdfDoc({ bill, userName, shopName }: BillPdfDocProps) {
   const gstinDemo = "29ABCDE1234F1Z5";
   // HSN code is not in products/items, so we'll use a placeholder
   const hsnDemo = "9987";
-
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -258,22 +289,29 @@ export function BillPdfDoc({ bill, userName, shopName }: BillPdfDocProps) {
           <Text style={styles.taxInvoice}>TAX INVOICE</Text>
         </View>
         <View style={styles.line} />
-        {/* Info Rows */}
+        {/* INFO ROWS (BUYER + INVOICE INFO) */}
         <View style={styles.row}>
-          {/* Buyer Info */}
-          <View style={styles.infoSection}>
-            <Text style={styles.label}>Buyer: </Text>
-            <Text>{bill.customer_name}</Text>
-            {bill.customer_phone && (
-              <Text>Phone: {bill.customer_phone}</Text>
-            )}
-            {/* Address can be added here if present */}
+          {/* Left: Buyer & Phone in ONE LINE */}
+          <View style={styles.customerInvoiceBlock}>
+            <View style={styles.buyerLine}>
+              <Text style={styles.buyerLabel}>Buyer:</Text>
+              <Text>{bill.customer_name}</Text>
+              {/* Only show if phone is present */}
+              {bill.customer_phone && (
+                <>
+                  <Text style={styles.phoneLabel}>Phone:</Text>
+                  <Text style={styles.phoneLabel}>{bill.customer_phone}</Text>
+                </>
+              )}
+            </View>
           </View>
-          {/* Invoice Info */}
-          <View style={styles.infoSection}>
-            <Text style={styles.label}>Invoice No: </Text>
-            <Text style={styles.tiny}>{bill.id.slice(0, 8).toUpperCase()}</Text>
-            <Text style={styles.label}>Date: <Text style={{ fontWeight: "normal" }}>{bill.bill_date}</Text></Text>
+          {/* Right: Invoice info, aligned-right and neatly stacked */}
+          <View style={styles.invoiceBlock}>
+            <Text style={styles.invoiceLabel}>Invoice No:</Text>
+            <Text style={styles.invoiceNo}>{bill.id.slice(0, 8).toUpperCase()}</Text>
+            <Text style={styles.invoiceLabel}>
+              Date: <Text style={styles.invoiceDate}>{bill.bill_date}</Text>
+            </Text>
           </View>
         </View>
         {/* Items Table */}
