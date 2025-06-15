@@ -1,7 +1,7 @@
 
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PinLock } from "@/components/PinLock";
 import { DEMO_CUSTOMERS, DEMO_TRANSACTIONS, DEMO_ORDERS } from "@/constants/demoData";
 
@@ -70,12 +70,28 @@ const DASH_ACTIONS = [
   },
 ];
 
+const UNLOCK_KEY = "unlocked";
+
 const Index = () => {
-  const [unlocked, setUnlocked] = useState(false);
+  const [unlocked, setUnlocked] = useState<boolean>(false);
   const navigate = useNavigate();
 
+  // Sync unlocked state with localStorage
+  useEffect(() => {
+    const unlockedFromStorage = localStorage.getItem(UNLOCK_KEY);
+    if (unlockedFromStorage === "true") {
+      setUnlocked(true);
+    }
+  }, []);
+
+  // Handler to unlock and persist state
+  const handleUnlock = () => {
+    setUnlocked(true);
+    localStorage.setItem(UNLOCK_KEY, "true");
+  };
+
   if (!unlocked) {
-    return <PinLock onUnlock={() => setUnlocked(true)} />;
+    return <PinLock onUnlock={handleUnlock} />;
   }
 
   const { totalSales, totalCredit, ordersPending, totalCustomers } = getKPIs();
