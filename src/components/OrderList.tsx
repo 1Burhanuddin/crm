@@ -278,26 +278,31 @@ export function OrderList() {
             key={o.id}
             className="mb-4 bg-white rounded-lg px-4 py-3 shadow border"
           >
-            <div className="flex items-center justify-between mb-2">
-              <div className="font-bold text-blue-900">{customerName(o.customerId)}</div>
-              <div className="flex items-center gap-2">
+            {/* Title and Product/Customer */}
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="font-bold text-blue-900 text-base">{customerName(o.customerId)}</div>
+                <div className="text-sm text-gray-700">{productName(o.productId)}</div>
+              </div>
+              {/* Actions: Edit/Delete/Bill (move to own row for mobile) */}
+              <div className="flex gap-2 mt-2 sm:mt-0">
                 <button
                   onClick={() => openEditModal(o)}
-                  className="text-blue-600 hover:text-blue-800 p-1"
+                  className="text-blue-600 hover:text-blue-800 bg-transparent p-1.5 rounded transition-colors"
                   title="Edit order"
                 >
                   <Edit size={16} />
                 </button>
                 <button
                   onClick={() => handleDeleteOrder(o.id)}
-                  className="text-red-600 hover:text-red-800 p-1"
+                  className="text-red-600 hover:text-red-800 bg-transparent p-1.5 rounded transition-colors"
                   title="Delete order"
                 >
                   <Trash2 size={16} />
                 </button>
                 {o.status === "delivered" && (
                   <button
-                    className="text-green-700 hover:bg-green-50 border border-green-200 px-2 py-1 rounded text-xs flex items-center gap-1"
+                    className="border border-green-200 text-green-700 hover:bg-green-50 px-3 py-1 rounded text-xs flex items-center gap-1 font-medium transition-all"
                     onClick={() => openBillModalFromOrder(o)}
                     title="Generate Bill"
                   >
@@ -306,8 +311,10 @@ export function OrderList() {
                 )}
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2 mb-1">
-              <span className="text-sm text-gray-700">{productName(o.productId)}</span>
+            {/* Row: ID - Can place here for debugging */}
+            <div className="text-xs font-mono my-1 break-all text-gray-600">{o.id}</div>
+            {/* Info ROW: Qty, status, assignment, job date */}
+            <div className="flex flex-wrap items-center gap-2 mt-1">
               <span className="text-xs bg-gray-100 px-2 py-1 rounded">
                 Qty: {o.qty}
               </span>
@@ -320,14 +327,11 @@ export function OrderList() {
               >
                 {o.status === "pending" ? "Pending" : "Delivered"}
               </span>
+              {o.assignedTo && (
+                <span className="text-xs text-gray-700">Assigned to: {o.assignedTo}</span>
+              )}
               <span className="text-gray-400 text-xs">{o.jobDate}</span>
             </div>
-            {o.assignedTo && (
-              <div className="text-xs text-gray-600 mb-1">Assigned to: {o.assignedTo}</div>
-            )}
-            {o.siteAddress && (
-              <div className="text-xs text-gray-500">{o.siteAddress}</div>
-            )}
           </li>
         ))}
       </ul>
@@ -347,7 +351,6 @@ export function OrderList() {
         onEdit={handleEditOrder}
         order={editingOrder}
       />
-      {/* Only render BillCreateModal when showBillModal is true */}
       <BillCreateModal
         open={showBillModal}
         setOpen={setShowBillModal}
