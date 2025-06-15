@@ -1,5 +1,5 @@
 
-import { DEMO_ORDERS, DEMO_CUSTOMERS } from "@/constants/demoData";
+import { DEMO_ORDERS, DEMO_CUSTOMERS, DEMO_PRODUCTS } from "@/constants/demoData";
 import { Order } from "@/constants/types";
 import { Plus, Edit } from "lucide-react";
 import { useState } from "react";
@@ -19,7 +19,13 @@ export function OrderList() {
   }
   
   function productName(id: string) {
-    // Handle new product ID format from the enhanced selection
+    // First check if it's a standard product from DEMO_PRODUCTS
+    const product = DEMO_PRODUCTS.find(p => p.id === id);
+    if (product) {
+      return product.name;
+    }
+    
+    // Handle legacy custom product ID format from the enhanced selection
     if (id.includes('-')) {
       const parts = id.split('-');
       const category = parts[0];
@@ -37,7 +43,7 @@ export function OrderList() {
       }
     }
     
-    // Fallback for existing orders
+    // Fallback
     return id;
   }
 

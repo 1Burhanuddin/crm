@@ -5,7 +5,7 @@ import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { toast } from "@/hooks/use-toast";
-import { DEMO_CUSTOMERS } from "@/constants/demoData";
+import { DEMO_CUSTOMERS, DEMO_PRODUCTS } from "@/constants/demoData";
 import { Order } from "@/constants/types";
 
 interface AddOrderModalProps {
@@ -16,9 +16,7 @@ interface AddOrderModalProps {
 
 export function AddOrderModal({ open, onOpenChange, onAdd }: AddOrderModalProps) {
   const [customerId, setCustomerId] = useState("");
-  const [productCategory, setProductCategory] = useState("");
-  const [productType, setProductType] = useState("");
-  const [productSpecs, setProductSpecs] = useState("");
+  const [productId, setProductId] = useState("");
   const [qty, setQty] = useState("");
   const [jobDate, setJobDate] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
@@ -27,9 +25,7 @@ export function AddOrderModal({ open, onOpenChange, onAdd }: AddOrderModalProps)
 
   const resetForm = () => {
     setCustomerId("");
-    setProductCategory("");
-    setProductType("");
-    setProductSpecs("");
+    setProductId("");
     setQty("");
     setJobDate("");
     setAssignedTo("");
@@ -41,8 +37,8 @@ export function AddOrderModal({ open, onOpenChange, onAdd }: AddOrderModalProps)
       toast({ title: "Required", description: "Please select a customer.", variant: "destructive" });
       return;
     }
-    if (!productCategory || !productType || !productSpecs) {
-      toast({ title: "Required", description: "Please complete the product selection.", variant: "destructive" });
+    if (!productId) {
+      toast({ title: "Required", description: "Please select a product.", variant: "destructive" });
       return;
     }
     if (!qty || parseInt(qty) <= 0) {
@@ -60,12 +56,9 @@ export function AddOrderModal({ open, onOpenChange, onAdd }: AddOrderModalProps)
 
     setSubmitting(true);
     
-    // Create product name from selections
-    const productName = `${productType} ${productSpecs}`;
-    
     const newOrder: Omit<Order, 'id'> = {
       customerId,
-      productId: `${productCategory.toLowerCase()}-${productType.toLowerCase()}-${productSpecs.toLowerCase()}`,
+      productId,
       qty: parseInt(qty),
       status: "pending",
       jobDate,
@@ -79,59 +72,7 @@ export function AddOrderModal({ open, onOpenChange, onAdd }: AddOrderModalProps)
     onOpenChange(false);
   };
 
-  const handleCategoryChange = (value: string) => {
-    setProductCategory(value);
-    setProductType("");
-    setProductSpecs("");
-  };
-
-  const handleTypeChange = (value: string) => {
-    setProductType(value);
-    setProductSpecs("");
-  };
-
-  const getTypeOptions = () => {
-    if (productCategory === "glass") {
-      return [
-        { value: "mirror", label: "Mirror" },
-        { value: "plain", label: "Plain Float Glass" }
-      ];
-    }
-    if (productCategory === "aluminum") {
-      return [
-        { value: "frame", label: "Aluminum Frame" }
-      ];
-    }
-    return [];
-  };
-
-  const getSpecOptions = () => {
-    if (productCategory === "glass" && productType === "mirror") {
-      return [
-        { value: "2mm", label: "2mm" },
-        { value: "5mm", label: "5mm" }
-      ];
-    }
-    if (productCategory === "glass" && productType === "plain") {
-      return [
-        { value: "2mm", label: "2mm" },
-        { value: "4mm", label: "4mm" },
-        { value: "6mm", label: "6mm" },
-        { value: "8mm", label: "8mm" },
-        { value: "12mm", label: "12mm" }
-      ];
-    }
-    if (productCategory === "aluminum") {
-      return [
-        { value: "brown", label: "Brown" },
-        { value: "silver", label: "Silver" },
-        { value: "black", label: "Black" }
-      ];
-    }
-    return [];
-  };
-
-  const isFormValid = customerId && productCategory && productType && productSpecs && qty && parseInt(qty) > 0 && jobDate && assignedTo.trim();
+  const isFormValid = customerId && productId && qty && parseInt(qty) > 0 && jobDate && assignedTo.trim();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -157,55 +98,20 @@ export function AddOrderModal({ open, onOpenChange, onAdd }: AddOrderModalProps)
           </div>
           
           <div>
-            <label className="block text-sm font-medium mb-1">Product Category</label>
-            <Select value={productCategory} onValueChange={handleCategoryChange}>
+            <label className="block text-sm font-medium mb-1">Product</label>
+            <Select value={productId} onValueChange={setProductId}>
               <SelectTrigger>
-                <SelectValue placeholder="Select category" />
+                <SelectValue placeholder="Select product" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="glass">Glass</SelectItem>
-                <SelectItem value="aluminum">Aluminum</SelectItem>
+                {DEMO_PRODUCTS.map((product) => (
+                  <SelectItem key={product.id} value={product.id}>
+                    {product.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
-
-          {productCategory && (
-            <div>
-              <label className="block text-sm font-medium mb-1">Product Type</label>
-              <Select value={productType} onValueChange={handleTypeChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {getTypeOptions().map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {productType && (
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                {productCategory === "glass" ? "Thickness" : "Color/Finish"}
-              </label>
-              <Select value={productSpecs} onValueChange={setProductSpecs}>
-                <SelectTrigger>
-                  <SelectValue placeholder={`Select ${productCategory === "glass" ? "thickness" : "color"}`} />
-                </SelectTrigger>
-                <SelectContent>
-                  {getSpecOptions().map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
 
           <div>
             <label className="block text-sm font-medium mb-1">Quantity</label>
