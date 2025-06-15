@@ -5,7 +5,14 @@ import { useState, useEffect, useCallback } from "react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { SendReminderModal } from "@/components/SendReminderModal";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem
+} from "@/components/ui/dropdown-menu";
+import { CollectionEditModal } from "@/components/CollectionEditModal";
 
 interface CustomerWithPending {
   id: string;
@@ -16,7 +23,17 @@ interface CustomerWithPending {
 
 export default function Collections() {
   const { user } = useSession();
-  const { data: collections = [], isLoading, error, addCollection, isAdding } = useCollections();
+  const {
+    data: collections = [],
+    isLoading,
+    error,
+    addCollection,
+    isAdding,
+    editCollection,
+    isEditing,
+    deleteCollection,
+    isDeleting
+  } = useCollections();
   const [customers, setCustomers] = useState<{ id: string; name: string; phone?: string }[]>([]);
   const [pendingCustomers, setPendingCustomers] = useState<CustomerWithPending[]>([]);
   // Form state
@@ -26,6 +43,20 @@ export default function Collections() {
   // Added: SendReminderModal modal state
   const [reminderModalOpen, setReminderModalOpen] = useState(false);
   const [reminderCustomer, setReminderCustomer] = useState<CustomerWithPending | null>(null);
+
+  // Edit modal state
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingCollection, setEditingCollection] = useState<null | {
+    id: string;
+    amount: number;
+    remarks: string;
+  }>(null);
+
+  // Delete modal state
+  const [deleteDialog, setDeleteDialog] = useState<null | {
+    id: string;
+    name: string;
+  }>(null);
 
   // Load all customers on mount (for dropdowns, pending calc)
   useEffect(() => {
@@ -161,6 +192,44 @@ export default function Collections() {
     setForm({ customer_id: "", amount: "", remarks: "" });
   };
 
+  // Edit handler
+  const handleEditCollection = (collection: { id: string; amount: number; remarks: string; }) => {
+    setEditingCollection({
+      id: collection.id,
+      amount: collection.amount,
+      remarks: collection.remarks || "",
+    });
+    setEditModalOpen(true);
+  };
+
+  // Delete handler
+  const handleDeleteCollection = (collection: { id: string; name: string }) => {
+    setDeleteDialog({
+      id: collection.id,
+      name: collection.name,
+    });
+  };
+
+  const performDelete = async () => {
+    if (!deleteDialog) return;
+    await deleteCollection(deleteDialog.id);
+    toast({ title: "Collection deleted." });
+    setDeleteDialog(null);
+  };
+
+  // Save edit changes
+  const saveEditCollection = async (val: { amount: number; remarks: string }) => {
+    if (!editingCollection) return;
+    await editCollection({
+      id: editingCollection.id,
+      amount: val.amount,
+      remarks: val.remarks,
+    });
+    toast({ title: "Collection updated." });
+    setEditModalOpen(false);
+    setEditingCollection(null);
+  };
+
   return (
     <AppLayout title="Collections">
       <div className="p-4 max-w-lg mx-auto">
@@ -294,7 +363,7 @@ export default function Collections() {
                 <div className="text-gray-500 text-center mt-4">No collections yet.</div>
               )}
               {collections.map((c) => (
-                <li key={c.id} className="bg-gray-50 shadow rounded-lg mb-3 px-4 py-3">
+                <li key={c.id} className="bg-gray-50 shadow rounded-lg mb-3 px-4 py-3 relative group">
                   <div className="flex justify-between items-center">
                     <div>
                       <div className="font-semibold text-blue-800">
@@ -307,6 +376,32 @@ export default function Collections() {
                         <div className="text-xs text-gray-500 mt-1">Remarks: {c.remarks}</div>
                       )}
                     </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="p-2 rounded hover:bg-gray-200">
+                          <MoreHorizontal size={18} />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() =>
+                            handleEditCollection({ id: c.id, amount: c.amount, remarks: c.remarks || "" })
+                          }
+                        >
+                          <Edit size={16} className="mr-1" /> Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() =>
+                            handleDeleteCollection({
+                              id: c.id,
+                              name: customers.find((cu) => cu.id === c.customer_id)?.name || "(Unknown)",
+                            })
+                          }
+                        >
+                          <Trash2 size={16} className="mr-1" /> Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </li>
               ))}
@@ -314,6 +409,59 @@ export default function Collections() {
           )}
         </div>
       </div>
+
+      {/* Edit Collection Modal */}
+      <CollectionEditModal
+        open={editModalOpen}
+        onClose={() => {
+          setEditModalOpen(false);
+          setEditingCollection(null);
+        }}
+        initial={{
+          amount: editingCollection?.amount || 1,
+          remarks: editingCollection?.remarks || "",
+        }}
+        onSave={saveEditCollection}
+        loading={isEditing}
+      />
+
+      {/* Delete confirmation dialog */}
+      <div
+        className={`fixed inset-0 z-40 flex items-center justify-center bg-black/30 ${deleteDialog ? "" : "hidden"}`}
+        aria-modal="true"
+        role="dialog"
+      >
+        <div className="bg-white rounded-lg shadow p-6 min-w-[320px] max-w-[90vw]">
+          <h3 className="font-semibold text-lg mb-3">Delete Collection</h3>
+          <p>
+            Are you sure you want to delete the collection for{" "}
+            <span className="font-bold">{deleteDialog?.name}</span>?
+          </p>
+          <div className="flex gap-3 justify-end mt-5">
+            <button
+              className="bg-gray-200 hover:bg-gray-300 text-gray-900 px-4 py-2 rounded"
+              onClick={() => setDeleteDialog(null)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </button>
+            <button
+              className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
+              onClick={performDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Reminder Modal */}
+      <SendReminderModal
+        open={reminderModalOpen}
+        onOpenChange={(open) => setReminderModalOpen(open)}
+        customer={reminderCustomer}
+      />
     </AppLayout>
   );
 }

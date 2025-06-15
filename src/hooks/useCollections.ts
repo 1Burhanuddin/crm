@@ -64,5 +64,56 @@ export function useCollections() {
     },
   });
 
-  return { ...query, addCollection: mutation.mutateAsync, isAdding: mutation.isPending };
+  // Edit (update) a collection
+  const editMutation = useMutation({
+    mutationFn: async ({
+      id,
+      amount,
+      remarks,
+    }: {
+      id: string;
+      amount: number;
+      remarks?: string;
+    }) => {
+      if (!user) throw new Error("User not logged in");
+      const { error } = await supabase
+        .from("collections")
+        .update({
+          amount,
+          remarks: remarks || "",
+        })
+        .eq("user_id", user.id)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["collections", user?.id] });
+    },
+  });
+
+  // Delete a collection
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      if (!user) throw new Error("User not logged in");
+      const { error } = await supabase
+        .from("collections")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["collections", user?.id] });
+    },
+  });
+
+  return {
+    ...query,
+    addCollection: mutation.mutateAsync,
+    isAdding: mutation.isPending,
+    editCollection: editMutation.mutateAsync,
+    isEditing: editMutation.isPending,
+    deleteCollection: deleteMutation.mutateAsync,
+    isDeleting: deleteMutation.isPending,
+  };
 }
