@@ -13,7 +13,7 @@ export interface ReportsData {
 export function useReportsData() {
   const { user } = useSession();
 
-  return useQuery({
+  return useQuery<ReportsData>({
     queryKey: ["reports-summary", user?.id],
     enabled: !!user?.id,
     queryFn: async () => {
@@ -51,13 +51,11 @@ export function useReportsData() {
         .eq("status", "pending");
       if (orderErr) throw orderErr;
 
-      const result: ReportsData = {
+      return {
         totalSales,
         totalCredit,
         ordersPending: ordersPending || 0,
       };
-
-      return result;
     },
   });
 }
