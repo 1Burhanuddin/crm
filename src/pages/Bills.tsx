@@ -20,7 +20,6 @@ type Bill = {
   total: number;
 };
 
-// type for profile info
 type ProfileInfo = {
   name: string | null;
   shop_name: string | null;
@@ -33,7 +32,6 @@ export default function Bills() {
   const [showCreate, setShowCreate] = useState(false);
   const [profile, setProfile] = useState<ProfileInfo>({ name: null, shop_name: null });
 
-  // Fetch profile info
   useEffect(() => {
     const fetchProfile = async () => {
       if (!user) return;
@@ -77,7 +75,7 @@ export default function Bills() {
 
   return (
     <AppLayout title="Bills">
-      <div className="p-4 max-w-2xl mx-auto">
+      <div className="p-4 max-w-lg w-full mx-auto">
         <div className="mb-2">
           <BackButton toMainScreen />
         </div>
@@ -97,45 +95,62 @@ export default function Bills() {
         ) : bills.length === 0 ? (
           <div className="text-gray-400 text-center mt-10">No bills created yet.</div>
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-6">
             {bills.map((bill) => (
-              <div key={bill.id} className="bg-white rounded-lg shadow p-6 border">
+              <div
+                key={bill.id}
+                className="bg-white rounded-xl shadow-md border border-gray-200 p-4 w-full max-w-md mx-auto transition-all"
+              >
                 {/* Bill Header */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2">
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-bold text-base text-blue-900">INVOICE</span>
+                  <span className="font-medium text-[1.02rem] text-zinc-800 truncate">
+                    {profile.shop_name || bill.customer_name || "No Name"}
+                  </span>
+                  <span className="text-sm text-gray-500">
+                    {bill.customer_phone}
+                  </span>
+                </div>
+                <div className="mt-2 flex flex-row flex-wrap justify-between items-center text-xs text-gray-700">
                   <div>
-                    <div className="font-bold text-lg text-blue-900">INVOICE</div>
-                    <div className="font-medium">{bill.customer_name || "No Name"}</div>
-                    <div className="text-xs text-gray-500 mb-1">{bill.customer_phone}</div>
-                  </div>
-                  <div className="mt-2 sm:mt-0 text-xs text-right text-gray-700">
-                    <div>Date: {bill.bill_date}</div>
-                    <div>Bill #: <span className="font-mono">{bill.id.slice(0, 8).toUpperCase()}</span></div>
-                    {/* PDF Export Button */}
-                    <div className="mt-2 flex justify-end">
-                      <PDFDownloadLink
-                        document={
-                          <BillPdfDoc
-                            bill={bill}
-                            shopName={profile.shop_name || ""}
-                            userName={profile.name || ""}
-                          />
-                        }
-                        fileName={`Bill_${bill.id.slice(0, 8)}.pdf`}
-                        className="inline-flex"
-                      >
-                        {({ loading: pdfLoading }) => (
-                          <Button variant="outline" size="sm" className="flex gap-1 items-center">
-                            <Download size={15} />
-                            {pdfLoading ? "Generating..." : "Export PDF"}
-                          </Button>
-                        )}
-                      </PDFDownloadLink>
+                    <div>
+                      Date: <span className="font-[500]">{bill.bill_date}</span>
                     </div>
+                    <div>
+                      Bill #:{" "}
+                      <span className="font-mono text-[13px] text-blue-900">
+                        {bill.id.slice(0, 8).toUpperCase()}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-2 sm:mt-0 flex-shrink-0">
+                    <PDFDownloadLink
+                      document={
+                        <BillPdfDoc
+                          bill={bill}
+                          shopName={profile.shop_name || ""}
+                          userName={profile.name || ""}
+                        />
+                      }
+                      fileName={`Bill_${bill.id.slice(0, 8)}.pdf`}
+                      className="inline-flex"
+                    >
+                      {({ loading: pdfLoading }) => (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex gap-1 items-center border-[1.5px] border-blue-200"
+                        >
+                          <Download size={15} />
+                          {pdfLoading ? "Generating..." : "Export PDF"}
+                        </Button>
+                      )}
+                    </PDFDownloadLink>
                   </div>
                 </div>
                 {/* Bill Items Table */}
-                <div className="mt-4 overflow-x-auto">
-                  <table className="w-full text-sm border">
+                <div className="mt-3 rounded-lg bg-white border border-gray-200 overflow-x-auto">
+                  <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-gray-50">
                         <th className="text-left p-2 font-semibold border-b">Item</th>
@@ -155,11 +170,11 @@ export default function Bills() {
                       ))}
                     </tbody>
                   </table>
-                  {/* Total */}
-                  <div className="mt-3 flex justify-end items-center">
-                    <span className="text-base font-semibold text-blue-900 mr-2">Total:</span>
-                    <span className="text-lg font-bold text-blue-900">₹{bill.total}</span>
-                  </div>
+                </div>
+                {/* Total */}
+                <div className="mt-3 flex justify-end items-center">
+                  <span className="text-base font-semibold text-blue-900 mr-2">Total:</span>
+                  <span className="text-lg font-bold text-blue-900">₹{bill.total}</span>
                 </div>
               </div>
             ))}
@@ -169,4 +184,3 @@ export default function Bills() {
     </AppLayout>
   );
 }
-
