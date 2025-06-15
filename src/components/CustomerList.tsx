@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from "react";
-import { Plus, Search, Edit, Trash2 } from "lucide-react";
+import { Plus, Search, Edit, Trash2, UserPlus } from "lucide-react";
 import { Customer } from "@/constants/types";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -159,19 +160,25 @@ export function CustomerList() {
     <div className="p-4 pb-0">
       <div className="mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <h2 className="text-xl font-semibold text-blue-900">Customers</h2>
-        <div className="flex flex-row flex-wrap gap-2 w-full sm:w-auto">
-          <button
+        <div className="flex flex-row flex-wrap gap-3 w-full sm:w-auto">
+          <Button
             onClick={() => setAddDialogOpen(true)}
-            className="flex-1 sm:flex-initial bg-blue-800 text-white px-3 py-1 rounded flex items-center gap-1 text-sm shadow hover:bg-blue-900 min-w-[110px] justify-center"
+            className="flex-1 sm:flex-initial bg-primary text-white px-6 py-3 rounded-lg flex items-center gap-2 text-base font-semibold shadow-lg hover:bg-primary/90 min-w-[135px] justify-center transition"
+            size="lg"
           >
-            <Plus size={18} /> Add
-          </button>
-          <button
+            <Plus size={22} strokeWidth={2.2} />
+            Add
+          </Button>
+          <Button
             onClick={addFromContacts}
-            className="flex-1 sm:flex-initial bg-blue-500 text-white px-3 py-1 rounded flex items-center gap-1 text-sm shadow hover:bg-blue-600 min-w-[140px] justify-center"
+            className="flex-1 sm:flex-initial bg-blue-500 text-white px-6 py-3 rounded-lg flex items-center gap-2 text-base font-semibold shadow-lg hover:bg-blue-600 min-w-[180px] justify-center transition"
+            size="lg"
+            variant="secondary"
+            type="button"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="7" r="4"/><path d="M18 21v-2a4 4 0 0 0-4-4h-4a4 4 0 0 0-4 4v2"/></svg> Add From Contacts
-          </button>
+            <UserPlus size={22} strokeWidth={2.2} />
+            Add From Contacts
+          </Button>
         </div>
       </div>
       <div className="mb-3 flex items-center gap-2">
@@ -247,3 +254,5 @@ export function CustomerList() {
     </div>
   );
 }
+
+// NOTE: This file is now getting quite large (250+ lines). Consider refactoring it into smaller files/components after this!
