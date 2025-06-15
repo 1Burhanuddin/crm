@@ -11,11 +11,14 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Product } from "@/constants/types";
+import { DeleteProductDialog } from "@/components/DeleteProductDialog";
 
 export default function Products() {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const addProductMutation = useMutation({
@@ -71,6 +74,30 @@ export default function Products() {
     }
   });
 
+  // NEW: Delete product mutation
+  const deleteProductMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("products").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Product deleted", description: "Product has been deleted." });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      setDeleteModalOpen(false);
+      setProductToDelete(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Could not delete product.",
+        variant: "destructive",
+      });
+    },
+    meta: {
+      onError: true,
+    }
+  });
+
   const handleAddProduct = () => {
     setAddModalOpen(true);
   };
@@ -88,6 +115,17 @@ export default function Products() {
     updateProductMutation.mutate(product);
   };
 
+  // NEW: Handle delete click
+  const handleDeleteProduct = (product: Product) => {
+    setProductToDelete(product);
+    setDeleteModalOpen(true);
+  };
+
+  // NEW: Confirm delete action
+  const handleConfirmDelete = (id: string) => {
+    deleteProductMutation.mutate(id);
+  };
+
   return (
     <AppLayout title="Products">
       <div className="p-4 pb-24">
@@ -101,7 +139,7 @@ export default function Products() {
             <Plus size={18} /> Add Product
           </Button>
         </div>
-        <ProductCatalog onEdit={handleEditProduct} />
+        <ProductCatalog onEdit={handleEditProduct} onDelete={handleDeleteProduct} />
         <AddProductModal
           open={addModalOpen}
           onOpenChange={setAddModalOpen}
@@ -121,6 +159,13 @@ export default function Products() {
                 }
               : null
           }
+        />
+        {/* Delete Product Dialog */}
+        <DeleteProductDialog
+          open={deleteModalOpen}
+          onOpenChange={setDeleteModalOpen}
+          product={productToDelete}
+          onDelete={handleConfirmDelete}
         />
       </div>
     </AppLayout>
