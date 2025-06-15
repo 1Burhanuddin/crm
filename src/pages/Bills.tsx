@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
@@ -68,7 +67,9 @@ export default function Bills() {
           onBillCreated={fetchBills}
         />
         {loading ? (
-          <div>Loading...</div>
+          <div className="flex flex-col min-h-[40vh] items-center justify-center text-blue-800 text-lg font-semibold">
+            Loading...
+          </div>
         ) : bills.length === 0 ? (
           <div className="text-gray-400 text-center mt-10">No bills created yet.</div>
         ) : (

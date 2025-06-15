@@ -246,7 +246,11 @@ export function OrderList() {
 
   // Loading/error UI
   if (loadingCustomers || loadingProducts || loadingOrders) {
-    return <div className="p-4">Loading orders...</div>;
+    return (
+      <div className="flex flex-col min-h-[40vh] justify-center items-center text-blue-800 text-lg font-semibold">
+        Loading orders...
+      </div>
+    );
   }
   if (customerError || productError || orderError) {
     return (
