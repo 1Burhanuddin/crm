@@ -1,14 +1,17 @@
 
 import { DEMO_ORDERS, DEMO_CUSTOMERS, DEMO_PRODUCTS } from "@/constants/demoData";
 import { Order } from "@/constants/types";
-import { Plus } from "lucide-react";
+import { Plus, Edit } from "lucide-react";
 import { useState } from "react";
 import { toast } from "@/hooks/use-toast";
 import { AddOrderModal } from "./AddOrderModal";
+import { EditOrderModal } from "./EditOrderModal";
 
 export function OrderList() {
   const [orders, setOrders] = useState<Order[]>(DEMO_ORDERS);
   const [showAdd, setShowAdd] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
 
   function customerName(id: string) {
     const c = DEMO_CUSTOMERS.find((c) => c.id === id);
@@ -33,6 +36,21 @@ export function OrderList() {
     });
   }
 
+  function handleEditOrder(updatedOrder: Order) {
+    setOrders(prev => prev.map(order => 
+      order.id === updatedOrder.id ? updatedOrder : order
+    ));
+    toast({
+      title: "Order Updated",
+      description: "Order has been updated successfully.",
+    });
+  }
+
+  function openEditModal(order: Order) {
+    setEditingOrder(order);
+    setShowEdit(true);
+  }
+
   return (
     <div className="p-4 pb-24">
       <div className="flex items-center justify-between mb-5">
@@ -50,7 +68,16 @@ export function OrderList() {
             key={o.id}
             className="mb-4 bg-white rounded-lg px-4 py-3 shadow border"
           >
-            <div className="font-bold text-blue-900">{customerName(o.customerId)}</div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="font-bold text-blue-900">{customerName(o.customerId)}</div>
+              <button
+                onClick={() => openEditModal(o)}
+                className="text-blue-600 hover:text-blue-800 p-1"
+                title="Edit order"
+              >
+                <Edit size={16} />
+              </button>
+            </div>
             <div className="flex flex-wrap items-center gap-2 mb-1">
               <span className="text-sm text-gray-700">{productName(o.productId)}</span>
               <span className="text-xs bg-gray-100 px-2 py-1 rounded">
@@ -67,6 +94,9 @@ export function OrderList() {
               </span>
               <span className="text-gray-400 text-xs">{o.jobDate}</span>
             </div>
+            {o.assignedTo && (
+              <div className="text-xs text-gray-600 mb-1">Assigned to: {o.assignedTo}</div>
+            )}
             {o.siteAddress && (
               <div className="text-xs text-gray-500">{o.siteAddress}</div>
             )}
@@ -80,6 +110,12 @@ export function OrderList() {
         open={showAdd}
         onOpenChange={setShowAdd}
         onAdd={handleAddOrder}
+      />
+      <EditOrderModal
+        open={showEdit}
+        onOpenChange={setShowEdit}
+        onEdit={handleEditOrder}
+        order={editingOrder}
       />
     </div>
   );
