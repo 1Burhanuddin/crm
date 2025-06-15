@@ -363,12 +363,12 @@ export function OrderList() {
       {orders.length === 0 && (
         <div className="text-gray-500 mt-10 text-center">No orders found.</div>
       )}
+      {/* Already user-specific from query */}
       <AddOrderModal
         open={showAdd}
         onOpenChange={setShowAdd}
         onAdd={handleAddOrder}
         customers={customers}
-        {/* Already user-specific from query */}
         products={products}
       />
       <EditOrderModal
