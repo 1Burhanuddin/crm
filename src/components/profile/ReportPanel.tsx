@@ -18,10 +18,6 @@ export function ReportPanel() {
       {data && (
         <div className="flex flex-wrap gap-4">
           <div className="bg-white shadow rounded-lg px-6 py-4 flex-1 min-w-[130px] text-center border">
-            <div className="text-gray-500 text-xs">Total Sales</div>
-            <div className="text-green-700 font-bold text-xl mb-1">₹{data.totalSales}</div>
-          </div>
-          <div className="bg-white shadow rounded-lg px-6 py-4 flex-1 min-w-[130px] text-center border">
             <div className="text-gray-500 text-xs">Credit (Udhaar)</div>
             <div className="text-red-600 font-bold text-xl mb-1">₹{data.totalCredit}</div>
           </div>
@@ -34,3 +30,4 @@ export function ReportPanel() {
     </div>
   );
 }
+

@@ -1,4 +1,3 @@
-
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { useState, useEffect } from "react";
@@ -127,26 +126,19 @@ const Index = () => {
           Welcome! Track your orders, sales and credits.
         </div>
         <div className="flex flex-wrap gap-y-2 mb-4 w-full">
-          {/* Show real data for KPIs */}
+          {/* Show KPIs, WITHOUT Total Sales */}
           {reportLoading ? (
             <>
-              <KPICard title="Total Sales" value="..." color="text-green-700" />
               <KPICard title="Credit (Udhaar)" value="..." color="text-red-600" />
               <KPICard title="Pending Orders" value="..." color="text-yellow-600" />
             </>
           ) : reportError ? (
             <>
-              <KPICard title="Total Sales" value="Err" color="text-green-700" />
               <KPICard title="Credit (Udhaar)" value="Err" color="text-red-600" />
               <KPICard title="Pending Orders" value="Err" color="text-yellow-600" />
             </>
           ) : (
             <>
-              <KPICard
-                title="Total Sales"
-                value={`₹${reportData?.totalSales ?? 0}`}
-                color="text-green-700"
-              />
               <KPICard
                 title="Credit (Udhaar)"
                 value={`₹${reportData?.totalCredit ?? 0}`}
