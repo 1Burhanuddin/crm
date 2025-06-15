@@ -1,4 +1,3 @@
-
 import { DEMO_ORDERS, DEMO_CUSTOMERS, DEMO_PRODUCTS } from "@/constants/demoData";
 import { Order } from "@/constants/types";
 import { Plus, Edit, Receipt } from "lucide-react";
@@ -29,7 +28,6 @@ export function OrderList() {
   }
 
   function productName(id: string) {
-    // First check if it's a standard product from DEMO_PRODUCTS
     const product = DEMO_PRODUCTS.find(p => p.id === id);
     if (product) {
       return product.name;
@@ -112,6 +110,9 @@ export function OrderList() {
     setShowBillModal(true);
   }
 
+  // Ensure BillCreateModal always gets {} (not null/undefined)
+  const safeInitialData = billInitialData && typeof billInitialData === "object" ? billInitialData : {};
+
   return (
     <div className="p-4 pb-24">
       <div className="flex items-center justify-between mb-5">
@@ -189,6 +190,8 @@ export function OrderList() {
         onEdit={handleEditOrder}
         order={editingOrder}
       />
+      {/* Only render BillCreateModal when showBillModal is true:
+           Always pass safeInitialData; prevent null from ever being passed. */}
       <BillCreateModal
         open={showBillModal}
         setOpen={setShowBillModal}
@@ -196,7 +199,7 @@ export function OrderList() {
           setShowBillModal(false);
           toast({ title: "Bill generated!" });
         }}
-        initialData={billInitialData}
+        initialData={safeInitialData}
       />
     </div>
   );
