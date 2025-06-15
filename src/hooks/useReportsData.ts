@@ -13,6 +13,7 @@ export interface ReportsData {
 export function useReportsData() {
   const { user } = useSession();
 
+  // Don't pass generic <ReportsData>, let TypeScript infer
   return useQuery({
     queryKey: ["reports-summary", user?.id],
     enabled: !!user?.id,
