@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { Copy, Send } from "lucide-react";
+import { Whatsapp } from "lucide-react"; // Import WhatsApp icon
 
 interface SendReminderModalProps {
   open: boolean;
@@ -85,11 +86,11 @@ export function SendReminderModal({
                 <Copy size={16} className="mr-1" /> Copy
               </Button>
               <Button
-                variant="secondary"
                 type="button"
                 asChild
                 disabled={!customer.phone}
                 title={customer.phone ? "Send via WhatsApp" : "No phone number"}
+                className="bg-[#25D366] hover:bg-[#218e4d] text-white flex items-center" // WhatsApp official green
               >
                 <a
                   href={whatsappLink || "#"}
@@ -99,7 +100,8 @@ export function SendReminderModal({
                     toast({ title: "WhatsApp opened." });
                   }}
                 >
-                  <Send size={16} className="mr-1" /> WhatsApp
+                  <Whatsapp size={16} className="mr-2" />
+                  WhatsApp
                 </a>
               </Button>
             </div>

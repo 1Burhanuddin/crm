@@ -185,7 +185,7 @@ export default function Collections() {
                       <div className="mt-1 text-xs text-gray-500">Phone: {c.phone}</div>
                     ) : null}
                   </div>
-                  <div className="flex flex-col items-end gap-2">
+                  <div className="flex flex-row items-center gap-2 mt-2 sm:mt-0">
                     <button
                       className="bg-green-700 text-white px-3 py-1.5 rounded hover:bg-green-800 transition disabled:opacity-60"
                       onClick={() => handleOpenForm(c.id, c.pending)}
@@ -194,7 +194,7 @@ export default function Collections() {
                       Collect
                     </button>
                     <button
-                      className="bg-blue-700 text-white px-3 py-1 flex items-center gap-1 rounded hover:bg-blue-800 transition text-xs"
+                      className="bg-emerald-600 text-white px-3 py-1 flex items-center gap-1 rounded hover:bg-emerald-700 transition text-xs"
                       onClick={() => handleOpenReminderModal(c)}
                     >
                       <MessageSquare size={16} /> Send Reminder
