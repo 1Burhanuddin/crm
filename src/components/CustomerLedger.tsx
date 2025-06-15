@@ -1,22 +1,49 @@
 
 import { useParams } from "react-router-dom";
-import { DEMO_CUSTOMERS, DEMO_TRANSACTIONS } from "@/constants/demoData";
-import { Transaction } from "@/constants/types";
+import { DEMO_CUSTOMERS } from "@/constants/demoData";
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { AddTransactionModal } from "./AddTransactionModal";
+import { supabase } from "@/integrations/supabase/client";
+import { Transaction } from "@/constants/types";
 
 export function CustomerLedger() {
   const { id } = useParams();
   const customer = DEMO_CUSTOMERS.find((c) => c.id === id);
-  const transactions = DEMO_TRANSACTIONS.filter((t) => t.customerId === id);
 
-  const balance =
-    transactions.reduce(
-      (sum, t) => sum + (t.type === "udhaar" ? t.amount : -t.amount),
-      0
-    ) ?? 0;
+  // Transaction state
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [showAdd, setShowAdd] = useState(false);
+
+  // Fetch transactions from Supabase
+  async function fetchTransactions() {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("customer_id", id ?? "")
+      .order("date", { ascending: false });
+    if (error) {
+      setTransactions([]);
+    } else {
+      setTransactions(data || []);
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    if (id) fetchTransactions();
+    // eslint-disable-next-line
+  }, [id, showAdd]);
+
+  // Calculate balance using Supabase transactions
+  const balance =
+    transactions.reduce(
+      (sum, t) => sum + (t.type === "udhaar" ? Number(t.amount) : -Number(t.amount)),
+      0
+    ) ?? 0;
 
   if (!customer) return <div className="p-6 text-center">Customer not found.</div>;
 
@@ -40,24 +67,40 @@ export function CustomerLedger() {
         <span className="text-xs ml-2">{balance >= 0 ? "Due (Udhaar)" : "Advance"}</span>
       </div>
 
-      <ul>
-        {transactions.map((t) => (
-          <li
-            key={t.id}
-            className={`mb-3 rounded shadow px-4 py-3 flex flex-col border-l-4 ${
-              t.type === "udhaar" ? "border-red-500 bg-white" : "border-green-500 bg-green-50"
-            }`}
-          >
-            <span className="font-semibold text-blue-900">
-              {t.type === "udhaar" ? "Given" : "Received"}: ₹{t.amount}
-            </span>
-            <span className="text-gray-500 text-xs">{t.date} - {t.note}</span>
-          </li>
-        ))}
-      </ul>
-      {transactions.length === 0 && <div className="text-gray-500 my-8 text-center">No transactions yet.</div>}
-      {/* AddTransactionModal can be wired up here */}
-      {/* {showAdd && <AddTransactionModal />} */}
+      {loading ? (
+        <div className="text-center py-8 text-gray-500">Loading...</div>
+      ) : (
+        <>
+          <ul>
+            {transactions.map((t) => (
+              <li
+                key={t.id}
+                className={`mb-3 rounded shadow px-4 py-3 flex flex-col border-l-4 ${
+                  t.type === "udhaar" ? "border-red-500 bg-white" : "border-green-500 bg-green-50"
+                }`}
+              >
+                <span className="font-semibold text-blue-900">
+                  {t.type === "udhaar" ? "Given" : "Received"}: ₹{t.amount}
+                </span>
+                <span className="text-gray-500 text-xs">
+                  {t.date} - {t.note}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {transactions.length === 0 && !loading && (
+            <div className="text-gray-500 my-8 text-center">No transactions yet.</div>
+          )}
+        </>
+      )}
+
+      {/* AddTransactionModal for adding entry */}
+      <AddTransactionModal
+        open={showAdd}
+        onOpenChange={setShowAdd}
+        customerId={id ?? ""}
+        onAdded={fetchTransactions}
+      />
     </div>
   );
 }
