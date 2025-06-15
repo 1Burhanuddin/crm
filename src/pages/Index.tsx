@@ -1,3 +1,4 @@
+
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { useState, useEffect } from "react";
@@ -90,6 +91,14 @@ const Index = () => {
     setChecking(false);
   }, [status]);
 
+  // Redirect to /auth if signed out
+  useEffect(() => {
+    if (!checking && (status === "signed_out" || !user)) {
+      navigate("/auth");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checking, status, user]);
+
   // Sync unlocked state with localStorage per user
   useEffect(() => {
     if (user) {
@@ -127,10 +136,11 @@ const Index = () => {
     return <div className="h-screen flex items-center justify-center text-blue-900">Loading...</div>;
   }
 
-  if (status === "signed_out" || !user) {
-    navigate("/auth");
-    return null;
-  }
+  // Remove navigation logic from here:
+  // if (status === "signed_out" || !user) {
+  //   navigate("/auth");
+  //   return null;
+  // }
 
   if (!unlocked) {
     return <PinLock onUnlock={handleUnlock} />;
