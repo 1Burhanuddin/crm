@@ -17,7 +17,6 @@ async function fetchProducts(): Promise<Product[]> {
   return data || [];
 }
 
-// Add edit handling props
 type ProductCatalogProps = {
   onEdit: (product: Product) => void;
 };
@@ -40,33 +39,36 @@ export function ProductCatalog({ onEdit }: ProductCatalogProps) {
   }
 
   return (
-    <div className="p-4 pb-24">
-      <h2 className="text-xl font-semibold mb-4 text-blue-900">Product Catalog</h2>
+    <div className="p-2 pb-24">
+      <h2 className="text-lg font-semibold mb-3 text-blue-900">Product Catalog</h2>
       {products && products.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
           {products.map((prod) => (
             <div
               key={prod.id}
-              className="bg-white p-4 rounded-lg shadow border flex flex-col items-center relative"
+              className="bg-white rounded-xl shadow border flex flex-row items-center justify-between relative px-3 py-2 min-h-[60px] active:scale-[0.98] hover:shadow-lg transition-all"
             >
-              {/* Removed image */}
-              {/* Edit button - top right corner absolute */}
-              <Button
-                size="icon"
-                variant="ghost"
-                className="absolute top-2 right-2"
-                onClick={() => onEdit(prod)}
-                aria-label={`Edit ${prod.name}`}
-              >
-                <Pencil size={16} />
-              </Button>
-              <div className="flex items-center justify-between w-full mb-2">
-                <span className="font-bold text-blue-800 text-lg">{prod.name}</span>
-                <span className="text-lg text-green-700 font-semibold">
-                  ₹{prod.price}/{prod.unit}
-                </span>
+              {/* Edit button - right side */}
+              <div className="absolute top-2 right-2">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="rounded-full border border-blue-100 hover:bg-blue-50 focus:ring-2 focus:ring-blue-500"
+                  onClick={() => onEdit(prod)}
+                  aria-label={`Edit ${prod.name}`}
+                >
+                  <Pencil size={17} />
+                </Button>
               </div>
-              <span className="text-xs text-gray-500 w-full">Unit: {prod.unit}</span>
+              <div className="flex-1 flex flex-col pr-12">
+                <div className="flex flex-row items-center justify-between w-full">
+                  <span className="font-semibold text-blue-800 text-base truncate">{prod.name}</span>
+                  <span className="text-sm text-green-700 font-bold ml-2 shrink-0">
+                    ₹{prod.price}/{prod.unit}
+                  </span>
+                </div>
+                <span className="text-[11px] text-gray-500 w-full mt-1">Unit: {prod.unit}</span>
+              </div>
             </div>
           ))}
         </div>
@@ -76,4 +78,3 @@ export function ProductCatalog({ onEdit }: ProductCatalogProps) {
     </div>
   );
 }
-
