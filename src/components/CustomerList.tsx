@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Plus, Search, Edit, Trash2, UserPlus, MoreHorizontal } from "lucide-react";
 import { Customer } from "@/constants/types";
@@ -208,8 +207,11 @@ export function CustomerList() {
             aria-label={`View details for ${c.name}`}
             style={{ cursor: "pointer" }}
           >
-            {/* Three dot menu in top-right */}
-            <div className="absolute right-2 top-2 z-10">
+            {/* Three dot menu centered along right side */}
+            <div
+              className="absolute right-2 top-1/2 -translate-y-1/2 z-10"
+              style={{ /* Center vertically along the right edge */ }}
+            >
               <DropdownMenu open={openMenuId === c.id} onOpenChange={(open) => setOpenMenuId(open ? c.id : null)}>
                 <DropdownMenuTrigger asChild>
                   <button
@@ -277,4 +279,3 @@ export function CustomerList() {
 }
 
 // NOTE: This file is now getting quite large (250+ lines). Consider refactoring it into smaller files/components after this!
-
