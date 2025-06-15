@@ -40,10 +40,10 @@ export function AppSidebar() {
   const location = useLocation();
 
   return (
-    <Sidebar className="hidden md:flex border-r bg-white min-h-screen shadow">
+    <Sidebar>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="pt-6 pb-1 pl-2 text-xs text-gray-500">
+          <SidebarGroupLabel className="pt-6 pb-1 pl-2 text-xs text-sidebar-foreground/60 font-semibold uppercase tracking-wide">
             Main Menu
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -55,11 +55,11 @@ export function AppSidebar() {
                     <SidebarMenuButton
                       asChild
                       isActive={active}
-                      className="font-medium"
+                      className="font-medium flex items-center gap-3 px-3 py-2"
                       onClick={() => navigate(item.path)}
                     >
-                      <span>
-                        <item.icon className="inline-block mr-2" size={20} />
+                      <span className="flex items-center">
+                        <item.icon className="mr-2 text-blue-900" size={20} />
                         <span>{item.title}</span>
                       </span>
                     </SidebarMenuButton>
@@ -73,3 +73,4 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
+
