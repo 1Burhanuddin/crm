@@ -1,4 +1,3 @@
-
 import { AppLayout } from "@/components/AppLayout";
 import { useCollections } from "@/hooks/useCollections";
 import { useSession } from "@/hooks/useSession";
@@ -23,6 +22,12 @@ interface CustomerWithPending {
   phone?: string;
 }
 
+// NEW: Type for delivered orders for a customer
+type DeliveredOrder = {
+  id: string;
+  amount: number;
+};
+
 export default function Collections() {
   const { user } = useSession();
   const {
@@ -38,9 +43,19 @@ export default function Collections() {
   } = useCollections();
   const [customers, setCustomers] = useState<{ id: string; name: string; phone?: string }[]>([]);
   const [pendingCustomers, setPendingCustomers] = useState<CustomerWithPending[]>([]);
-  // Form state
+  // Map: customerId => list of delivered orders (with outstanding udhaar)
+  const [customerDeliveredOrders, setCustomerDeliveredOrders] = useState<
+    Record<string, DeliveredOrder[]>
+  >({});
+
+  // Form state, now includes order_id
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ customer_id: "", amount: "", remarks: "" });
+  const [form, setForm] = useState({
+    customer_id: "",
+    amount: "",
+    remarks: "",
+    order_id: "",
+  });
 
   // Added: SendReminderModal modal state
   const [reminderModalOpen, setReminderModalOpen] = useState(false);
@@ -75,6 +90,7 @@ export default function Collections() {
   }, [user]);
 
   // Calculate pending payments per customer (only for UDHAAR on delivered orders)
+  // Also map: customerId -> delivered orders (with outstanding udhaar), for use in Collect button
   const calculatePending = useCallback(async () => {
     if (!user) return;
 
@@ -87,6 +103,7 @@ export default function Collections() {
 
     if (!orders) {
       setPendingCustomers([]);
+      setCustomerDeliveredOrders({});
       return;
     }
 
@@ -124,12 +141,17 @@ export default function Collections() {
       }
     });
 
-    // Aggregate udhaar per customer, only for delivered orders
+    // Aggregate udhaar per customer, and collect their delivered orders that are pending
     const pendingMap = new Map<string, number>();
-    Object.values(deliveredOrderUdhaar).forEach(({ customer_id, amount }) => {
+    const deliveredOrdersMap: Record<string, DeliveredOrder[]> = {};
+
+    Object.entries(deliveredOrderUdhaar).forEach(([orderId, { customer_id, amount }]) => {
       if (amount > 0) {
         const prev = pendingMap.get(customer_id) || 0;
         pendingMap.set(customer_id, prev + amount);
+
+        if (!deliveredOrdersMap[customer_id]) deliveredOrdersMap[customer_id] = [];
+        deliveredOrdersMap[customer_id].push({ id: orderId, amount: Math.round(amount) });
       }
     });
 
@@ -147,6 +169,7 @@ export default function Collections() {
       }
     }
     setPendingCustomers(result.sort((a, b) => b.pending - a.pending));
+    setCustomerDeliveredOrders(deliveredOrdersMap);
   }, [user, collections, customers]);
 
   useEffect(() => {
@@ -155,11 +178,17 @@ export default function Collections() {
   }, [collections, customers]);
 
   // Helper for opening Add Collection (can preselect customer)
+  // CHANGED: now optionally takes the order_id if there is exactly one matching delivered order
   const handleOpenForm = (customerId?: string, amount?: number) => {
+    let order_id = "";
+    if (customerId && customerDeliveredOrders[customerId] && customerDeliveredOrders[customerId].length === 1) {
+      order_id = customerDeliveredOrders[customerId][0].id;
+    }
     setForm({
       customer_id: customerId || "",
       amount: amount ? String(amount) : "",
       remarks: "",
+      order_id,
     });
     setShowForm(true);
   };
@@ -171,7 +200,22 @@ export default function Collections() {
   };
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: value });
+    // If customer_id changes and there is exactly one delivered order for that customer, auto-fill order_id
+    if (name === "customer_id") {
+      const orders = customerDeliveredOrders[value];
+      setForm(f => ({
+        ...f,
+        customer_id: value,
+        order_id: orders && orders.length === 1 ? orders[0].id : "",
+      }));
+    }
+  };
+
+  // NEW: For select order id if there are multiple delivered orders pending (edge case UI)
+  const handleOrderIdChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setForm({ ...form, order_id: e.target.value });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -188,10 +232,11 @@ export default function Collections() {
       customer_id: form.customer_id,
       amount: Number(form.amount),
       remarks: form.remarks,
+      order_id: form.order_id || null,
     });
     toast({ title: "Collection added!" });
     setShowForm(false);
-    setForm({ customer_id: "", amount: "", remarks: "" });
+    setForm({ customer_id: "", amount: "", remarks: "", order_id: "" });
   };
 
   // Edit handler
@@ -315,6 +360,27 @@ export default function Collections() {
                     <option value={c.id} key={c.id}>{c.name}</option>
                   ))}
                 </select>
+                {/* If there are multiple delivered orders for this customer, show order selection */}
+                {form.customer_id &&
+                  customerDeliveredOrders[form.customer_id] &&
+                  customerDeliveredOrders[form.customer_id].length > 1 && (
+                    <div className="mb-3">
+                      <label className="block mb-2 text-sm font-medium">Order (optional)</label>
+                      <select
+                        name="order_id"
+                        value={form.order_id}
+                        onChange={handleOrderIdChange}
+                        className="w-full border px-2 py-1 rounded"
+                      >
+                        <option value="">Do not link to order</option>
+                        {customerDeliveredOrders[form.customer_id]?.map((order) => (
+                          <option value={order.id} key={order.id}>
+                            Order #{order.id.slice(-5)} : Pending ₹{order.amount}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 <label className="block mb-2 text-sm font-medium">Amount</label>
                 <input
                   name="amount"
@@ -470,4 +536,3 @@ export default function Collections() {
     </AppLayout>
   );
 }
-
