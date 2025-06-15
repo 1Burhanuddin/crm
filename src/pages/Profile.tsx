@@ -1,4 +1,3 @@
-
 import { useSession } from "@/hooks/useSession";
 import { useState, useEffect, ChangeEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -144,7 +143,7 @@ export default function ProfilePage() {
           <div className="text-blue-800 text-lg font-semibold">Loading...</div>
         </div>
       ) : (
-        <div className="max-w-md mx-auto p-4 relative">
+        <div className="max-w-md mx-auto p-4 pb-24 relative">
           {/* Logout button: only in Profile, top-right */}
           {status === "signed_in" && user && (
             <Button
