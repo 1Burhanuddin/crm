@@ -98,6 +98,23 @@ const fetchOrders = async (user_id: string): Promise<Order[]> => {
   });
 };
 
+// Helper: fetch collections for each order of current user
+const fetchCollectionsPerOrder = async (user_id: string) => {
+  const { data, error } = await supabase
+    .from("collections")
+    .select("order_id, amount")
+    .eq("user_id", user_id);
+  if (error) throw error;
+  // group collections by order_id
+  const orderMap: Record<string, number> = {};
+  for (const coll of data || []) {
+    if (coll.order_id) {
+      orderMap[coll.order_id] = (orderMap[coll.order_id] || 0) + Number(coll.amount || 0);
+    }
+  }
+  return orderMap;
+};
+
 export function OrderList() {
   const { user } = useSession();
   const queryClient = useQueryClient();
@@ -139,6 +156,17 @@ export function OrderList() {
   } = useQuery({
     queryKey: ["orders", user?.id],
     queryFn: () => fetchOrders(user?.id ?? ""),
+    enabled: !!user?.id,
+  });
+
+  // Fetch collections per order (as a map: orderId -> sum collected)
+  const {
+    data: collectionsPerOrder = {},
+    isLoading: loadingCollectionsPerOrder,
+    error: collectionsPerOrderError,
+  } = useQuery({
+    queryKey: ["order-collections", user?.id],
+    queryFn: () => user ? fetchCollectionsPerOrder(user.id) : {},
     enabled: !!user?.id,
   });
 
@@ -327,12 +355,15 @@ export function OrderList() {
   // Always pass {} not null/undefined
   const safeInitialData = billInitialData && typeof billInitialData === "object" ? billInitialData : {};
 
-  // Helper for calculating order total & pending/credit
+  // Helper for calculating order total & pending/credit (UPDATED)
   function orderTotals(order: Order) {
     const product = products.find(p => p.id === order.productId);
     const total = product ? product.price * order.qty : 0;
-    const pending = Math.max(0, total - (order.advanceAmount || 0));
-    return { total, pending };
+    const advance = order.advanceAmount || 0;
+    // Subtract collections recorded for this order (if order.id in collectionsPerOrder)
+    const collected = collectionsPerOrder[order.id] || 0;
+    const pending = Math.max(0, total - advance - collected);
+    return { total, pending, collected };
   }
 
   // Loading/error UI
@@ -365,7 +396,7 @@ export function OrderList() {
       </div>
       <ul>
         {orders.map((o) => {
-          const { total, pending } = orderTotals(o);
+          const { total, pending, collected } = orderTotals(o);
           // Highlight cards with missing refs
           const missingCustomer = !customers.find((c) => c.id === o.customerId);
           const missingProduct = !products.find((p) => p.id === o.productId);
