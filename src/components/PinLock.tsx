@@ -16,6 +16,16 @@ export function PinLock({ onUnlock }: { onUnlock: (pin: string) => void }) {
     }
   }
 
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const value = e.target.value.replace(/\D/g, "").slice(0, 4);
+    setPin(value);
+    setError(null);
+    if (value.length === 4) {
+      onUnlock(value);
+      setPin("");
+    }
+  }
+
   return (
     <div className="h-screen flex flex-col items-center justify-center bg-blue-950">
       <div className="w-full max-w-[350px] bg-white shadow-lg rounded-xl p-8">
@@ -27,7 +37,7 @@ export function PinLock({ onUnlock }: { onUnlock: (pin: string) => void }) {
             maxLength={4}
             className="w-28 text-center text-2xl border border-blue-200 rounded-lg p-2 mb-4 tracking-widest focus:outline-blue-800"
             value={pin}
-            onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+            onChange={handleChange}
             placeholder="****"
             autoFocus
           />
@@ -44,3 +54,4 @@ export function PinLock({ onUnlock }: { onUnlock: (pin: string) => void }) {
     </div>
   );
 }
+
