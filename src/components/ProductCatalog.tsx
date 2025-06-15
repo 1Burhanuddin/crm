@@ -52,9 +52,20 @@ export function ProductCatalog({ onEdit, onDelete, userId }: ProductCatalogProps
           {products.map((prod) => (
             <div
               key={prod.id}
-              className="bg-white rounded-xl shadow border flex flex-row items-center justify-between relative px-3 py-2 min-h-[60px] active:scale-[0.98] hover:shadow-lg transition-all"
+              className="bg-white rounded-xl shadow border flex flex-row items-center justify-between gap-4 px-3 py-2 min-h-[60px] hover:shadow-lg transition-all"
             >
-              <div className="absolute top-2 right-2 flex gap-2">
+              <div className="flex-1 min-w-0 flex flex-col">
+                <div className="flex flex-row items-center justify-between w-full">
+                  <span className="font-semibold text-blue-800 text-base truncate">{prod.name}</span>
+                </div>
+                <span className="text-[11px] text-gray-500 w-full mt-1">Unit: {prod.unit}</span>
+              </div>
+              {/* Price, always on the right of info and before buttons */}
+              <span className="text-sm text-green-700 font-bold ml-2 shrink-0">
+                ₹{prod.price}/{prod.unit}
+              </span>
+              {/* Actions */}
+              <div className="flex flex-row gap-1 ml-2 shrink-0">
                 <Button
                   size="icon"
                   variant="ghost"
@@ -76,15 +87,6 @@ export function ProductCatalog({ onEdit, onDelete, userId }: ProductCatalogProps
                   </Button>
                 )}
               </div>
-              <div className="flex-1 flex flex-col pr-12">
-                <div className="flex flex-row items-center justify-between w-full">
-                  <span className="font-semibold text-blue-800 text-base truncate">{prod.name}</span>
-                  <span className="text-sm text-green-700 font-bold ml-2 shrink-0">
-                    ₹{prod.price}/{prod.unit}
-                  </span>
-                </div>
-                <span className="text-[11px] text-gray-500 w-full mt-1">Unit: {prod.unit}</span>
-              </div>
             </div>
           ))}
         </div>
@@ -94,4 +96,3 @@ export function ProductCatalog({ onEdit, onDelete, userId }: ProductCatalogProps
     </div>
   );
 }
-
