@@ -8,9 +8,11 @@ import { useSession } from "@/hooks/useSession";
 interface AppLayoutProps {
   children: ReactNode;
   title?: string;
+  shopName?: string | null;
+  loadingTitle?: boolean;
 }
 
-export function AppLayout({ children, title }: AppLayoutProps) {
+export function AppLayout({ children, title, shopName, loadingTitle }: AppLayoutProps) {
   const [isOffline, setIsOffline] = useState<boolean>(!navigator.onLine);
   const { status } = useSession();
 
@@ -21,7 +23,14 @@ export function AppLayout({ children, title }: AppLayoutProps) {
   return (
     <div className="flex flex-col min-h-screen bg-[hsl(var(--background))]">
       <header className="bg-blue-900 text-white px-4 py-3 flex items-center shadow-md z-30 relative">
-        <span className="font-bold text-lg tracking-wide flex-1">{title || "KhataBook for Glass Shop"}</span>
+        <span className="font-bold text-lg tracking-wide flex-1">
+          {loadingTitle
+            ? <span className="animate-pulse text-gray-200">Loading...</span>
+            : shopName
+              ? shopName
+              : (title || "Glass Shop for KhataBook")
+          }
+        </span>
         {isOffline && (
           <span className="ml-2 px-2 py-1 rounded bg-yellow-500 text-xs font-medium animate-pulse shadow">Offline</span>
         )}

@@ -134,7 +134,11 @@ export default function ProfilePage() {
   }
 
   return (
-    <AppLayout title="Profile">
+    <AppLayout
+      shopName={profile?.shop_name || undefined}
+      loadingTitle={loading}
+      title="Profile"
+    >
       <div className="mb-2">
         <BackButton toMainScreen />
       </div>

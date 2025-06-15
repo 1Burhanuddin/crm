@@ -1,8 +1,10 @@
+
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { useState, useEffect } from "react";
 import { useSession } from "@/hooks/useSession";
 import { useReportsData } from "@/hooks/useReportsData";
+import { supabase } from "@/integrations/supabase/client";
 
 const KPICard = ({
   title,
@@ -70,10 +72,31 @@ const Index = () => {
   const [checking, setChecking] = useState(true); // for auth state loading
   const navigate = useNavigate();
 
-  // Added: fetch live KPI data
+  // KPI data
   const { data: reportData, isLoading: reportLoading, error: reportError } = useReportsData();
 
-  // On initial mount, check session
+  // Shop name loading
+  const [shopName, setShopName] = useState<string | null>(null);
+  const [loadingShopName, setLoadingShopName] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      setLoadingShopName(true);
+      supabase
+        .from("profiles")
+        .select("shop_name")
+        .eq("id", user.id)
+        .maybeSingle()
+        .then(({ data, error }) => {
+          setShopName(data?.shop_name || null);
+          setLoadingShopName(false);
+        });
+    } else {
+      setShopName(null);
+      setLoadingShopName(false);
+    }
+  }, [user]);
+
   useEffect(() => {
     if (status === "loading") {
       setChecking(true);
@@ -82,7 +105,6 @@ const Index = () => {
     setChecking(false);
   }, [status]);
 
-  // Redirect to /auth if signed out
   useEffect(() => {
     if (!checking && (status === "signed_out" || !user)) {
       navigate("/auth");
@@ -90,13 +112,16 @@ const Index = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checking, status, user]);
 
-  // If loading session, show loading spinner
   if (checking || status === "loading") {
     return <div className="h-screen flex items-center justify-center text-blue-900">Loading...</div>;
   }
 
   return (
-    <AppLayout title="Glass Shop - Khata">
+    <AppLayout
+      shopName={shopName || undefined}
+      loadingTitle={loadingShopName}
+      title="Glass Shop - Khata"
+    >
       <div className="p-3 pb-28 sm:pb-24 w-full max-w-md mx-auto">
         <div className="font-bold text-lg mb-2 text-blue-800 text-center">
           Welcome! Track your orders, sales and credits.
