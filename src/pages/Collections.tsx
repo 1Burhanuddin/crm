@@ -1,3 +1,4 @@
+
 import { AppLayout } from "@/components/AppLayout";
 import { useCollections } from "@/hooks/useCollections";
 import { useSession } from "@/hooks/useSession";
@@ -13,6 +14,7 @@ import {
   DropdownMenuItem
 } from "@/components/ui/dropdown-menu";
 import { CollectionEditModal } from "@/components/CollectionEditModal";
+import { BackButton } from "@/components/BackButton";
 
 interface CustomerWithPending {
   id: string;
@@ -233,6 +235,9 @@ export default function Collections() {
   return (
     <AppLayout title="Collections">
       <div className="p-4 max-w-lg mx-auto">
+        <div className="mb-2">
+          <BackButton />
+        </div>
         <h2 className="text-xl font-semibold text-blue-900 mb-4">Collections - Pending Payments</h2>
         {/* Pending section */}
         <div>
@@ -465,3 +470,4 @@ export default function Collections() {
     </AppLayout>
   );
 }
+
