@@ -1,3 +1,4 @@
+
 import { useSession } from "@/hooks/useSession";
 import { useState, useEffect, ChangeEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +19,7 @@ export default function ProfilePage() {
     name: string | null;
     shop_name: string | null;
     profile_image_url: string | null;
+    pin_hash?: string;
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -29,17 +31,21 @@ export default function ProfilePage() {
   const [newImageFile, setNewImageFile] = useState<File | null>(null);
   const [imageUploading, setImageUploading] = useState(false);
 
+  // Store pin_hash for update payload
+  const [currentPinHash, setCurrentPinHash] = useState<string | null>(null);
+
   useEffect(() => {
     if (user) {
       setLoading(true);
       supabase
         .from("profiles")
-        .select("email, name, shop_name, profile_image_url")
+        .select("email, name, shop_name, profile_image_url, pin_hash")
         .eq("id", user.id)
         .maybeSingle()
         .then(({ data, error }) => {
           if (data) {
             setProfile(data);
+            setCurrentPinHash(data.pin_hash || null);
           }
           setLoading(false);
           if (error)
@@ -89,6 +95,29 @@ export default function ProfilePage() {
       profile_image_url = data.publicUrl;
     }
 
+    // Fetch and use existing pin_hash (required field)
+    let pin_hash = currentPinHash;
+    if (!pin_hash) {
+      // As fallback, fetch again from the DB if missing for any reason
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("pin_hash")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (data) {
+        pin_hash = data.pin_hash;
+        setCurrentPinHash(pin_hash);
+      } else {
+        setLoading(false);
+        toast({
+          title: "Failed to update profile (PIN not found)",
+          description: error?.message || "Could not fetch pin_hash.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     const { error } = await supabase
       .from("profiles")
       .update({
@@ -96,6 +125,7 @@ export default function ProfilePage() {
         name: newName,
         shop_name: newShopName,
         profile_image_url,
+        pin_hash, // include pin_hash in update payload
       })
       .eq("id", user.id);
 
@@ -116,6 +146,7 @@ export default function ProfilePage() {
               name: newName,
               shop_name: newShopName,
               profile_image_url,
+              pin_hash,
             }
           : prev
       );
