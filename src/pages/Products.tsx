@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Product } from "@/constants/types";
 import { DeleteProductDialog } from "@/components/DeleteProductDialog";
+import { useSession } from "@/hooks/useSession";
 
 export default function Products() {
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -20,10 +21,18 @@ export default function Products() {
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const queryClient = useQueryClient();
+  const { user } = useSession();
 
+  // Ensure that the mutation includes the user_id when adding a product
   const addProductMutation = useMutation({
     mutationFn: async (product: { name: string; price: number; unit: string }) => {
-      const { error } = await supabase.from("products").insert([product]);
+      if (!user) throw new Error("Not signed in");
+      const { error } = await supabase.from("products").insert([
+        {
+          ...product,
+          user_id: user.id,
+        },
+      ]);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -43,6 +52,7 @@ export default function Products() {
     }
   });
 
+  // Update product mutation is fine as RLS and queries work based on id/user_id
   const updateProductMutation = useMutation({
     mutationFn: async (product: { id: string; name: string; price: number; unit: string }) => {
       const { error } = await supabase
@@ -74,7 +84,7 @@ export default function Products() {
     }
   });
 
-  // NEW: Delete product mutation
+  // Delete product mutation is fine as RLS enforces ownership
   const deleteProductMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("products").delete().eq("id", id);
@@ -115,13 +125,11 @@ export default function Products() {
     updateProductMutation.mutate(product);
   };
 
-  // NEW: Handle delete click
   const handleDeleteProduct = (product: Product) => {
     setProductToDelete(product);
     setDeleteModalOpen(true);
   };
 
-  // NEW: Confirm delete action
   const handleConfirmDelete = (id: string) => {
     deleteProductMutation.mutate(id);
   };
@@ -160,7 +168,6 @@ export default function Products() {
               : null
           }
         />
-        {/* Delete Product Dialog */}
         <DeleteProductDialog
           open={deleteModalOpen}
           onOpenChange={setDeleteModalOpen}
