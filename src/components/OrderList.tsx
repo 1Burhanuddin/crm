@@ -10,6 +10,7 @@ import { EditOrderModal } from "./EditOrderModal";
 import { BillCreateModal } from "./BillCreateModal";
 import React from "react";
 import { OrderActionsMenu } from "./OrderActionsMenu";
+import { Button } from "@/components/ui/button";
 
 // Helper: fetch customers for current user
 const fetchCustomers = async (user_id: string): Promise<Customer[]> => {
@@ -394,12 +395,14 @@ export function OrderList() {
     <div className="p-4 pb-24">
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-xl font-semibold text-blue-900">Orders</h2>
-        <button
+        <Button
           onClick={() => setShowAdd(true)}
-          className="bg-blue-700 text-white px-3 py-1 rounded flex items-center gap-1 text-sm shadow hover:bg-blue-800"
+          className="bg-primary text-white px-6 py-3 rounded-lg flex items-center gap-2 text-base font-semibold shadow-lg hover:bg-primary/90 min-w-[135px] justify-center transition"
+          size="lg"
         >
-          <Plus size={18} /> Add
-        </button>
+          <Plus size={22} strokeWidth={2.2} />
+          Add
+        </Button>
       </div>
       <ul>
         {orders.map((o) => {
