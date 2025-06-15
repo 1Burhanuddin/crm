@@ -464,7 +464,7 @@ export function OrderList() {
                 </div>
               </div>
               {/* Row: ID for debugging */}
-              <div className="text-xs font-mono my-1 break-all text-gray-600">{o.id}</div>
+              {/* <div className="text-xs font-mono my-1 break-all text-gray-600">{o.id}</div> */}
               {/* Info ROW: Qty, status, assignment, job date */}
               <div className="flex flex-wrap items-center gap-2 mt-1">
                 <span className="text-xs bg-gray-100 px-2 py-1 rounded">
