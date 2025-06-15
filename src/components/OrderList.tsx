@@ -57,7 +57,7 @@ const fetchOrders = async (user_id: string): Promise<Order[]> => {
     assignedTo: o.assigned_to || "",
     siteAddress: o.site_address || "",
     photoUrl: o.photo_url || "",
-    advanceAmount: Number(o.advance_amount) || 0,
+    advanceAmount: typeof o.advance_amount === "number" ? o.advance_amount : 0, // ADDED HANDLING HERE!
   }));
 };
 

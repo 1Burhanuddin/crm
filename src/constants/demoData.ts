@@ -1,4 +1,5 @@
 
+
 import { Customer, Product, Order, Transaction } from "./types";
 
 export const DEMO_CUSTOMERS: Customer[] = [
@@ -25,6 +26,7 @@ export const DEMO_ORDERS: Order[] = [
     assignedTo: "Rakesh",
     siteAddress: "Raj Nagar Main Road",
     photoUrl: "",
+    advanceAmount: 0,
   },
   {
     id: "o2",
@@ -36,6 +38,7 @@ export const DEMO_ORDERS: Order[] = [
     assignedTo: "Suresh",
     siteAddress: "Behind SBI, Ring Road",
     photoUrl: "",
+    advanceAmount: 0,
   },
 ];
 
