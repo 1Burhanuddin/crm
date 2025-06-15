@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { SendReminderModal } from "@/components/SendReminderModal";
-import { MessageSquare, MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import { MessageSquare, MoreHorizontal, Edit, Trash2, CalendarIcon } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -15,6 +15,14 @@ import {
 import { CollectionEditModal } from "@/components/CollectionEditModal";
 import { BackButton } from "@/components/BackButton";
 import { Button } from "@/components/ui/button";
+import { format, parseISO, isToday, isAfter, isBefore } from "date-fns";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 interface CustomerWithPending {
   id: string;
@@ -56,6 +64,7 @@ export default function Collections() {
     amount: "",
     remarks: "",
     order_id: "",
+    collection_date: new Date(), // default to today
   });
 
   // Added: SendReminderModal modal state
@@ -190,6 +199,7 @@ export default function Collections() {
       amount: amount ? String(amount) : "",
       remarks: "",
       order_id,
+      collection_date: new Date(),
     });
     setShowForm(true);
   };
@@ -229,15 +239,27 @@ export default function Collections() {
       });
       return;
     }
+    // Save date as ISO string in yyyy-MM-dd format
+    const collectionDate =
+      form.collection_date instanceof Date
+        ? format(form.collection_date, "yyyy-MM-dd")
+        : form.collection_date || format(new Date(), "yyyy-MM-dd");
     await addCollection({
       customer_id: form.customer_id,
       amount: Number(form.amount),
       remarks: form.remarks,
       order_id: form.order_id || null,
+      collection_date: collectionDate,
     });
     toast({ title: "Collection added!" });
     setShowForm(false);
-    setForm({ customer_id: "", amount: "", remarks: "", order_id: "" });
+    setForm({
+      customer_id: "",
+      amount: "",
+      remarks: "",
+      order_id: "",
+      collection_date: new Date(),
+    });
   };
 
   // Edit handler
@@ -277,6 +299,13 @@ export default function Collections() {
     setEditModalOpen(false);
     setEditingCollection(null);
   };
+
+  // For tracking today's due collections
+  const dueToday = collections.filter(
+    (c) =>
+      c.collection_date &&
+      isToday(parseISO(c.collection_date))
+  );
 
   return (
     <AppLayout title="Collections">
@@ -381,6 +410,7 @@ export default function Collections() {
                       </select>
                     </div>
                   )}
+
                 <label className="block mb-2 text-sm font-medium">Amount</label>
                 <input
                   name="amount"
@@ -392,6 +422,44 @@ export default function Collections() {
                   className="w-full border px-2 py-1 rounded mb-3"
                   required
                 />
+
+                {/* Date Picker for collection_date (optional, defaults to today) */}
+                <label className="block mb-2 text-sm font-medium">Collection Date</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className={cn(
+                        "w-full border px-2 py-2 rounded mb-3 flex items-center justify-between",
+                        !form.collection_date && "text-muted-foreground"
+                      )}
+                    >
+                      <span>
+                        {form.collection_date
+                          ? format(form.collection_date as Date, "PPP")
+                          : "Pick a date"}
+                      </span>
+                      <CalendarIcon className="ml-2 opacity-60" size={18} />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={typeof form.collection_date === "string"
+                        ? parseISO(form.collection_date)
+                        : form.collection_date}
+                      onSelect={(date) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          collection_date: date ?? new Date()
+                        }))
+                      }
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+
                 <label className="block mb-2 text-sm font-medium">Remarks</label>
                 <input
                   name="remarks"
@@ -420,6 +488,15 @@ export default function Collections() {
             </div>
           </div>
         )}
+        {/* Notification/Reminder: show yellow alert if a collection is due today */}
+        {dueToday.length > 0 && (
+          <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-900 p-4 mb-6 rounded shadow flex items-center gap-2">
+            <CalendarIcon className="text-yellow-600 mr-2" size={20} />
+            <span>
+              Reminder: You have <b>{dueToday.length}</b> collection{dueToday.length > 1 ? "s" : ""} due today!
+            </span>
+          </div>
+        )}
 
         {/* Recent Collections Section */}
         <div className="mt-10">
@@ -441,7 +518,13 @@ export default function Collections() {
                         {customers.find((cu) => cu.id === c.customer_id)?.name || "(Unknown)"}
                       </div>
                       <div className="text-sm text-gray-700">
-                        Collected: ₹{c.amount} <span className="ml-2 text-xs text-gray-400">{new Date(c.collected_at).toLocaleString()}</span>
+                        Collected: ₹{c.amount}
+                        <span className="ml-2 text-xs text-gray-400">{new Date(c.collected_at).toLocaleString()}</span>
+                        {c.collection_date && (
+                          <span className="ml-2 px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-xs">
+                            Date: {format(parseISO(c.collection_date), "PPP")}
+                          </span>
+                        )}
                       </div>
                       {c.remarks && (
                         <div className="text-xs text-gray-500 mt-1">Remarks: {c.remarks}</div>

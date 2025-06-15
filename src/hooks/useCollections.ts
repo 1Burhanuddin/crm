@@ -10,6 +10,7 @@ export interface Collection {
   customer_id: string;
   amount: number;
   collected_at: string;
+  collection_date?: string | null;
   remarks?: string;
   order_id?: string | null;
   transaction_id?: string | null;
@@ -43,6 +44,7 @@ export function useCollections() {
       remarks?: string;
       order_id?: string | null;
       transaction_id?: string | null;
+      collection_date?: string | null;
     }) => {
       if (!user) throw new Error("User not logged in");
 
@@ -57,6 +59,7 @@ export function useCollections() {
             remarks: payload.remarks || "",
             order_id: payload.order_id || null,
             transaction_id: null, // set after transaction insert
+            collection_date: payload.collection_date || null,
           }
         ])
         .select("id")
@@ -98,16 +101,18 @@ export function useCollections() {
     },
   });
 
-  // Edit (update) a collection
+  // Edit (update) a collection (allow updating collection_date)
   const editMutation = useMutation({
     mutationFn: async ({
       id,
       amount,
       remarks,
+      collection_date,
     }: {
       id: string;
       amount: number;
       remarks?: string;
+      collection_date?: string | null;
     }) => {
       if (!user) throw new Error("User not logged in");
       const { error } = await supabase
@@ -115,6 +120,7 @@ export function useCollections() {
         .update({
           amount,
           remarks: remarks || "",
+          ...(collection_date !== undefined ? { collection_date } : {}),
         })
         .eq("user_id", user.id)
         .eq("id", id);
