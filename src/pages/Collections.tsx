@@ -1,24 +1,32 @@
+
 import { AppLayout } from "@/components/AppLayout";
 import { useCollections } from "@/hooks/useCollections";
 import { useSession } from "@/hooks/useSession";
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { SendReminderModal } from "@/components/SendReminderModal";
+import { MessageSquare } from "lucide-react";
 
 interface CustomerWithPending {
   id: string;
   name: string;
   pending: number;
+  phone?: string;
 }
 
 export default function Collections() {
   const { user } = useSession();
   const { data: collections = [], isLoading, error, addCollection, isAdding } = useCollections();
-  const [customers, setCustomers] = useState<{ id: string; name: string }[]>([]);
+  const [customers, setCustomers] = useState<{ id: string; name: string; phone?: string }[]>([]);
   const [pendingCustomers, setPendingCustomers] = useState<CustomerWithPending[]>([]);
   // Form state
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ customer_id: "", amount: "", remarks: "" });
+
+  // Added: SendReminderModal modal state
+  const [reminderModalOpen, setReminderModalOpen] = useState(false);
+  const [reminderCustomer, setReminderCustomer] = useState<CustomerWithPending | null>(null);
 
   // Load all customers on mount (for dropdowns, pending calc)
   useEffect(() => {
@@ -26,7 +34,7 @@ export default function Collections() {
     async function loadCustomers() {
       const { data } = await supabase
         .from("customers")
-        .select("id,name")
+        .select("id,name,phone")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
       setCustomers(data ?? []);
@@ -94,8 +102,13 @@ export default function Collections() {
     const result: CustomerWithPending[] = [];
     for (const [id, pending] of pendingMap.entries()) {
       if (pending > 0 && customers.some((c) => c.id === id)) {
-        const name = customers.find((c) => c.id === id)?.name || "(Unknown)";
-        result.push({ id, name, pending: Math.round(pending) });
+        const cust = customers.find((c) => c.id === id);
+        result.push({
+          id,
+          name: cust?.name || "(Unknown)",
+          pending: Math.round(pending),
+          phone: cust?.phone || "",
+        });
       }
     }
     setPendingCustomers(result.sort((a, b) => b.pending - a.pending));
@@ -114,6 +127,12 @@ export default function Collections() {
       remarks: "",
     });
     setShowForm(true);
+  };
+
+  // WhatsApp Reminder
+  const handleOpenReminderModal = (customer: CustomerWithPending) => {
+    setReminderCustomer(customer);
+    setReminderModalOpen(true);
   };
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -157,21 +176,39 @@ export default function Collections() {
                   className="flex justify-between items-center bg-white shadow rounded-lg mb-2 px-3 py-2 border"
                 >
                   <div>
-                    <span className="font-semibold text-blue-900">{c.name}</span><br/>
+                    <span className="font-semibold text-blue-900">{c.name}</span>
+                    <br />
                     <span className="text-red-700 text-sm">Pending: ₹{c.pending}</span>
+                    {c.phone ? (
+                      <div className="mt-1 text-xs text-gray-500">Phone: {c.phone}</div>
+                    ) : null}
                   </div>
-                  <button
-                    className="bg-green-700 text-white px-3 py-1.5 rounded hover:bg-green-800 transition disabled:opacity-60"
-                    onClick={() => handleOpenForm(c.id, c.pending)}
-                    disabled={isAdding}
-                  >
-                    Collect
-                  </button>
+                  <div className="flex flex-col items-end gap-2">
+                    <button
+                      className="bg-green-700 text-white px-3 py-1.5 rounded hover:bg-green-800 transition disabled:opacity-60"
+                      onClick={() => handleOpenForm(c.id, c.pending)}
+                      disabled={isAdding}
+                    >
+                      Collect
+                    </button>
+                    <button
+                      className="bg-blue-700 text-white px-3 py-1 flex items-center gap-1 rounded hover:bg-blue-800 transition text-xs"
+                      onClick={() => handleOpenReminderModal(c)}
+                    >
+                      <MessageSquare size={16} /> Send Reminder
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
           )}
         </div>
+        {/* Reminder Modal */}
+        <SendReminderModal
+          open={reminderModalOpen}
+          onOpenChange={(open) => setReminderModalOpen(open)}
+          customer={reminderCustomer}
+        />
         {/* Manual Add Collection as fallback */}
         <div className="mt-6 mb-2">
           <button
