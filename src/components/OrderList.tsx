@@ -1,11 +1,12 @@
 
 import { DEMO_ORDERS, DEMO_CUSTOMERS, DEMO_PRODUCTS } from "@/constants/demoData";
 import { Order } from "@/constants/types";
-import { Plus, Edit } from "lucide-react";
+import { Plus, Edit, Receipt } from "lucide-react";
 import { useState } from "react";
 import { toast } from "@/hooks/use-toast";
 import { AddOrderModal } from "./AddOrderModal";
 import { EditOrderModal } from "./EditOrderModal";
+import { BillCreateModal } from "./BillCreateModal";
 
 export function OrderList() {
   const [orders, setOrders] = useState<Order[]>(DEMO_ORDERS);
@@ -13,25 +14,34 @@ export function OrderList() {
   const [showEdit, setShowEdit] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
 
+  // Bill generation state
+  const [showBillModal, setShowBillModal] = useState(false);
+  const [billInitialData, setBillInitialData] = useState<any>(null);
+
   function customerName(id: string) {
     const c = DEMO_CUSTOMERS.find((c) => c.id === id);
     return c ? c.name : id;
   }
-  
+
+  function customerPhone(id: string) {
+    const c = DEMO_CUSTOMERS.find((c) => c.id === id);
+    return c ? c.phone : "";
+  }
+
   function productName(id: string) {
     // First check if it's a standard product from DEMO_PRODUCTS
     const product = DEMO_PRODUCTS.find(p => p.id === id);
     if (product) {
       return product.name;
     }
-    
+
     // Handle legacy custom product ID format from the enhanced selection
     if (id.includes('-')) {
       const parts = id.split('-');
       const category = parts[0];
       const type = parts[1];
       const specs = parts[2];
-      
+
       if (category === 'glass') {
         if (type === 'mirror') {
           return `Mirror ${specs}`;
@@ -42,9 +52,18 @@ export function OrderList() {
         return `Aluminum Frame (${specs})`;
       }
     }
-    
+
     // Fallback
     return id;
+  }
+
+  function productUnitAndPrice(id: string) {
+    const product = DEMO_PRODUCTS.find(p => p.id === id);
+    if (product) {
+      return { unit: product.unit, price: product.price };
+    }
+    // Fallback for custom products (assume unit as "pcs" and price 0)
+    return { unit: "pcs", price: 0 };
   }
 
   function handleAddOrder(orderData: Omit<Order, 'id'>) {
@@ -52,7 +71,7 @@ export function OrderList() {
       ...orderData,
       id: "o" + (orders.length + 1)
     };
-    
+
     setOrders(prev => [newOrder, ...prev]);
     toast({
       title: "Order Added",
@@ -61,7 +80,7 @@ export function OrderList() {
   }
 
   function handleEditOrder(updatedOrder: Order) {
-    setOrders(prev => prev.map(order => 
+    setOrders(prev => prev.map(order =>
       order.id === updatedOrder.id ? updatedOrder : order
     ));
     toast({
@@ -73,6 +92,24 @@ export function OrderList() {
   function openEditModal(order: Order) {
     setEditingOrder(order);
     setShowEdit(true);
+  }
+
+  // === BILL GENERATION ===
+  function openBillModalFromOrder(order: Order) {
+    // Get customer and product info to fill the modal
+    const prodInfo = productUnitAndPrice(order.productId);
+    setBillInitialData({
+      customerName: customerName(order.customerId),
+      customerPhone: customerPhone(order.customerId),
+      items: [
+        {
+          name: productName(order.productId),
+          qty: order.qty,
+          price: prodInfo.price,
+        }
+      ]
+    });
+    setShowBillModal(true);
   }
 
   return (
@@ -94,13 +131,24 @@ export function OrderList() {
           >
             <div className="flex items-center justify-between mb-2">
               <div className="font-bold text-blue-900">{customerName(o.customerId)}</div>
-              <button
-                onClick={() => openEditModal(o)}
-                className="text-blue-600 hover:text-blue-800 p-1"
-                title="Edit order"
-              >
-                <Edit size={16} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => openEditModal(o)}
+                  className="text-blue-600 hover:text-blue-800 p-1"
+                  title="Edit order"
+                >
+                  <Edit size={16} />
+                </button>
+                {o.status === "delivered" && (
+                  <button
+                    className="text-green-700 hover:bg-green-50 border border-green-200 px-2 py-1 rounded text-xs flex items-center gap-1"
+                    onClick={() => openBillModalFromOrder(o)}
+                    title="Generate Bill"
+                  >
+                    <Receipt size={14} /> Generate Bill
+                  </button>
+                )}
+              </div>
             </div>
             <div className="flex flex-wrap items-center gap-2 mb-1">
               <span className="text-sm text-gray-700">{productName(o.productId)}</span>
@@ -140,6 +188,15 @@ export function OrderList() {
         onOpenChange={setShowEdit}
         onEdit={handleEditOrder}
         order={editingOrder}
+      />
+      <BillCreateModal
+        open={showBillModal}
+        setOpen={setShowBillModal}
+        onBillCreated={() => {
+          setShowBillModal(false);
+          toast({ title: "Bill generated!" });
+        }}
+        initialData={billInitialData}
       />
     </div>
   );
