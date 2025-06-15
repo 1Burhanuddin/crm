@@ -236,10 +236,14 @@ export function OrderList() {
     markDeliveredMutation.mutate(order);
   }
 
-  // Data helpers
+  // Data helpers: robust lookup that logs missing refs and returns "Unknown" if not found
   function customerName(id: string) {
     const c = customers.find((c) => c.id === id);
-    return c ? c.name : id;
+    if (!c) {
+      console.warn("Missing customer in OrderList:", id);
+      return "(Unknown customer)";
+    }
+    return c.name;
   }
 
   function customerPhone(id: string) {
@@ -249,7 +253,11 @@ export function OrderList() {
 
   function productName(id: string) {
     const product = products.find(p => p.id === id);
-    return product ? product.name : id;
+    if (!product) {
+      console.warn("Missing product in OrderList:", id);
+      return "(Unknown product)";
+    }
+    return product.name;
   }
 
   function productUnitAndPrice(id: string) {
@@ -257,6 +265,7 @@ export function OrderList() {
     if (product) {
       return { unit: product.unit, price: product.price };
     }
+    console.warn("Missing product in OrderList (unit/price):", id);
     return { unit: "pcs", price: 0 };
   }
 
@@ -340,17 +349,35 @@ export function OrderList() {
       <ul>
         {orders.map((o) => {
           const { total, pending } = orderTotals(o);
+          // Highlight cards with missing refs
+          const missingCustomer = !customers.find((c) => c.id === o.customerId);
+          const missingProduct = !products.find((p) => p.id === o.productId);
+          const cardError =
+            missingCustomer || missingProduct
+              ? "bg-yellow-50 border-yellow-300"
+              : "bg-white";
           return (
             <li
               key={o.id}
-              className="mb-4 bg-white rounded-lg px-4 py-3 shadow border"
+              className={`mb-4 ${cardError} rounded-lg px-4 py-3 shadow border`}
             >
               {/* Reworked flex to put actions menu consistently at the end */}
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex-1 min-w-0">
-                  <div className="font-bold text-blue-900 text-base truncate">{customerName(o.customerId)}</div>
-                  <div className="text-sm text-gray-700 truncate">{productName(o.productId)}</div>
+                  <div className="font-bold text-blue-900 text-base truncate">
+                    {customerName(o.customerId)}
+                    {missingCustomer && (
+                      <span className="ml-2 text-xs text-yellow-700">(not found)</span>
+                    )}
+                  </div>
+                  <div className="text-sm text-gray-700 truncate">
+                    {productName(o.productId)}
+                    {missingProduct && (
+                      <span className="ml-2 text-xs text-yellow-700">(not found)</span>
+                    )}
+                  </div>
                 </div>
+                {/* show pending credit if > 0 */}
                 <div className="flex gap-2 items-center ml-auto">
                   {/* show pending credit if > 0 */}
                   {pending > 0 && (
@@ -392,7 +419,9 @@ export function OrderList() {
                   {o.status === "pending" ? "Pending" : "Delivered"}
                 </span>
                 {o.assignedTo && (
-                  <span className="text-xs text-gray-700">Assigned to: {o.assignedTo}</span>
+                  <span className="text-xs text-gray-700">
+                    Assigned to: {o.assignedTo}
+                  </span>
                 )}
                 <span className="text-gray-400 text-xs">{o.jobDate}</span>
                 {/* always show total/advance if relevant */}
@@ -405,6 +434,15 @@ export function OrderList() {
                   </span>
                 )}
               </div>
+              {cardError !== "bg-white" && (
+                <div className="mt-2 text-xs text-yellow-800 italic">
+                  Warning: This order references a deleted/missing{" "}
+                  {missingCustomer && "customer"}
+                  {missingCustomer && missingProduct && " and "}
+                  {missingProduct && !missingCustomer && "product"}
+                  . You may need to edit or delete this order.
+                </div>
+              )}
             </li>
           );
         })}
