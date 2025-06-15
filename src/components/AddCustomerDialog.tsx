@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "./ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "./ui/dialog";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { toast } from "@/hooks/use-toast";
@@ -21,6 +21,10 @@ export function AddCustomerDialog({ open, onOpenChange, onAdd }: AddCustomerDial
       toast({ title: "Required", description: "Customer name is required.", variant: "destructive" });
       return;
     }
+    if (!phone.trim()) {
+      toast({ title: "Required", description: "Phone number is required.", variant: "destructive" });
+      return;
+    }
     setSubmitting(true);
     onAdd(name.trim(), phone.trim());
     setName("");
@@ -28,6 +32,8 @@ export function AddCustomerDialog({ open, onOpenChange, onAdd }: AddCustomerDial
     setSubmitting(false);
     onOpenChange(false);
   };
+
+  const isFormValid = name.trim() && phone.trim();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -44,7 +50,7 @@ export function AddCustomerDialog({ open, onOpenChange, onAdd }: AddCustomerDial
             maxLength={50}
           />
           <Input
-            placeholder="Phone (optional)"
+            placeholder="Phone number"
             value={phone}
             onChange={e => setPhone(e.target.value.replace(/[^0-9+]/g, ""))}
             maxLength={15}
@@ -56,7 +62,12 @@ export function AddCustomerDialog({ open, onOpenChange, onAdd }: AddCustomerDial
               Cancel
             </Button>
           </DialogClose>
-          <Button type="button" onClick={handleAdd} disabled={submitting || !name.trim()} className="w-full sm:w-auto">
+          <Button
+            type="button"
+            onClick={handleAdd}
+            disabled={submitting || !isFormValid}
+            className="w-full sm:w-auto"
+          >
             Add
           </Button>
         </DialogFooter>
