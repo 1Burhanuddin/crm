@@ -20,11 +20,34 @@ type Bill = {
   total: number;
 };
 
+// type for profile info
+type ProfileInfo = {
+  name: string | null;
+  shop_name: string | null;
+};
+
 export default function Bills() {
   const { user } = useSession();
   const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [profile, setProfile] = useState<ProfileInfo>({ name: null, shop_name: null });
+
+  // Fetch profile info
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user) return;
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("name,shop_name")
+        .eq("id", user.id)
+        .single();
+      if (!error && data) {
+        setProfile({ name: data.name, shop_name: data.shop_name });
+      }
+    };
+    fetchProfile();
+  }, [user]);
 
   const fetchBills = async () => {
     if (!user) return;
@@ -90,7 +113,13 @@ export default function Bills() {
                     {/* PDF Export Button */}
                     <div className="mt-2 flex justify-end">
                       <PDFDownloadLink
-                        document={<BillPdfDoc bill={bill} />}
+                        document={
+                          <BillPdfDoc
+                            bill={bill}
+                            shopName={profile.shop_name || ""}
+                            userName={profile.name || ""}
+                          />
+                        }
                         fileName={`Bill_${bill.id.slice(0, 8)}.pdf`}
                         className="inline-flex"
                       >
@@ -140,3 +169,4 @@ export default function Bills() {
     </AppLayout>
   );
 }
+
