@@ -1,45 +1,119 @@
-
 import { AppLayout } from "@/components/AppLayout";
 import { useCollections } from "@/hooks/useCollections";
 import { useSession } from "@/hooks/useSession";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
-function CustomerName({ id }: { id: string }) {
-  const [name, setName] = useState<string>("...");
-  // Fetch customer name on mount
-  useState(() => {
-    (async () => {
-      const { data } = await supabase
-        .from("customers")
-        .select("name")
-        .eq("id", id)
-        .maybeSingle();
-      setName(data?.name || "(Unknown)");
-    })();
-  });
-  return <span>{name}</span>;
+interface CustomerWithPending {
+  id: string;
+  name: string;
+  pending: number;
 }
 
 export default function Collections() {
   const { user } = useSession();
-  const { data: collections, isLoading, error, addCollection, isAdding } = useCollections();
+  const { data: collections = [], isLoading, error, addCollection, isAdding } = useCollections();
+  const [customers, setCustomers] = useState<{ id: string; name: string }[]>([]);
+  const [pendingCustomers, setPendingCustomers] = useState<CustomerWithPending[]>([]);
+  // Form state
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ customer_id: "", amount: "", remarks: "" });
-  const [customers, setCustomers] = useState<{ id: string; name: string }[]>([]);
 
-  // Load customers for dropdown when opening form
-  const handleOpenForm = async () => {
-    setShowForm(true);
-    if (customers.length === 0 && user) {
+  // Load all customers on mount (for dropdowns, pending calc)
+  useEffect(() => {
+    if (!user) return;
+    async function loadCustomers() {
       const { data } = await supabase
         .from("customers")
-        .select("id, name")
+        .select("id,name")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
       setCustomers(data ?? []);
     }
+    loadCustomers();
+  }, [user]);
+
+  // Calculate pending payments per customer (all orders minus collections)
+  const calculatePending = useCallback(async () => {
+    if (!user) return;
+
+    // Fetch all orders for the user
+    const { data: orders } = await supabase
+      .from("orders")
+      .select("id, customer_id, qty, product_id, advance_amount")
+      .eq("user_id", user.id);
+
+    if (!orders) {
+      setPendingCustomers([]);
+      return;
+    }
+
+    // Fetch all products to get unit prices
+    const { data: products } = await supabase
+      .from("products")
+      .select("id, price")
+      .eq("user_id", user.id);
+    const priceMap = new Map<string, number>(
+      (products || []).map((p: any) => [p.id, Number(p.price) || 0])
+    );
+
+    // Map of orderId -> total
+    const orderTotals: { [orderId: string]: { customer_id: string; amount: number } } = {};
+    for (const o of orders) {
+      const price = priceMap.get(o.product_id) || 0;
+      const amt = price * (Number(o.qty) || 0) - (Number(o.advance_amount) || 0);
+      if (!orderTotals[o.id]) {
+        orderTotals[o.id] = {
+          customer_id: o.customer_id,
+          amount: 0,
+        };
+      }
+      orderTotals[o.id].amount += amt;
+    }
+
+    // Aggregate per customer
+    const pendingMap = new Map<string, number>();
+    Object.values(orderTotals).forEach(({ customer_id, amount }) => {
+      const prev = pendingMap.get(customer_id) || 0;
+      pendingMap.set(customer_id, prev + amount);
+    });
+
+    // Subtract all collections for each customer
+    (collections || []).forEach((c) => {
+      if (pendingMap.has(c.customer_id)) {
+        const prev = pendingMap.get(c.customer_id) || 0;
+        pendingMap.set(
+          c.customer_id,
+          prev - (Number(c.amount) || 0)
+        );
+      }
+    });
+
+    // Only keep where pending > 0
+    const result: CustomerWithPending[] = [];
+    for (const [id, pending] of pendingMap.entries()) {
+      if (pending > 0 && customers.some((c) => c.id === id)) {
+        const name = customers.find((c) => c.id === id)?.name || "(Unknown)";
+        result.push({ id, name, pending: Math.round(pending) });
+      }
+    }
+    setPendingCustomers(result.sort((a, b) => b.pending - a.pending));
+  }, [user, collections, customers]);
+
+  useEffect(() => {
+    if (customers.length > 0) calculatePending();
+    // eslint-disable-next-line
+  }, [collections, customers]);
+
+  // Helper for opening Add Collection (can preselect customer)
+  const handleOpenForm = (customerId?: string, amount?: number) => {
+    setForm({
+      customer_id: customerId || "",
+      amount: amount ? String(amount) : "",
+      remarks: "",
+    });
+    setShowForm(true);
   };
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -49,7 +123,11 @@ export default function Collections() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.customer_id || !form.amount) {
-      toast({ title: "Missing info", description: "Please select customer and amount.", variant: "destructive" });
+      toast({
+        title: "Missing info",
+        description: "Please select customer and amount.",
+        variant: "destructive"
+      });
       return;
     }
     await addCollection({
@@ -65,18 +143,51 @@ export default function Collections() {
   return (
     <AppLayout title="Collections">
       <div className="p-4 max-w-lg mx-auto">
-        <h2 className="text-xl font-semibold text-blue-900 mb-4">Payment Collections</h2>
-        <button
-          className="bg-green-600 text-white px-4 py-2 rounded mb-4 hover:bg-green-700 transition"
-          onClick={handleOpenForm}
-        >
-          + Add Collection
-        </button>
-        {/* Add Collection Modal (simple modal replacement approach) */}
+        <h2 className="text-xl font-semibold text-blue-900 mb-4">Collections - Pending Payments</h2>
+        {/* Pending section */}
+        <div>
+          <div className="mb-2 text-blue-800 font-bold">Pending Collections</div>
+          {pendingCustomers.length === 0 ? (
+            <div className="text-gray-500 mb-4">No pending collections! All customers are up to date 🎉</div>
+          ) : (
+            <ul>
+              {pendingCustomers.map((c) => (
+                <li
+                  key={c.id}
+                  className="flex justify-between items-center bg-white shadow rounded-lg mb-2 px-3 py-2 border"
+                >
+                  <div>
+                    <span className="font-semibold text-blue-900">{c.name}</span><br/>
+                    <span className="text-red-700 text-sm">Pending: ₹{c.pending}</span>
+                  </div>
+                  <button
+                    className="bg-green-700 text-white px-3 py-1.5 rounded hover:bg-green-800 transition disabled:opacity-60"
+                    onClick={() => handleOpenForm(c.id, c.pending)}
+                    disabled={isAdding}
+                  >
+                    Collect
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        {/* Manual Add Collection as fallback */}
+        <div className="mt-6 mb-2">
+          <button
+            className="bg-green-600 text-white px-4 py-2 rounded mb-1 hover:bg-green-700 transition"
+            onClick={() => handleOpenForm()}
+          >
+            + Add Collection (Manual)
+          </button>
+        </div>
+        {/* Add Collection Modal */}
         {showForm && (
           <div className="fixed inset-0 flex items-center justify-center z-30 bg-black/30">
             <div className="bg-white rounded-lg shadow p-6 min-w-[300px] max-w-[90vw]">
-              <h3 className="font-semibold text-lg mb-3">Add Collection</h3>
+              <h3 className="font-semibold text-lg mb-3">
+                Add Collection
+              </h3>
               <form onSubmit={handleSubmit}>
                 <label className="block mb-2 text-sm font-medium">Customer</label>
                 <select
@@ -131,36 +242,38 @@ export default function Collections() {
           </div>
         )}
 
-        {/* Show all collections */}
-        {isLoading ? (
-          <div className="text-gray-600 mt-10">Loading...</div>
-        ) : error ? (
-          <div className="text-red-600 mt-10">Error loading collections.</div>
-        ) : (
-          <ul>
-            {collections!.length === 0 && (
-              <div className="text-gray-500 text-center mt-8">No collections yet.</div>
-            )}
-            {collections!.map((c) => (
-              <li key={c.id} className="bg-white shadow rounded-lg mb-4 px-4 py-3">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <div className="font-semibold text-blue-800">
-                      <CustomerName id={c.customer_id} />
+        {/* Recent Collections Section */}
+        <div className="mt-10">
+          <h3 className="font-semibold text-lg mb-3 text-blue-900">Recent Collections</h3>
+          {isLoading ? (
+            <div className="text-gray-600">Loading...</div>
+          ) : error ? (
+            <div className="text-red-600">Error loading collections.</div>
+          ) : (
+            <ul>
+              {collections.length === 0 && (
+                <div className="text-gray-500 text-center mt-4">No collections yet.</div>
+              )}
+              {collections.map((c) => (
+                <li key={c.id} className="bg-gray-50 shadow rounded-lg mb-3 px-4 py-3">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <div className="font-semibold text-blue-800">
+                        {customers.find((cu) => cu.id === c.customer_id)?.name || "(Unknown)"}
+                      </div>
+                      <div className="text-sm text-gray-700">
+                        Collected: ₹{c.amount} <span className="ml-2 text-xs text-gray-400">{new Date(c.collected_at).toLocaleString()}</span>
+                      </div>
+                      {c.remarks && (
+                        <div className="text-xs text-gray-500 mt-1">Remarks: {c.remarks}</div>
+                      )}
                     </div>
-                    <div className="text-sm text-gray-700">
-                      Collected: ₹{c.amount} <span className="ml-2 text-xs text-gray-400">{new Date(c.collected_at).toLocaleString()}</span>
-                    </div>
-                    {c.remarks && (
-                      <div className="text-xs text-gray-500 mt-1">Remarks: {c.remarks}</div>
-                    )}
                   </div>
-                  {/* You may add edit/delete actions here if needed in future */}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
     </AppLayout>
   );
