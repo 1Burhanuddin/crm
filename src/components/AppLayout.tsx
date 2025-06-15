@@ -1,4 +1,3 @@
-
 import { ReactNode, useState } from "react";
 import { BottomNav } from "./BottomNav";
 import { OfflineBanner } from "./OfflineBanner";
@@ -6,6 +5,8 @@ import { toast } from "@/hooks/use-toast";
 import { useSession } from "@/hooks/useSession";
 import { AppSidebar } from "./AppSidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Menu } from "lucide-react";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -43,6 +44,12 @@ export function AppLayout({ children, title, shopName, loadingTitle }: AppLayout
         {isOffline && (
           <span className="ml-2 px-2 py-1 rounded bg-yellow-500 text-xs font-medium animate-pulse shadow">Offline</span>
         )}
+        {/* Sidebar toggle button for large screens only */}
+        <div className="hidden md:flex items-center ml-2">
+          <SidebarTrigger className="rounded-md border border-sidebar-border p-1.5 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition text-blue-900 bg-white">
+            <Menu size={22} />
+          </SidebarTrigger>
+        </div>
       </header>
       {/* Add top padding to make room for header for ALL content, including sidebar */}
       <div>
