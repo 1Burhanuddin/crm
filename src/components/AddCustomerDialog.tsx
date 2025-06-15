@@ -56,7 +56,7 @@ export function AddCustomerDialog({ open, onOpenChange, onAdd }: AddCustomerDial
             maxLength={15}
           />
         </div>
-        <DialogFooter>
+        <DialogFooter className="gap-2 pt-2">
           <DialogClose asChild>
             <Button type="button" variant="outline">
               Cancel
@@ -66,7 +66,7 @@ export function AddCustomerDialog({ open, onOpenChange, onAdd }: AddCustomerDial
             type="button"
             onClick={handleAdd}
             disabled={submitting || !isFormValid}
-            className="w-full sm:w-auto"
+            className="rounded-full px-8 py-2 bg-blue-700 hover:bg-blue-800 text-white shadow-lg font-semibold tracking-wide transition-all duration-150 focus:ring-2 focus:ring-blue-400 focus:outline-none disabled:opacity-60"
           >
             Add
           </Button>
