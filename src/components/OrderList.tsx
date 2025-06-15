@@ -9,6 +9,7 @@ import { AddOrderModal } from "./AddOrderModal";
 import { EditOrderModal } from "./EditOrderModal";
 import { BillCreateModal } from "./BillCreateModal";
 import React from "react";
+import { OrderActionsMenu } from "./OrderActionsMenu";
 
 // Helper: fetch customers for current user
 const fetchCustomers = async (user_id: string): Promise<Customer[]> => {
@@ -179,6 +180,33 @@ export function OrderList() {
     meta: { onError: true }
   });
 
+  // Add new handler for marking as delivered
+  const markDeliveredMutation = useMutation({
+    mutationFn: async (order: Order) => {
+      if (!user) throw new Error('User not authenticated');
+      const { error } = await supabase.from("orders")
+        .update({
+          status: "delivered",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", order.id)
+        .eq("user_id", user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders", user?.id] });
+      toast({ title: "Order marked as delivered." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error?.message || "Could not update order status.", variant: "destructive" });
+    },
+    meta: { onError: true }
+  });
+
+  function handleMarkDelivered(order: Order) {
+    markDeliveredMutation.mutate(order);
+  }
+
   // Data helpers
   function customerName(id: string) {
     const c = customers.find((c) => c.id === id);
@@ -278,28 +306,19 @@ export function OrderList() {
             key={o.id}
             className="mb-4 bg-white rounded-lg px-4 py-3 shadow border"
           >
-            {/* Title and Product/Customer */}
             <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <div className="font-bold text-blue-900 text-base">{customerName(o.customerId)}</div>
                 <div className="text-sm text-gray-700">{productName(o.productId)}</div>
               </div>
-              {/* Actions: Edit/Delete/Bill (move to own row for mobile) */}
+              {/* Actions menu: Edit/Delete/Mark as Delivered */}
               <div className="flex gap-2 mt-2 sm:mt-0">
-                <button
-                  onClick={() => openEditModal(o)}
-                  className="text-blue-600 hover:text-blue-800 bg-transparent p-1.5 rounded transition-colors"
-                  title="Edit order"
-                >
-                  <Edit size={16} />
-                </button>
-                <button
-                  onClick={() => handleDeleteOrder(o.id)}
-                  className="text-red-600 hover:text-red-800 bg-transparent p-1.5 rounded transition-colors"
-                  title="Delete order"
-                >
-                  <Trash2 size={16} />
-                </button>
+                <OrderActionsMenu
+                  onEdit={() => openEditModal(o)}
+                  onDelete={() => handleDeleteOrder(o.id)}
+                  canMarkDelivered={o.status === "pending"}
+                  onMarkDelivered={o.status === "pending" ? () => handleMarkDelivered(o) : undefined}
+                />
                 {o.status === "delivered" && (
                   <button
                     className="border border-green-200 text-green-700 hover:bg-green-50 px-3 py-1 rounded text-xs flex items-center gap-1 font-medium transition-all"
@@ -311,7 +330,7 @@ export function OrderList() {
                 )}
               </div>
             </div>
-            {/* Row: ID - Can place here for debugging */}
+            {/* Row: ID for debugging */}
             <div className="text-xs font-mono my-1 break-all text-gray-600">{o.id}</div>
             {/* Info ROW: Qty, status, assignment, job date */}
             <div className="flex flex-wrap items-center gap-2 mt-1">
