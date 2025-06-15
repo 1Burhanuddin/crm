@@ -1,14 +1,65 @@
-import { DEMO_ORDERS, DEMO_CUSTOMERS, DEMO_PRODUCTS } from "@/constants/demoData";
-import { Order } from "@/constants/types";
-import { Plus, Edit, Receipt } from "lucide-react";
+
+import { useSession } from "@/hooks/useSession";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Order, Product, Customer } from "@/constants/types";
+import { Plus, Edit, Receipt, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "@/hooks/use-toast";
 import { AddOrderModal } from "./AddOrderModal";
 import { EditOrderModal } from "./EditOrderModal";
 import { BillCreateModal } from "./BillCreateModal";
+import React from "react";
+
+// Helper: fetch customers for current user
+const fetchCustomers = async (user_id: string): Promise<Customer[]> => {
+  const { data, error } = await supabase
+    .from("customers")
+    .select("*")
+    .eq("user_id", user_id)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  // Map ids to string for consistency (since table uses uuid)
+  return (data || []).map((c) => ({ id: c.id, name: c.name, phone: c.phone }));
+};
+
+// Helper: fetch products for current user
+const fetchProducts = async (): Promise<Product[]> => {
+  const { data, error } = await supabase
+    .from("products")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data as Product[];
+};
+
+// Helper: fetch orders for current user
+const fetchOrders = async (user_id: string): Promise<Order[]> => {
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("user_id", user_id)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  // Cast for compatibility: Supabase returns snake_case, our UI expects camelCase
+  return (data || []).map((o) => ({
+    id: o.id,
+    customerId: o.customer_id,
+    productId: o.product_id,
+    qty: o.qty,
+    status: o.status,
+    jobDate: o.job_date,
+    assignedTo: o.assigned_to || "",
+    siteAddress: o.site_address || "",
+    photoUrl: o.photo_url || "",
+  }));
+};
 
 export function OrderList() {
-  const [orders, setOrders] = useState<Order[]>(DEMO_ORDERS);
+  const { user } = useSession();
+  const queryClient = useQueryClient();
+
+  // Modal state
   const [showAdd, setShowAdd] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
@@ -17,74 +68,149 @@ export function OrderList() {
   const [showBillModal, setShowBillModal] = useState(false);
   const [billInitialData, setBillInitialData] = useState<any>(null);
 
+  // Fetch all required data (orders, customers, products)
+  const {
+    data: customers = [],
+    isLoading: loadingCustomers,
+    error: customerError,
+  } = useQuery({
+    queryKey: ["customers", user?.id],
+    queryFn: () => fetchCustomers(user?.id ?? ""),
+    enabled: !!user?.id,
+  });
+
+  const {
+    data: products = [],
+    isLoading: loadingProducts,
+    error: productError,
+  } = useQuery({
+    queryKey: ["products"],
+    queryFn: fetchProducts,
+  });
+
+  const {
+    data: orders = [],
+    isLoading: loadingOrders,
+    error: orderError,
+  } = useQuery({
+    queryKey: ["orders", user?.id],
+    queryFn: () => fetchOrders(user?.id ?? ""),
+    enabled: !!user?.id,
+  });
+
+  // Add new order
+  const addOrderMutation = useMutation({
+    mutationFn: async (orderData: Omit<Order, 'id'>) => {
+      if (!user) throw new Error('User not authenticated');
+      const { error } = await supabase.from("orders").insert([
+        {
+          user_id: user.id,
+          customer_id: orderData.customerId,
+          product_id: orderData.productId,
+          qty: orderData.qty,
+          status: orderData.status,
+          job_date: orderData.jobDate,
+          assigned_to: orderData.assignedTo,
+          site_address: orderData.siteAddress,
+          photo_url: orderData.photoUrl || "",
+        }
+      ]);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders", user?.id] });
+      toast({ title: "Order Added", description: "New order has been added successfully." });
+      setShowAdd(false);
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error?.message || "Could not add order.", variant: "destructive" });
+    },
+    meta: { onError: true }
+  });
+
+  // Edit existing order
+  const editOrderMutation = useMutation({
+    mutationFn: async (updatedOrder: Order) => {
+      if (!user) throw new Error('User not authenticated');
+      const { error } = await supabase.from("orders")
+        .update({
+          customer_id: updatedOrder.customerId,
+          product_id: updatedOrder.productId,
+          qty: updatedOrder.qty,
+          status: updatedOrder.status,
+          job_date: updatedOrder.jobDate,
+          assigned_to: updatedOrder.assignedTo,
+          site_address: updatedOrder.siteAddress,
+          photo_url: updatedOrder.photoUrl || "",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", updatedOrder.id)
+        .eq("user_id", user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders", user?.id] });
+      toast({ title: "Order Updated", description: "Order has been updated successfully." });
+      setShowEdit(false);
+      setEditingOrder(null);
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error?.message || "Could not update order.", variant: "destructive" });
+    },
+    meta: { onError: true }
+  });
+
+  // Delete order
+  const deleteOrderMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      if (!user) throw new Error('User not authenticated');
+      const { error } = await supabase.from("orders")
+        .delete()
+        .eq("id", orderId)
+        .eq("user_id", user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders", user?.id] });
+      toast({ title: "Order Deleted", description: "Order has been deleted successfully." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error?.message || "Could not delete order.", variant: "destructive" });
+    },
+    meta: { onError: true }
+  });
+
+  // Data helpers
   function customerName(id: string) {
-    const c = DEMO_CUSTOMERS.find((c) => c.id === id);
+    const c = customers.find((c) => c.id === id);
     return c ? c.name : id;
   }
 
   function customerPhone(id: string) {
-    const c = DEMO_CUSTOMERS.find((c) => c.id === id);
+    const c = customers.find((c) => c.id === id);
     return c ? c.phone : "";
   }
 
   function productName(id: string) {
-    const product = DEMO_PRODUCTS.find(p => p.id === id);
-    if (product) {
-      return product.name;
-    }
-
-    // Handle legacy custom product ID format from the enhanced selection
-    if (id.includes('-')) {
-      const parts = id.split('-');
-      const category = parts[0];
-      const type = parts[1];
-      const specs = parts[2];
-
-      if (category === 'glass') {
-        if (type === 'mirror') {
-          return `Mirror ${specs}`;
-        } else if (type === 'plain') {
-          return `Float Glass ${specs}`;
-        }
-      } else if (category === 'aluminum') {
-        return `Aluminum Frame (${specs})`;
-      }
-    }
-
-    // Fallback
-    return id;
+    const product = products.find(p => p.id === id);
+    return product ? product.name : id;
   }
 
   function productUnitAndPrice(id: string) {
-    const product = DEMO_PRODUCTS.find(p => p.id === id);
+    const product = products.find(p => p.id === id);
     if (product) {
       return { unit: product.unit, price: product.price };
     }
-    // Fallback for custom products (assume unit as "pcs" and price 0)
     return { unit: "pcs", price: 0 };
   }
 
+  // Handlers
   function handleAddOrder(orderData: Omit<Order, 'id'>) {
-    const newOrder: Order = {
-      ...orderData,
-      id: "o" + (orders.length + 1)
-    };
-
-    setOrders(prev => [newOrder, ...prev]);
-    toast({
-      title: "Order Added",
-      description: "New order has been added successfully.",
-    });
+    addOrderMutation.mutate(orderData);
   }
 
   function handleEditOrder(updatedOrder: Order) {
-    setOrders(prev => prev.map(order =>
-      order.id === updatedOrder.id ? updatedOrder : order
-    ));
-    toast({
-      title: "Order Updated",
-      description: "Order has been updated successfully.",
-    });
+    editOrderMutation.mutate(updatedOrder);
   }
 
   function openEditModal(order: Order) {
@@ -92,9 +218,15 @@ export function OrderList() {
     setShowEdit(true);
   }
 
+  function handleDeleteOrder(orderId: string) {
+    // Confirm before delete
+    if (window.confirm("Are you sure you want to delete this order?")) {
+      deleteOrderMutation.mutate(orderId);
+    }
+  }
+
   // === BILL GENERATION ===
   function openBillModalFromOrder(order: Order) {
-    // Get customer and product info to fill the modal
     const prodInfo = productUnitAndPrice(order.productId);
     setBillInitialData({
       customerName: customerName(order.customerId),
@@ -110,8 +242,21 @@ export function OrderList() {
     setShowBillModal(true);
   }
 
-  // Ensure BillCreateModal always gets {} (not null/undefined)
+  // Always pass {} not null/undefined
   const safeInitialData = billInitialData && typeof billInitialData === "object" ? billInitialData : {};
+
+  // Loading/error UI
+  if (loadingCustomers || loadingProducts || loadingOrders) {
+    return <div className="p-4">Loading orders...</div>;
+  }
+  if (customerError || productError || orderError) {
+    return (
+      <div className="p-4 text-red-700">
+        Failed to load orders{": "}
+        {customerError?.message || productError?.message || orderError?.message}
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 pb-24">
@@ -139,6 +284,13 @@ export function OrderList() {
                   title="Edit order"
                 >
                   <Edit size={16} />
+                </button>
+                <button
+                  onClick={() => handleDeleteOrder(o.id)}
+                  className="text-red-600 hover:text-red-800 p-1"
+                  title="Delete order"
+                >
+                  <Trash2 size={16} />
                 </button>
                 {o.status === "delivered" && (
                   <button
@@ -190,8 +342,7 @@ export function OrderList() {
         onEdit={handleEditOrder}
         order={editingOrder}
       />
-      {/* Only render BillCreateModal when showBillModal is true:
-           Always pass safeInitialData; prevent null from ever being passed. */}
+      {/* Only render BillCreateModal when showBillModal is true */}
       <BillCreateModal
         open={showBillModal}
         setOpen={setShowBillModal}

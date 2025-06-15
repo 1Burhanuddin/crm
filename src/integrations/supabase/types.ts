@@ -66,6 +66,51 @@ export type Database = {
         }
         Relationships: []
       }
+      orders: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          customer_id: string
+          id: string
+          job_date: string
+          photo_url: string | null
+          product_id: string
+          qty: number
+          site_address: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          customer_id: string
+          id?: string
+          job_date?: string
+          photo_url?: string | null
+          product_id: string
+          qty: number
+          site_address?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          customer_id?: string
+          id?: string
+          job_date?: string
+          photo_url?: string | null
+          product_id?: string
+          qty?: number
+          site_address?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           created_at: string
