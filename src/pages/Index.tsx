@@ -1,4 +1,3 @@
-
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { useState, useEffect } from "react";
@@ -6,7 +5,7 @@ import { PinLock } from "@/components/PinLock";
 import { DEMO_CUSTOMERS, DEMO_TRANSACTIONS, DEMO_ORDERS } from "@/constants/demoData";
 import { useSession } from "@/hooks/useSession";
 import { supabase } from "@/integrations/supabase/client";
-import { hashPIN } from "@/hooks/useSession";
+import { sha256 } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
 const KPICard = ({
@@ -114,7 +113,7 @@ const Index = () => {
       toast({ title: "Error", description: "Could not verify PIN.", variant: "destructive" });
       return;
     }
-    const inputHash = await hashPIN(pin);
+    const inputHash = await sha256(pin);
     if (inputHash === data.pin_hash) {
       localStorage.setItem(`${UNLOCK_KEY}:${user.id}`, "true");
       setUnlocked(true);

@@ -1,8 +1,8 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { useSession, hashPIN } from "@/hooks/useSession";
+import { sha256 } from "@/lib/utils";
+import { useSession } from "@/hooks/useSession";
 import { toast } from "@/hooks/use-toast";
 
 type Mode = "login" | "signup";
@@ -51,7 +51,7 @@ export default function AuthPage() {
     }
     // 2. On success, create profile with hashed PIN
     if (data.user?.id && data.user.email) {
-      const pinHash = await hashPIN(pin);
+      const pinHash = await sha256(pin);
       const { error: profileError } = await supabase
         .from("profiles")
         .insert([{ id: data.user.id, email: data.user.email, pin_hash: pinHash }]);

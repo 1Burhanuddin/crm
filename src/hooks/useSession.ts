@@ -1,9 +1,7 @@
-
 import { useEffect, useState, createContext, useContext } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
 import { toast } from "@/hooks/use-toast";
-import { sha256 } from "@/lib/utils"; // We'll add a simple sha256 util below
 
 type AuthStatus = "loading" | "signed_out" | "signed_in";
 
@@ -71,12 +69,4 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
 export function useSession() {
   return useContext(SessionContext);
-}
-
-// Utility for hashing PIN on client (not secure for production, but for demo it's OK)
-export async function hashPIN(pin: string): Promise<string> {
-  // Simple SHA-256 hash using browser crypto
-  const data = new TextEncoder().encode(pin);
-  const hashBuffer = await window.crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
