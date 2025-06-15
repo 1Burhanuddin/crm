@@ -28,7 +28,11 @@ export function useAddCustomerFromContacts(onAdd: AddCustomerFn) {
       return;
     }
     // Contacts API not supported
-    toast({ title: "Contacts API not supported", description: "Adding dummy customer for demonstration.", variant: "info" });
+    toast({
+      title: "Contacts API not supported",
+      description: "Adding dummy customer for demonstration.",
+      variant: "default"
+    });
     addDummy();
 
     function addDummy() {
