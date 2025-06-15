@@ -24,13 +24,18 @@ const fetchCustomers = async (user_id: string): Promise<Customer[]> => {
 };
 
 // Helper: fetch products for current user
-const fetchProducts = async (): Promise<Product[]> => {
-  const { data, error } = await supabase
+const fetchProducts = async (user_id?: string): Promise<Product[]> => {
+  let query = supabase
     .from("products")
     .select("*")
     .order("created_at", { ascending: false });
+
+  if (user_id) {
+    query = query.eq("user_id", user_id);
+  }
+  const { data, error } = await query;
   if (error) throw error;
-  return data as Product[];
+  return (data || []) as Product[];
 };
 
 // Helper: fetch orders for current user
@@ -84,8 +89,9 @@ export function OrderList() {
     isLoading: loadingProducts,
     error: productError,
   } = useQuery({
-    queryKey: ["products"],
-    queryFn: fetchProducts,
+    queryKey: ["products", user?.id],
+    queryFn: () => fetchProducts(user?.id ?? ""), // pass user id for user-specific fetch
+    enabled: !!user?.id,
   });
 
   const {
@@ -306,19 +312,13 @@ export function OrderList() {
             key={o.id}
             className="mb-4 bg-white rounded-lg px-4 py-3 shadow border"
           >
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div className="font-bold text-blue-900 text-base">{customerName(o.customerId)}</div>
-                <div className="text-sm text-gray-700">{productName(o.productId)}</div>
+            {/* Reworked flex to put actions menu consistently at the end */}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-blue-900 text-base truncate">{customerName(o.customerId)}</div>
+                <div className="text-sm text-gray-700 truncate">{productName(o.productId)}</div>
               </div>
-              {/* Actions menu: Edit/Delete/Mark as Delivered */}
-              <div className="flex gap-2 mt-2 sm:mt-0">
-                <OrderActionsMenu
-                  onEdit={() => openEditModal(o)}
-                  onDelete={() => handleDeleteOrder(o.id)}
-                  canMarkDelivered={o.status === "pending"}
-                  onMarkDelivered={o.status === "pending" ? () => handleMarkDelivered(o) : undefined}
-                />
+              <div className="flex gap-2 items-center ml-auto">
                 {o.status === "delivered" && (
                   <button
                     className="border border-green-200 text-green-700 hover:bg-green-50 px-3 py-1 rounded text-xs flex items-center gap-1 font-medium transition-all"
@@ -328,6 +328,12 @@ export function OrderList() {
                     <Receipt size={14} /> Generate Bill
                   </button>
                 )}
+                <OrderActionsMenu
+                  onEdit={() => openEditModal(o)}
+                  onDelete={() => handleDeleteOrder(o.id)}
+                  canMarkDelivered={o.status === "pending"}
+                  onMarkDelivered={o.status === "pending" ? () => handleMarkDelivered(o) : undefined}
+                />
               </div>
             </div>
             {/* Row: ID for debugging */}
@@ -362,7 +368,7 @@ export function OrderList() {
         onOpenChange={setShowAdd}
         onAdd={handleAddOrder}
         customers={customers}
-        products={products}
+        products={products} {/* Already user-specific from query */}
       />
       <EditOrderModal
         open={showEdit}
