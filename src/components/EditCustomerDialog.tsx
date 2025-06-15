@@ -47,7 +47,7 @@ export function EditCustomerDialog({ open, onOpenChange, customer, onEdit }: Edi
               value={name}
               onChange={e => setName(e.target.value)}
               required
-              autoFocus
+              // autoFocus removed to prevent unwanted keyboard popup
             />
           </div>
           <div>
@@ -57,6 +57,7 @@ export function EditCustomerDialog({ open, onOpenChange, customer, onEdit }: Edi
               value={phone}
               onChange={e => setPhone(e.target.value)}
               type="tel"
+              // autoFocus removed to prevent unwanted keyboard popup
             />
           </div>
           <DialogFooter>

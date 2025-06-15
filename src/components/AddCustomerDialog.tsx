@@ -43,17 +43,18 @@ export function AddCustomerDialog({ open, onOpenChange, onAdd }: AddCustomerDial
         </DialogHeader>
         <div className="space-y-4 pt-2">
           <Input
-            autoFocus
             placeholder="Customer name"
             value={name}
             onChange={e => setName(e.target.value)}
             maxLength={50}
+            // autoFocus removed to prevent unwanted keyboard popup
           />
           <Input
             placeholder="Phone number"
             value={phone}
             onChange={e => setPhone(e.target.value.replace(/[^0-9+]/g, ""))}
             maxLength={15}
+            // autoFocus removed to prevent unwanted keyboard popup
           />
         </div>
         <DialogFooter className="gap-2 pt-2">

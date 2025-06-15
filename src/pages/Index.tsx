@@ -1,4 +1,3 @@
-
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { useState, useEffect } from "react";
@@ -90,7 +89,7 @@ const Index = () => {
 
   return (
     <AppLayout title="Glass Shop - Khata">
-      <div className="p-3 pb-24 w-full max-w-md mx-auto">
+      <div className="p-3 pb-28 sm:pb-24 w-full max-w-md mx-auto">
         <div className="font-bold text-lg mb-2 text-blue-800 text-center">
           Welcome! Track your orders, sales and credits.
         </div>
