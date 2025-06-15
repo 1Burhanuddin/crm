@@ -39,6 +39,7 @@ const App = () => {
               <Route path="/products" element={<Products />} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/bills" element={<Bills />} />
+              <Route path="/profile" element={<(await import('./pages/Profile')).default />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

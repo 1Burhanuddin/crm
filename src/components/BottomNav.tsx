@@ -1,5 +1,5 @@
 
-import { Users, Layers, ClipboardList, Home } from "lucide-react";
+import { Users, Layers, ClipboardList, Home, UserCircle } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 const navItems = [
@@ -7,6 +7,7 @@ const navItems = [
   { title: "Customers", icon: Users, path: "/customers" },
   { title: "Orders", icon: ClipboardList, path: "/orders" },
   { title: "Products", icon: Layers, path: "/products" },
+  { title: "Profile", icon: UserCircle, path: "/profile" }, // Added Profile section
 ];
 
 export function BottomNav() {
@@ -31,4 +32,3 @@ export function BottomNav() {
     </nav>
   );
 }
-
