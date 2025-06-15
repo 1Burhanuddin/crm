@@ -28,7 +28,17 @@ export function CustomerLedger() {
     if (error) {
       setTransactions([]);
     } else {
-      setTransactions(data || []);
+      // Map DB fields (snake_case) to our Transaction type (camelCase)
+      setTransactions(
+        (data || []).map((t: any) => ({
+          id: t.id,
+          customerId: t.customer_id,
+          date: t.date,
+          amount: t.amount,
+          type: t.type,
+          note: t.note ?? "",
+        }))
+      );
     }
     setLoading(false);
   }
