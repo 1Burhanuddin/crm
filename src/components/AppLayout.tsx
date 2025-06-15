@@ -3,6 +3,7 @@ import { ReactNode, useState } from "react";
 import { BottomNav } from "./BottomNav";
 import { OfflineBanner } from "./OfflineBanner";
 import { toast } from "@/hooks/use-toast";
+import { useSession } from "@/hooks/useSession";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -11,6 +12,7 @@ interface AppLayoutProps {
 
 export function AppLayout({ children, title }: AppLayoutProps) {
   const [isOffline, setIsOffline] = useState<boolean>(!navigator.onLine);
+  const { status, user, signOut } = useSession();
 
   // Listen for offline changes
   window.addEventListener("online", () => setIsOffline(false));
@@ -18,10 +20,20 @@ export function AppLayout({ children, title }: AppLayoutProps) {
 
   return (
     <div className="flex flex-col min-h-screen bg-[hsl(var(--background))]">
-      <header className="bg-blue-900 text-white px-4 py-3 flex items-center shadow-md z-30">
+      <header className="bg-blue-900 text-white px-4 py-3 flex items-center shadow-md z-30 relative">
         <span className="font-bold text-lg tracking-wide flex-1">{title || "KhataBook for Glass Shop"}</span>
         {isOffline && (
           <span className="ml-2 px-2 py-1 rounded bg-yellow-500 text-xs font-medium animate-pulse shadow">Offline</span>
+        )}
+        {/* Simple logout button when user is signed in */}
+        {status === "signed_in" && user && (
+          <button
+            onClick={signOut}
+            className="ml-3 bg-white text-blue-900 rounded px-3 py-1 text-xs font-semibold border hover:bg-blue-100"
+            title="Logout"
+          >
+            Logout
+          </button>
         )}
       </header>
       <OfflineBanner show={isOffline} />
@@ -30,4 +42,3 @@ export function AppLayout({ children, title }: AppLayoutProps) {
     </div>
   );
 }
-

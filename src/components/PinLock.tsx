@@ -1,31 +1,25 @@
 
 import { useState } from "react";
-import { toast } from "@/hooks/use-toast";
 
-export function PinLock({ onUnlock }: { onUnlock: () => void }) {
+export function PinLock({ onUnlock }: { onUnlock: (pin: string) => void }) {
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (pin === "2416") { // simple demo PIN
-      onUnlock();
+    if (pin.length === 4) {
+      onUnlock(pin);
       setPin("");
       setError(null);
     } else {
-      setError("Incorrect PIN. Try again.");
-      toast({
-        title: "Wrong PIN",
-        description: "Please enter the correct PIN.",
-        variant: "destructive",
-      });
+      setError("PIN must be 4 digits.");
     }
   }
 
   return (
     <div className="h-screen flex flex-col items-center justify-center bg-blue-950">
       <div className="w-full max-w-[350px] bg-white shadow-lg rounded-xl p-8">
-        <h2 className="text-2xl font-bold mb-4 text-center text-blue-900">Enter Admin PIN</h2>
+        <h2 className="text-2xl font-bold mb-4 text-center text-blue-900">Enter App PIN</h2>
         <form onSubmit={handleSubmit} className="flex flex-col items-center">
           <input
             type="password"
@@ -45,7 +39,7 @@ export function PinLock({ onUnlock }: { onUnlock: () => void }) {
             Unlock
           </button>
         </form>
-        <div className="text-gray-400 text-xs text-center mt-6">Demo PIN: 2416</div>
+        <div className="text-gray-400 text-xs text-center mt-6">PIN required to unlock</div>
       </div>
     </div>
   );

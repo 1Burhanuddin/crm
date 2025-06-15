@@ -1,8 +1,13 @@
+
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { useState, useEffect } from "react";
 import { PinLock } from "@/components/PinLock";
 import { DEMO_CUSTOMERS, DEMO_TRANSACTIONS, DEMO_ORDERS } from "@/constants/demoData";
+import { useSession } from "@/hooks/useSession";
+import { supabase } from "@/integrations/supabase/client";
+import { hashPIN } from "@/hooks/useSession";
+import { toast } from "@/hooks/use-toast";
 
 const KPICard = ({
   title,
@@ -69,31 +74,70 @@ const DASH_ACTIONS = [
   },
 ];
 
-const UNLOCK_KEY = "unlocked";
+const UNLOCK_KEY = "unlocked_v2"; // changed key for user-based unlock
 
 const Index = () => {
+  const { user, status } = useSession();
   const [unlocked, setUnlocked] = useState<boolean>(false);
+  const [checking, setChecking] = useState(true); // for auth state loading
   const navigate = useNavigate();
 
-  // Sync unlocked state with localStorage
+  // On initial mount, check session
   useEffect(() => {
-    const unlockedFromStorage = localStorage.getItem(UNLOCK_KEY);
-    if (unlockedFromStorage === "true") {
-      setUnlocked(true);
+    if (status === "loading") {
+      setChecking(true);
+      return;
     }
-  }, []);
+    setChecking(false);
+  }, [status]);
 
-  // Handler to unlock and persist state
-  const handleUnlock = () => {
-    setUnlocked(true);
-    localStorage.setItem(UNLOCK_KEY, "true");
-  };
+  // Sync unlocked state with localStorage per user
+  useEffect(() => {
+    if (user) {
+      const unlockedForUser = localStorage.getItem(`${UNLOCK_KEY}:${user.id}`) === "true";
+      setUnlocked(unlockedForUser);
+    } else {
+      setUnlocked(false);
+    }
+  }, [user]);
+
+  // Handle unlock
+  async function handleUnlock(pin: string) {
+    if (!user) return;
+    // Fetch hashed PIN for user
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("pin_hash")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (error || !data) {
+      toast({ title: "Error", description: "Could not verify PIN.", variant: "destructive" });
+      return;
+    }
+    const inputHash = await hashPIN(pin);
+    if (inputHash === data.pin_hash) {
+      localStorage.setItem(`${UNLOCK_KEY}:${user.id}`, "true");
+      setUnlocked(true);
+      toast({ title: "App Unlocked" });
+    } else {
+      toast({ title: "Wrong PIN", description: "Please enter the correct PIN.", variant: "destructive" });
+    }
+  }
+
+  if (checking || status === "loading") {
+    return <div className="h-screen flex items-center justify-center text-blue-900">Loading...</div>;
+  }
+
+  if (status === "signed_out" || !user) {
+    navigate("/auth");
+    return null;
+  }
 
   if (!unlocked) {
     return <PinLock onUnlock={handleUnlock} />;
   }
 
-  const { totalSales, totalCredit, ordersPending, totalCustomers } = getKPIs();
+  const { totalSales, totalCredit, ordersPending } = getKPIs();
 
   return (
     <AppLayout title="Glass Shop - Khata">

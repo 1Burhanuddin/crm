@@ -36,6 +36,27 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          pin_hash: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id: string
+          pin_hash: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          pin_hash?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount: number
