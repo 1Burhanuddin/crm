@@ -16,9 +16,9 @@ const KPICard = ({
   color: string;
   sub?: string;
 }) => (
-  <div className="flex-1 p-3 bg-white rounded-lg shadow border min-w-[110px] flex flex-col justify-center items-center">
+  <div className="flex-1 min-w-[110px] p-3 bg-white rounded-xl shadow border flex flex-col justify-center items-center mx-0.5 my-1">
     <span className={`text-lg font-bold mb-1 ${color}`}>{value}</span>
-    <span className="text-xs font-medium text-gray-400 mb-1">{title}</span>
+    <span className="text-xs font-medium text-gray-400 mb-1 text-center">{title}</span>
     {sub && <span className="text-xs text-blue-900">{sub}</span>}
   </div>
 );
@@ -35,9 +35,44 @@ const getKPIs = () => {
   return { totalSales, totalCredit, ordersPending, totalCustomers };
 };
 
+const DASH_ACTIONS = [
+  {
+    title: "Customer Ledger",
+    desc: "Add/View udhaar or paid transactions",
+    bg: "bg-blue-50",
+    hover: "hover:bg-blue-100 active:bg-blue-200",
+    color: "text-blue-900",
+    route: "/customers",
+  },
+  {
+    title: "Orders",
+    desc: "Manage job orders and delivery status",
+    bg: "bg-green-50",
+    hover: "hover:bg-green-100 active:bg-green-200",
+    color: "text-green-800",
+    route: "/orders",
+  },
+  {
+    title: "Product Catalog",
+    desc: "Glass, Aluminium, Mirrors, etc.",
+    bg: "bg-yellow-50",
+    hover: "hover:bg-yellow-100 active:bg-yellow-200",
+    color: "text-yellow-700",
+    route: "/products",
+  },
+  {
+    title: "Reports",
+    desc: "Sales & pending summary",
+    bg: "bg-gray-50",
+    hover: "hover:bg-gray-100 active:bg-gray-200",
+    color: "text-gray-700",
+    route: "/customers",
+  },
+];
+
 const Index = () => {
   const [unlocked, setUnlocked] = useState(false);
-  const navigate = useNavigate(); // moved up here, always called
+  const navigate = useNavigate();
 
   if (!unlocked) {
     return <PinLock onUnlock={() => setUnlocked(true)} />;
@@ -47,45 +82,33 @@ const Index = () => {
 
   return (
     <AppLayout title="Glass Shop - Khata">
-      <div className="p-4 pb-24">
-        <div className="font-bold text-lg mb-2 text-blue-800">
+      <div className="p-3 pb-24 w-full max-w-md mx-auto">
+        <div className="font-bold text-lg mb-2 text-blue-800 text-center">
           Welcome! Track your orders, sales and credits.
         </div>
-        <div className="flex flex-row gap-2 mb-5">
+        <div className="flex flex-wrap gap-y-2 mb-4 w-full">
           <KPICard title="Total Sales" value={`₹${totalSales}`} color="text-green-700" />
           <KPICard title="Credit (Udhaar)" value={`₹${totalCredit}`} color="text-red-600" />
           <KPICard title="Pending Orders" value={ordersPending} color="text-yellow-600" />
           <KPICard title="Customers" value={totalCustomers} color="text-blue-800" />
         </div>
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <button
-            onClick={() => navigate("/customers")}
-            className="bg-blue-50 rounded-lg shadow p-4 flex flex-col items-center hover:bg-blue-100 active:bg-blue-200 transition"
-          >
-            <span className="text-xl font-bold text-blue-900 mb-1">Customer Ledger</span>
-            <span className="text-xs text-blue-800">Add/View udhaar or paid transactions</span>
-          </button>
-          <button
-            onClick={() => navigate("/orders")}
-            className="bg-green-50 rounded-lg shadow p-4 flex flex-col items-center hover:bg-green-100 active:bg-green-200 transition"
-          >
-            <span className="text-xl font-bold text-green-800 mb-1">Orders</span>
-            <span className="text-xs text-green-700">Manage job orders and delivery status</span>
-          </button>
-          <button
-            onClick={() => navigate("/products")}
-            className="bg-yellow-50 rounded-lg shadow p-4 flex flex-col items-center hover:bg-yellow-100 active:bg-yellow-200 transition"
-          >
-            <span className="text-xl font-bold text-yellow-700 mb-1">Product Catalog</span>
-            <span className="text-xs text-yellow-700">Glass, Aluminium, Mirrors, etc.</span>
-          </button>
-          <button
-            onClick={() => navigate("/customers")}
-            className="bg-gray-50 rounded-lg shadow p-4 flex flex-col items-center hover:bg-gray-100 active:bg-gray-200 transition"
-          >
-            <span className="text-xl font-bold text-gray-700 mb-1">Reports</span>
-            <span className="text-xs text-gray-700">Sales & pending summary</span>
-          </button>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 w-full mx-auto mt-2">
+          {DASH_ACTIONS.map((action) => (
+            <button
+              key={action.title}
+              onClick={() => navigate(action.route)}
+              className={`
+                ${action.bg} ${action.hover}
+                rounded-xl shadow transition
+                p-4 w-full flex flex-col items-start border
+                active:scale-[0.98] min-h-[92px]
+                `}
+              style={{ minWidth: 0 }}
+            >
+              <span className={`text-base font-bold mb-1 ${action.color}`}>{action.title}</span>
+              <span className="text-xs text-gray-600 text-left">{action.desc}</span>
+            </button>
+          ))}
         </div>
       </div>
     </AppLayout>
