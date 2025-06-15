@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Plus, Search, Edit, Trash2 } from "lucide-react";
 import { DEMO_CUSTOMERS } from "@/constants/demoData";
 import { Customer } from "@/constants/types";
@@ -10,14 +11,35 @@ import { DeleteCustomerDialog } from "./DeleteCustomerDialog";
 import { Button } from "@/components/ui/button";
 import { useAddCustomerFromContacts } from "./hooks/useAddCustomerFromContacts";
 
+const LOCAL_STORAGE_KEY = "customers_v1";
+
 export function CustomerList() {
   const [filter, setFilter] = useState("");
-  const [customers, setCustomers] = useState<Customer[]>(DEMO_CUSTOMERS);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const navigate = useNavigate();
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (stored) {
+      try {
+        setCustomers(JSON.parse(stored) as Customer[]);
+      } catch {
+        setCustomers(DEMO_CUSTOMERS);
+      }
+    } else {
+      setCustomers(DEMO_CUSTOMERS);
+    }
+  }, []);
+
+  // Save to localStorage when customers change
+  useEffect(() => {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(customers));
+  }, [customers]);
 
   const displayedCustomers = customers.filter((c) =>
     c.name.toLowerCase().includes(filter.toLowerCase())
@@ -162,3 +184,4 @@ export function CustomerList() {
     </div>
   );
 }
+
