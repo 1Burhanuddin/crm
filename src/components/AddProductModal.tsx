@@ -49,7 +49,6 @@ export function AddProductModal({ open, onOpenChange, onSubmit }: AddProductModa
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="e.g. Apple"
-              autoFocus
               required
             />
           </div>
