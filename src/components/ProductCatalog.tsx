@@ -6,8 +6,7 @@ import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import React from "react";
 
-const placeholderImage =
-  "https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?auto=format&fit=crop&w=400&q=80";
+// Removed placeholderImage and any img usage
 
 async function fetchProducts(): Promise<Product[]> {
   const { data, error } = await supabase
@@ -50,12 +49,7 @@ export function ProductCatalog({ onEdit }: ProductCatalogProps) {
               key={prod.id}
               className="bg-white p-4 rounded-lg shadow border flex flex-col items-center relative"
             >
-              <img
-                src={placeholderImage}
-                alt={prod.name}
-                className="w-20 h-20 rounded object-cover mb-3"
-                loading="lazy"
-              />
+              {/* Removed image */}
               {/* Edit button - top right corner absolute */}
               <Button
                 size="icon"
@@ -82,3 +76,4 @@ export function ProductCatalog({ onEdit }: ProductCatalogProps) {
     </div>
   );
 }
+
