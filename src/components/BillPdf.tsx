@@ -127,30 +127,86 @@ const styles = StyleSheet.create({
     backgroundColor: "#dedede",
     borderBottom: "1 solid #000",
   },
-  th: {
+  thItem: {
+    flex: 3,
+    fontWeight: "bold",
+    fontSize: 11,
+    paddingVertical: 4,
+    borderRight: "1 solid #000",
+    textAlign: "left",
+    paddingLeft: 4,
+  },
+  thHSN: {
+    flex: 1.1,
     fontWeight: "bold",
     fontSize: 11,
     paddingVertical: 4,
     borderRight: "1 solid #000",
     textAlign: "center",
   },
-  thLast: {
-    borderRight: "none",
-  },
-  td: {
+  thQty: {
+    flex: 1,
+    fontWeight: "bold",
     fontSize: 11,
     paddingVertical: 4,
-    paddingHorizontal: 3,
-    borderRight: "1 solid #ccc",
+    borderRight: "1 solid #000",
     textAlign: "center",
   },
-  tdLast: {
-    borderRight: "none",
+  thPrice: {
+    flex: 1.2,
+    fontWeight: "bold",
+    fontSize: 11,
+    paddingVertical: 4,
+    borderRight: "1 solid #000",
+    textAlign: "center",
+  },
+  thAmount: {
+    flex: 1.5,
+    fontWeight: "bold",
+    fontSize: 11,
+    paddingVertical: 4,
+    textAlign: "center",
   },
   tableRow: {
     flexDirection: "row",
-    borderBottom: "1 solid #eee",
+    borderBottom: "1 solid #e0e0e0",
     backgroundColor: "#fff",
+    alignItems: "center",
+  },
+  tdItem: {
+    flex: 3,
+    fontSize: 11,
+    paddingVertical: 4,
+    paddingLeft: 4,
+    borderRight: "1 solid #ccc",
+    textAlign: "left",
+  },
+  tdHSN: {
+    flex: 1.1,
+    fontSize: 11,
+    paddingVertical: 4,
+    borderRight: "1 solid #ccc",
+    textAlign: "center",
+  },
+  tdQty: {
+    flex: 1,
+    fontSize: 11,
+    paddingVertical: 4,
+    borderRight: "1 solid #ccc",
+    textAlign: "center",
+  },
+  tdPrice: {
+    flex: 1.2,
+    fontSize: 11,
+    paddingVertical: 4,
+    borderRight: "1 solid #ccc",
+    textAlign: "center",
+  },
+  tdAmount: {
+    flex: 1.5,
+    fontSize: 11,
+    paddingVertical: 4,
+    textAlign: "center",
   },
   summaryBlock: {
     marginTop: 4,
@@ -159,11 +215,13 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     border: "1 solid #000",
     borderTop: "none",
+    alignItems: "center",
   },
   summaryLabel: {
     fontWeight: "bold",
     fontSize: 12,
     marginRight: 8,
+    textAlign: "right",
   },
   summaryValue: {
     fontWeight: "bold",
@@ -171,6 +229,7 @@ const styles = StyleSheet.create({
     fontFamily: "Courier",
     minWidth: 70,
     textAlign: "right",
+    letterSpacing: 1,
   },
   wordsBlock: {
     fontSize: 10,
@@ -314,22 +373,22 @@ export function BillPdfDoc({ bill, userName, shopName }: BillPdfDocProps) {
             </Text>
           </View>
         </View>
-        {/* Items Table */}
+        {/* Table with precise flex column sizing */}
         <View style={styles.tableWrap}>
           <View style={styles.tableHeader}>
-            <Text style={[styles.th, { flex: 2 }]}>Item</Text>
-            <Text style={styles.th}>HSN/SAC</Text>
-            <Text style={styles.th}>Qty</Text>
-            <Text style={styles.th}>Price</Text>
-            <Text style={[styles.th, styles.thLast]}>Amount</Text>
+            <Text style={styles.thItem}>Item</Text>
+            <Text style={styles.thHSN}>HSN/SAC</Text>
+            <Text style={styles.thQty}>Qty</Text>
+            <Text style={styles.thPrice}>Price</Text>
+            <Text style={styles.thAmount}>Amount</Text>
           </View>
           {(bill.items || []).map((item, idx) => (
             <View style={styles.tableRow} key={idx}>
-              <Text style={[styles.td, { flex: 2, textAlign: "left" }]}>{item.name}</Text>
-              <Text style={styles.td}>{hsnDemo}</Text>
-              <Text style={styles.td}>{item.qty}</Text>
-              <Text style={styles.td}>₹{item.price}</Text>
-              <Text style={[styles.td, styles.tdLast]}>₹{Number(item.qty) * Number(item.price)}</Text>
+              <Text style={styles.tdItem}>{item.name}</Text>
+              <Text style={styles.tdHSN}>{hsnDemo}</Text>
+              <Text style={styles.tdQty}>{item.qty}</Text>
+              <Text style={styles.tdPrice}>₹{item.price}</Text>
+              <Text style={styles.tdAmount}>₹{Number(item.qty) * Number(item.price)}</Text>
             </View>
           ))}
         </View>
