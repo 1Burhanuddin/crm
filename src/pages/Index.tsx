@@ -55,6 +55,14 @@ const DASH_ACTIONS = [
     color: "text-purple-900",
     route: "/bills",
   },
+  {
+    title: "Collections",
+    desc: "Track payments received from customers",
+    bg: "bg-teal-50",
+    hover: "hover:bg-teal-100 active:bg-teal-200",
+    color: "text-teal-800",
+    route: "/collections",
+  },
 ];
 
 const Index = () => {

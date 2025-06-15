@@ -42,6 +42,47 @@ export type Database = {
         }
         Relationships: []
       }
+      collections: {
+        Row: {
+          amount: number
+          collected_at: string | null
+          customer_id: string
+          id: string
+          order_id: string | null
+          remarks: string | null
+          transaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          collected_at?: string | null
+          customer_id: string
+          id?: string
+          order_id?: string | null
+          remarks?: string | null
+          transaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          collected_at?: string | null
+          customer_id?: string
+          id?: string
+          order_id?: string | null
+          remarks?: string | null
+          transaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_collections_customer"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           created_at: string | null

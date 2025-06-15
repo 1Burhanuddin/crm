@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,6 +14,7 @@ import AuthPage from "./pages/Auth";
 import { SessionProvider } from "@/hooks/useSession";
 import Bills from "./pages/Bills";
 import Suppliers from "./pages/Suppliers";
+import Collections from "./pages/Collections";
 
 const Profile = lazy(() => import("./pages/Profile"));
 
@@ -45,6 +45,8 @@ const App = () => {
               <Route path="/products" element={<Products />} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/bills" element={<Bills />} />
+              {/* Add collections page */}
+              <Route path="/collections" element={<Collections />} />
               <Route
                 path="/profile"
                 element={
@@ -64,4 +66,3 @@ const App = () => {
 };
 
 export default App;
-
