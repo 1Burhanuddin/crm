@@ -1,4 +1,3 @@
-
 import { AppLayout } from "@/components/AppLayout";
 import { useCollections } from "@/hooks/useCollections";
 import { useSession } from "@/hooks/useSession";
@@ -370,17 +369,6 @@ export default function Collections() {
           handleOrderIdChange={handleOrderIdChange}
           handleFormChange={handleFormChange}
         />
-
-        {/* Notification/Reminder: show yellow alert if a collection is due today */}
-        {dueToday.length > 0 && (
-          <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-900 p-4 mb-6 rounded shadow flex items-center gap-2">
-            <span>
-              <span>
-                Reminder: You have <b>{dueToday.length}</b> collection{dueToday.length > 1 ? "s" : ""} due today!
-              </span>
-            </span>
-          </div>
-        )}
 
         {/* Recent Collections Section (refactored) */}
         <RecentCollectionsPanel

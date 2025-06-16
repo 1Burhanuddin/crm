@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { format, addDays } from "date-fns";
@@ -115,14 +114,14 @@ export function AddCollectionModal({
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="bg-gray-300 hover:bg-gray-400 py-2 px-4 rounded"
+              className="bg-gray-200 hover:bg-gray-300 text-gray-900 font-medium px-6 py-2.5 rounded-lg transition w-full sm:w-auto text-base shadow-sm"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isAdding || !form.customer_id || !form.amount}
-              className="bg-green-700 text-white py-2 px-4 rounded hover:bg-green-800 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="bg-blue-600 hover:bg-blue-700 focus:bg-blue-700 text-white font-medium px-6 py-2.5 rounded-lg transition w-full sm:w-auto text-base shadow-sm disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               {isAdding ? "Saving..." : "Add"}
             </button>

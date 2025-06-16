@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { CalendarIcon, MessageSquare, MoreHorizontal } from "lucide-react";
@@ -100,7 +99,7 @@ export function PendingCollectionsPanel({
                   <Button
                     variant="default"
                     size="sm"
-                    className="bg-blue-700 hover:bg-blue-800 focus:bg-blue-800 text-white font-medium px-4 py-2 rounded-lg transition w-full sm:w-auto"
+                    className="bg-blue-600 hover:bg-blue-700 focus:bg-blue-700 text-white font-medium px-6 py-2.5 rounded-lg transition w-full sm:w-auto text-base shadow-sm"
                     onClick={() => setFormAndShowForm(c)}
                     disabled={isAdding}
                   >
@@ -109,10 +108,10 @@ export function PendingCollectionsPanel({
                   <Button
                     variant="secondary"
                     size="sm"
-                    className="bg-amber-500 hover:bg-amber-600 focus:bg-amber-600 text-white font-medium flex items-center gap-1 px-3 py-2 rounded-lg transition text-xs w-full sm:w-auto"
+                    className="bg-amber-500 hover:bg-amber-600 focus:bg-amber-600 text-white font-medium flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg transition text-base w-full sm:w-auto shadow-sm"
                     onClick={() => handleOpenReminderModal(c)}
                   >
-                    <MessageSquare size={16} /> Send Reminder
+                    <MessageSquare size={18} /> Send Reminder
                   </Button>
                 </div>
               </div>

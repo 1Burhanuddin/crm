@@ -1,4 +1,3 @@
-
 import React from "react";
 import { format, parseISO } from "date-fns";
 import { MoreHorizontal, Edit, Trash2, CalendarIcon } from "lucide-react";
@@ -28,65 +27,77 @@ export function RecentCollectionsPanel({
 }) {
   return (
     <div className="mt-10">
-      <h3 className="font-semibold text-lg mb-3 text-blue-900">Recent Collections</h3>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="font-semibold text-lg text-blue-900">Recent Collections</h3>
+      </div>
+
       {isLoading ? (
-        <div className="text-gray-600">Loading...</div>
+        <div className="text-center py-4">Loading...</div>
       ) : error ? (
-        <div className="text-red-600">Error loading collections.</div>
+        <div className="text-red-500 text-center py-4">Error loading collections</div>
+      ) : collections.length === 0 ? (
+        <div className="text-gray-500 text-center py-4">No collections yet</div>
       ) : (
-        <ul>
-          {collections.length === 0 && (
-            <div className="text-gray-500 text-center mt-4">No collections yet.</div>
-          )}
-          {collections.map((c) => (
-            <li key={c.id} className="bg-gray-50 shadow rounded-lg mb-3 px-4 py-3 relative group">
-              <div className="flex justify-between items-center">
-                <div>
-                  <div className="font-semibold text-blue-800">
-                    {customers.find((cu) => cu.id === c.customer_id)?.name || "(Unknown)"}
-                  </div>
-                  <div className="text-sm text-gray-700">
-                    Collected: ₹{c.amount}
-                    <span className="ml-2 text-xs text-gray-400">{new Date(c.collected_at).toLocaleString()}</span>
-                    {c.collection_date && (
-                      <span className="ml-2 px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-xs">
-                        Date: {format(parseISO(c.collection_date), "PPP")}
-                      </span>
-                    )}
-                  </div>
-                  {c.remarks && (
-                    <div className="text-xs text-gray-500 mt-1">Remarks: {c.remarks}</div>
-                  )}
-                </div>
+        <ul className="space-y-3">
+          {collections.map((collection) => {
+            const customer = customers.find((c) => c.id === collection.customer_id);
+            return (
+              <li
+                key={collection.id}
+                className="bg-white shadow-sm hover:shadow-md transition-shadow rounded-xl p-4 border border-gray-100 relative"
+              >
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="p-2 rounded hover:bg-gray-200">
-                      <MoreHorizontal size={18} />
+                    <button className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-gray-100 transition-colors">
+                      <MoreHorizontal size={18} className="text-gray-500" />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+                  <DropdownMenuContent align="end" className="w-48">
                     <DropdownMenuItem
-                      onClick={() =>
-                        handleEditCollection({ id: c.id, amount: c.amount, remarks: c.remarks || "" })
-                      }
+                      onClick={() => handleEditCollection({
+                        id: collection.id,
+                        amount: collection.amount,
+                        remarks: collection.remarks || ""
+                      })}
+                      className="cursor-pointer"
                     >
-                      <Edit size={16} className="mr-1" /> Edit
+                      <Edit size={16} className="mr-2" /> Edit
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onClick={() =>
-                        handleDeleteCollection({
-                          id: c.id,
-                          name: customers.find((cu) => cu.id === c.customer_id)?.name || "(Unknown)",
-                        })
-                      }
+                      onClick={() => handleDeleteCollection({
+                        id: collection.id,
+                        name: customer?.name || "Unknown Customer"
+                      })}
+                      className="cursor-pointer text-red-600 focus:text-red-600"
                     >
-                      <Trash2 size={16} className="mr-1" /> Delete
+                      <Trash2 size={16} className="mr-2" /> Delete
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              </div>
-            </li>
-          ))}
+                <div className="flex-1 min-w-0 pr-8">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="font-semibold text-blue-900 text-lg break-words">
+                        {customer?.name || "Unknown Customer"}
+                      </div>
+                      <div className="text-green-700 text-xl font-bold mt-1">
+                        ₹{collection.amount}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600 mt-3 bg-gray-50 px-3 py-2 rounded-lg">
+                    <CalendarIcon size={16} className="text-blue-600" />
+                    <span>{format(parseISO(collection.collected_at), "PPP")}</span>
+                  </div>
+                  {collection.remarks && (
+                    <div className="text-sm text-gray-600 mt-3 bg-gray-50 px-3 py-2 rounded-lg">
+                      {collection.remarks}
+                    </div>
+                  )}
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
@@ -89,7 +88,8 @@ export function useCollections() {
               type: "paid",
               amount: payload.amount,
               collection_id: collectionId,
-              order_id: payload.order_id || null,
+              date: new Date().toISOString().split('T')[0],
+              note: payload.remarks || null
             }
           ])
           .select("id")
