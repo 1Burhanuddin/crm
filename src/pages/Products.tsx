@@ -136,8 +136,7 @@ export default function Products() {
   return (
     <AppLayout title="Products">
       <div className="p-4 pb-24">
-        <BackButton />
-        <div className="flex items-center justify-between mb-5 mt-2">
+        <div className="flex items-center justify-between mb-5">
           <h2 className="text-xl font-medium text-blue-900">Products</h2>
           <Button
             onClick={handleAddProduct}

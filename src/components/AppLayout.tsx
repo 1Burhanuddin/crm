@@ -1,4 +1,3 @@
-
 import { ReactNode, useState, useEffect } from "react";
 import { BottomNav } from "./BottomNav";
 import { OfflineBanner } from "./OfflineBanner";
@@ -8,6 +7,8 @@ import { AppSidebar } from "./AppSidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Menu } from "lucide-react";
+import { BackButton } from "./BackButton";
+import { useLocation } from "react-router-dom";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -19,6 +20,8 @@ interface AppLayoutProps {
 export function AppLayout({ children, title, shopName, loadingTitle }: AppLayoutProps) {
   const [isOffline, setIsOffline] = useState<boolean>(!navigator.onLine);
   const { status } = useSession();
+  const location = useLocation();
+  const showBackButton = location.pathname !== "/";
 
   // Listen for offline changes (to avoid adding listeners each render, useEffect is better)
   useEffect(() => {
@@ -43,14 +46,21 @@ export function AppLayout({ children, title, shopName, loadingTitle }: AppLayout
           className="fixed top-0 left-0 right-0 bg-blue-900 text-white px-4 py-3 flex items-center shadow-md z-30"
           style={{ height: HEADER_HEIGHT }}
         >
-          <span className="font-bold text-lg tracking-wide flex-1">
-            {loadingTitle
-              ? <span className="animate-pulse text-gray-200">Loading...</span>
-              : shopName
-                ? shopName
-                : (title || "Glass Shop for KhataBook")
-            }
-          </span>
+          <div className="flex items-center gap-2 flex-1">
+            {showBackButton && (
+              <div className="md:hidden">
+                <BackButton />
+              </div>
+            )}
+            <span className="font-bold text-lg tracking-wide">
+              {loadingTitle
+                ? <span className="animate-pulse text-gray-200">Loading...</span>
+                : shopName
+                  ? shopName
+                  : (title || "Glass Shop for KhataBook")
+              }
+            </span>
+          </div>
           {isOffline && (
             <span className="ml-2 px-2 py-1 rounded bg-yellow-500 text-xs font-medium animate-pulse shadow">Offline</span>
           )}

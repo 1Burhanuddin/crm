@@ -363,9 +363,6 @@ export default function Collections() {
   return (
     <AppLayout title="Collections">
       <div className="p-4 max-w-lg mx-auto">
-        <div className="mb-2">
-          <BackButton />
-        </div>
         <h2 className="text-xl font-semibold text-blue-900 mb-4">Collections</h2>
 
         <Tabs defaultValue="pending" className="w-full">
