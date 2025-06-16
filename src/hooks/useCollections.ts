@@ -31,7 +31,10 @@ export function useCollections() {
         .select("*")
         .eq("user_id", user.id)
         .order("collected_at", { ascending: false });
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching collections:", error);
+        throw error;
+      }
       return data || [];
     },
   });
@@ -47,6 +50,8 @@ export function useCollections() {
       collection_date?: string | null;
     }) => {
       if (!user) throw new Error("User not logged in");
+
+      console.log("Adding collection with payload:", payload);
 
       // Insert into collections first
       const { data, error } = await supabase
@@ -65,7 +70,12 @@ export function useCollections() {
         .select("id")
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error inserting collection:", error);
+        throw error;
+      }
+
+      console.log("Collection inserted successfully:", data);
 
       // Insert 'paid' transaction and update the collection's transaction_id
       const collectionId = data?.id;
@@ -84,7 +94,14 @@ export function useCollections() {
           ])
           .select("id")
           .single();
-        if (txnErr) throw txnErr;
+        
+        if (txnErr) {
+          console.error("Error inserting transaction:", txnErr);
+          throw txnErr;
+        }
+        
+        console.log("Transaction inserted successfully:", txnRow);
+        
         const txnId = txnRow?.id;
         if (txnId) {
           // Update the collection's transaction_id
@@ -92,12 +109,20 @@ export function useCollections() {
             .from("collections")
             .update({ transaction_id: txnId })
             .eq("id", collectionId);
-          if (updateErr) throw updateErr;
+          if (updateErr) {
+            console.error("Error updating collection transaction_id:", updateErr);
+            throw updateErr;
+          }
+          console.log("Collection transaction_id updated successfully");
         }
       }
     },
     onSuccess: () => {
+      console.log("Collection mutation completed successfully");
       queryClient.invalidateQueries({ queryKey: ["collections", user?.id] });
+    },
+    onError: (error) => {
+      console.error("Collection mutation failed:", error);
     },
   });
 

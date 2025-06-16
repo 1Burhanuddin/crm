@@ -46,6 +46,7 @@ export type Database = {
         Row: {
           amount: number
           collected_at: string | null
+          collection_date: string | null
           customer_id: string
           id: string
           order_id: string | null
@@ -56,6 +57,7 @@ export type Database = {
         Insert: {
           amount: number
           collected_at?: string | null
+          collection_date?: string | null
           customer_id: string
           id?: string
           order_id?: string | null
@@ -66,6 +68,7 @@ export type Database = {
         Update: {
           amount?: number
           collected_at?: string | null
+          collection_date?: string | null
           customer_id?: string
           id?: string
           order_id?: string | null
