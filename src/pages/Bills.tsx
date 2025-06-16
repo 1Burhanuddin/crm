@@ -74,10 +74,10 @@ export default function Bills() {
 
   return (
     <AppLayout title="Bills">
-      <div className="p-4 max-w-lg w-full mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <div className="text-xl font-bold text-blue-900">Bills</div>
-          <Button onClick={() => setShowCreate(true)}>+ New Bill</Button>
+      <div className="p-6 max-w-4xl w-full mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <div className="text-2xl font-bold text-blue-900">Bills</div>
+          <Button onClick={() => setShowCreate(true)} className="px-5 py-2 text-base rounded-lg">+ New Bill</Button>
         </div>
         <BillCreateModal
           open={showCreate}
@@ -91,11 +91,11 @@ export default function Bills() {
         ) : bills.length === 0 ? (
           <div className="text-gray-400 text-center mt-10">No bills created yet.</div>
         ) : (
-          <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {bills.map((bill) => (
               <div
                 key={bill.id}
-                className="bg-white rounded-xl shadow-md border border-gray-200 p-4 w-full max-w-md mx-auto transition-all relative"
+                className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 w-full transition-all relative hover:shadow-xl"
               >
                 {/* Export PDF top-right */}
                 <div className="absolute right-4 top-4">
@@ -138,7 +138,7 @@ export default function Bills() {
                       Date: <span className="font-[500]">{bill.bill_date}</span>
                     </div>
                     <div>
-                      Bill #:{" "}
+                      Bill #: {" "}
                       <span className="font-mono text-[13px] text-blue-900 underline decoration-blue-200 underline-offset-4">
                         {bill.id.slice(0, 8).toUpperCase()}
                       </span>

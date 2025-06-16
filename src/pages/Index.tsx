@@ -121,11 +121,11 @@ const Index = () => {
       loadingTitle={loadingShopName}
       title="Glass Shop - Khata"
     >
-      <div className="p-3 pb-28 sm:pb-24 w-full max-w-md mx-auto">
-        <div className="font-bold text-lg mb-2 text-blue-800 text-center">
+      <div className="p-6 pb-28 sm:pb-24 w-full max-w-4xl mx-auto">
+        <div className="font-bold text-2xl mb-6 text-blue-800 text-center">
           Welcome! Track your orders, sales and credits.
         </div>
-        <div className="flex flex-wrap gap-y-2 mb-4 w-full">
+        <div className="flex flex-wrap gap-4 mb-8 w-full justify-center">
           {/* Show KPIs, WITHOUT Total Sales */}
           {reportLoading ? (
             <>
@@ -152,21 +152,22 @@ const Index = () => {
             </>
           )}
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 w-full mx-auto mt-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full mx-auto mt-2">
           {DASH_ACTIONS.map((action) => (
             <button
               key={action.title}
               onClick={() => navigate(action.route)}
               className={`
                 ${action.bg} ${action.hover}
-                rounded-xl shadow transition
-                p-4 w-full flex flex-col items-start border
-                active:scale-[0.98] min-h-[92px]
+                rounded-2xl shadow-lg transition
+                p-6 w-full flex flex-col items-start border border-gray-200
+                active:scale-[0.98] min-h-[110px]
+                hover:shadow-xl
                 `}
               style={{ minWidth: 0 }}
             >
-              <span className={`text-base font-bold mb-1 ${action.color}`}>{action.title}</span>
-              <span className="text-xs text-gray-600 text-left">{action.desc}</span>
+              <span className={`text-lg font-bold mb-2 ${action.color}`}>{action.title}</span>
+              <span className="text-sm text-gray-600 text-left">{action.desc}</span>
             </button>
           ))}
         </div>

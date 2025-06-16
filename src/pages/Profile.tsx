@@ -9,7 +9,6 @@ import { AppLayout } from "@/components/AppLayout";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ProfileTabs } from "@/components/ProfileTabs";
 import { LogOut, User, Store, AtSign, Edit2 } from "lucide-react";
-import { BackButton } from "@/components/BackButton";
 import { useNavigate } from "react-router-dom";
 
 export default function ProfilePage() {
@@ -166,15 +165,12 @@ export default function ProfilePage() {
       loadingTitle={loading}
       title="Profile"
     >
-      <div className="mb-2">
-        <BackButton toMainScreen />
-      </div>
       {loading ? (
         <div className="flex flex-col items-center justify-center min-h-[60vh]">
           <div className="text-blue-800 text-lg font-semibold">Loading...</div>
         </div>
       ) : (
-        <div className="max-w-md mx-auto p-4 pb-24 relative">
+        <div className="max-w-3xl mx-auto p-6 pb-24 relative">
           {/* Logout button: only in Profile, top-right */}
           {status === "signed_in" && user && (
             <Button
@@ -317,7 +313,9 @@ export default function ProfilePage() {
             </div>
           </Card>
           {/* Only render tabs once not loading */}
-          <ProfileTabs initialTab="reports" />
+          <div className="mt-8">
+            <ProfileTabs initialTab="reports" />
+          </div>
         </div>
       )}
     </AppLayout>

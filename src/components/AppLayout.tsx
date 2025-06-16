@@ -3,12 +3,9 @@ import { BottomNav } from "./BottomNav";
 import { OfflineBanner } from "./OfflineBanner";
 import { toast } from "@/hooks/use-toast";
 import { useSession } from "@/hooks/useSession";
-import { AppSidebar } from "./AppSidebar";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Menu } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Home, ClipboardList, FileText, UserCircle } from "lucide-react";
 import { BackButton } from "./BackButton";
-import { useLocation } from "react-router-dom";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -17,10 +14,34 @@ interface AppLayoutProps {
   loadingTitle?: boolean;
 }
 
+const navItems = [
+  {
+    title: "Home",
+    icon: Home,
+    path: "/",
+  },
+  {
+    title: "Orders",
+    icon: ClipboardList,
+    path: "/orders",
+  },
+  {
+    title: "Bills",
+    icon: FileText,
+    path: "/bills",
+  },
+  {
+    title: "Profile",
+    icon: UserCircle,
+    path: "/profile",
+  },
+];
+
 export function AppLayout({ children, title, shopName, loadingTitle }: AppLayoutProps) {
   const [isOffline, setIsOffline] = useState<boolean>(!navigator.onLine);
   const { status } = useSession();
   const location = useLocation();
+  const navigate = useNavigate();
   const showBackButton = location.pathname !== "/";
 
   // Listen for offline changes (to avoid adding listeners each render, useEffect is better)
@@ -39,55 +60,66 @@ export function AppLayout({ children, title, shopName, loadingTitle }: AppLayout
   const HEADER_HEIGHT = 56; // px
 
   return (
-    <SidebarProvider>
-      <div className="flex flex-col min-h-screen bg-[hsl(var(--background))] w-full">
-        {/* Header fixed */}
-        <header
-          className="fixed top-0 left-0 right-0 bg-blue-900 text-white px-4 py-3 flex items-center shadow-md z-30"
-          style={{ height: HEADER_HEIGHT }}
-        >
-          <div className="flex items-center gap-2 flex-1">
-            {showBackButton && (
-              <div className="md:hidden">
-                <BackButton />
-              </div>
-            )}
-            <span className="font-bold text-lg tracking-wide">
-              {loadingTitle
-                ? <span className="animate-pulse text-gray-200">Loading...</span>
-                : shopName
-                  ? shopName
-                  : (title || "Glass Shop for KhataBook")
-              }
-            </span>
-          </div>
-          {isOffline && (
-            <span className="ml-2 px-2 py-1 rounded bg-yellow-500 text-xs font-medium animate-pulse shadow">Offline</span>
-          )}
-          {/* Sidebar toggle button for large screens only */}
-          <div className="hidden md:flex items-center ml-2">
-            <SidebarTrigger className="rounded-md border border-sidebar-border p-1.5 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition text-blue-900 bg-white">
-              <Menu size={22} />
-            </SidebarTrigger>
-          </div>
-        </header>
-        {/* Add top padding to make room for header for ALL content, including sidebar */}
-        <div>
-          <OfflineBanner show={isOffline} />
-          <div className="flex w-full" style={{ paddingTop: HEADER_HEIGHT }}>
-            {/* Only show AppSidebar on md+ (pc/large screens) */}
-            <div className="hidden md:block">
-              <AppSidebar />
+    <div className="flex flex-col min-h-screen bg-[hsl(var(--background))] w-full">
+      {/* Header fixed */}
+      <header
+        className="fixed top-0 left-0 right-0 bg-blue-900 text-white px-4 py-3 flex items-center shadow-md z-30"
+        style={{ height: HEADER_HEIGHT }}
+      >
+        <div className="flex items-center gap-2 flex-1">
+          {showBackButton && (
+            <div className="md:hidden">
+              <BackButton />
             </div>
-            {/* Main content adjusts based on sidebar */}
-            <main className="flex-1 overflow-y-auto">{children}</main>
-          </div>
-          {/* Only show BottomNav on mobile */}
-          <div className="md:hidden" style={{ paddingTop: HEADER_HEIGHT }}>
-            <BottomNav />
-          </div>
+          )}
+          <span className="font-bold text-lg tracking-wide">
+            {loadingTitle
+              ? <span className="animate-pulse text-gray-200">Loading...</span>
+              : shopName
+                ? shopName
+                : (title || "Glass Shop for KhataBook")
+            }
+          </span>
+        </div>
+
+        {/* Navigation items for large screens */}
+        <div className="hidden md:flex items-center gap-1">
+          {navItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <button
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors ${
+                  isActive 
+                    ? "bg-white/20 text-white" 
+                    : "text-white/80 hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                <item.icon size={18} className="stroke-[2.5]" />
+                <span className="font-medium">{item.title}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {isOffline && (
+          <span className="ml-2 px-2 py-1 rounded bg-yellow-500 text-xs font-medium animate-pulse shadow">Offline</span>
+        )}
+      </header>
+
+      {/* Add top padding to make room for header for ALL content */}
+      <div>
+        <OfflineBanner show={isOffline} />
+        <div className="flex w-full" style={{ paddingTop: HEADER_HEIGHT }}>
+          {/* Main content */}
+          <main className="flex-1 overflow-y-auto">{children}</main>
+        </div>
+        {/* Only show BottomNav on mobile */}
+        <div className="md:hidden" style={{ paddingTop: HEADER_HEIGHT }}>
+          <BottomNav />
         </div>
       </div>
-    </SidebarProvider>
+    </div>
   );
 }
