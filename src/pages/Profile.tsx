@@ -10,6 +10,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ProfileTabs } from "@/components/ProfileTabs";
 import { LogOut, User, Store, AtSign, Edit2 } from "lucide-react";
 import { BackButton } from "@/components/BackButton";
+import { useNavigate } from "react-router-dom";
 
 export default function ProfilePage() {
   const { user, status, refresh, signOut } = useSession();
@@ -22,6 +23,7 @@ export default function ProfilePage() {
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
+  const navigate = useNavigate();
 
   // Editing states
   const [newEmail, setNewEmail] = useState("");
@@ -178,7 +180,10 @@ export default function ProfilePage() {
             <Button
               variant="outline"
               size="icon"
-              onClick={signOut}
+              onClick={async () => {
+                await signOut();
+                navigate("/auth");
+              }}
               className="absolute right-2 top-2 z-20 bg-white text-blue-900 hover:bg-blue-100 border border-blue-800 shadow-lg animate-pop"
               title="Logout"
             >

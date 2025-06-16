@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { CalendarIcon, MessageSquare, MoreHorizontal } from "lucide-react";
+import { CalendarIcon, MessageSquare, MoreHorizontal, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 interface CustomerWithPending {
   id: string;
@@ -11,7 +12,25 @@ interface CustomerWithPending {
   pending: number;
   phone?: string;
 }
-type DeliveredOrder = { id: string; amount: number };
+
+interface DeliveredOrder {
+  id: string;
+  amount: number;
+}
+
+interface PendingCollectionsPanelProps {
+  pendingCustomers: CustomerWithPending[];
+  customers: { id: string; name: string }[];
+  customerDates: Record<string, Date>;
+  openDateMenu: (id: string) => void;
+  dateMenuOpen: Record<string, boolean>;
+  handleDateChangeForCustomer: (customerId: string, date: Date) => void;
+  displayDate: (date: Date) => string;
+  customerDeliveredOrders: Record<string, DeliveredOrder[]>;
+  setFormAndShowForm: (customer: CustomerWithPending) => void;
+  isAdding: boolean;
+  handleOpenReminderModal: (customer: CustomerWithPending) => void;
+}
 
 export function PendingCollectionsPanel({
   pendingCustomers,
@@ -25,100 +44,143 @@ export function PendingCollectionsPanel({
   setFormAndShowForm,
   isAdding,
   handleOpenReminderModal,
-  addMoreHorizontalButton
-}: {
-  pendingCustomers: CustomerWithPending[];
-  customers: { id: string; name: string; phone?: string }[];
-  customerDates: Record<string, Date>;
-  openDateMenu: (customerId: string) => void;
-  dateMenuOpen: { [id: string]: boolean };
-  handleDateChangeForCustomer: (customerId: string, date: Date) => void;
-  displayDate: (date: Date) => string;
-  customerDeliveredOrders: Record<string, DeliveredOrder[]>;
-  setFormAndShowForm: (form: any) => void;
-  isAdding: boolean;
-  handleOpenReminderModal: (customer: CustomerWithPending) => void;
-  addMoreHorizontalButton?: boolean;
-}) {
+}: PendingCollectionsPanelProps) {
+  const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
+
+  const toggleCard = (customerId: string) => {
+    setExpandedCards(prev => ({
+      ...prev,
+      [customerId]: !prev[customerId]
+    }));
+  };
+
+  if (!pendingCustomers || pendingCustomers.length === 0) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm border p-6 text-center">
+        <div className="text-gray-500">No pending collections</div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="mb-2 text-blue-800 font-bold">Pending Collections</div>
-      {pendingCustomers.length === 0 ? (
-        <div className="text-gray-500 mb-4">No pending collections! All customers are up to date 🎉</div>
-      ) : (
-        <ul>
-          {pendingCustomers.map((c) => (
-            <li
-              key={c.id}
-              className="bg-white shadow rounded-lg mb-2 px-3 py-2 border"
-              style={{ overflow: 'hidden' }}
+      <ul className="space-y-4">
+        {pendingCustomers.map((customer) => (
+          <li
+            key={customer.id}
+            className="bg-white rounded-xl shadow-lg border hover:shadow-xl transition-all duration-200 relative overflow-hidden"
+          >
+            {/* Collapsed View */}
+            <div 
+              className="p-4 cursor-pointer"
+              onClick={() => toggleCard(customer.id)}
             >
-              <div className="flex flex-col sm:flex-row justify-between items-stretch w-full gap-2 sm:gap-0">
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-blue-900 break-words">{c.name}</div>
-                  <div className="text-red-700 text-sm font-medium break-words">
-                    Pending: ₹{c.pending}
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-blue-900">
+                    {customer.name}
+                  </h3>
+                  {customer.phone && (
+                    <p className="text-sm text-gray-600 mt-1">{customer.phone}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-red-600">
+                      ₹{customer.pending}
+                    </div>
+                    <div className="text-sm text-gray-500">Pending Amount</div>
                   </div>
-                  {c.phone ? (
-                    <div className="mt-1 text-xs text-gray-500 break-all">Phone: {c.phone}</div>
-                  ) : null}
-                  {/* Collection date row */}
-                  <div className="mt-1 flex items-center gap-2 text-xs text-blue-900 flex-wrap">
-                    <CalendarIcon size={16} className="inline mr-1 min-w-[16px]" />
-                    Collect on:&nbsp;
-                    <span className="font-semibold">
-                      {customerDates[c.id] ? displayDate(customerDates[c.id]) : displayDate(new Date())}
-                    </span>
-                    <Popover open={!!dateMenuOpen[c.id]} onOpenChange={(open) => openDateMenu(c.id)}>
+                  <div className="text-gray-400">
+                    {expandedCards[customer.id] ? (
+                      <ChevronUp className="h-5 w-5" />
+                    ) : (
+                      <ChevronDown className="h-5 w-5" />
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Expanded View */}
+            {expandedCards[customer.id] && (
+              <div className="px-4 pb-4 border-t border-gray-100">
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-3 mt-4">
+                  <button
+                    onClick={() => setFormAndShowForm(customer)}
+                    disabled={isAdding}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2.5 rounded-lg transition-all duration-200 shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  >
+                    {isAdding ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Processing...
+                      </>
+                    ) : (
+                      "Collect Payment"
+                    )}
+                  </button>
+                  <button
+                    onClick={() => handleOpenReminderModal(customer)}
+                    className="flex-1 border border-gray-200 hover:border-gray-300 text-gray-700 font-medium px-4 py-2.5 rounded-lg transition-all duration-200 shadow-sm hover:shadow"
+                  >
+                    Send Reminder
+                  </button>
+                </div>
+
+                {/* Order Details Section */}
+                {customerDeliveredOrders[customer.id] && customerDeliveredOrders[customer.id].length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Pending Orders:</h4>
+                    <ul className="space-y-2">
+                      {customerDeliveredOrders[customer.id].map((order) => (
+                        <li
+                          key={order.id}
+                          className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-lg"
+                        >
+                          Order #{order.id.slice(0, 8)} - ₹{order.amount}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Collection Date Section */}
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-medium text-gray-700">Collection Date:</div>
+                    <Popover open={dateMenuOpen[customer.id]} onOpenChange={() => openDateMenu(customer.id)}>
                       <PopoverTrigger asChild>
                         <button
-                          type="button"
-                          className="ml-1 rounded-full p-1 border hover:bg-gray-200"
-                          aria-label="Change date"
-                          onClick={e => { e.stopPropagation(); openDateMenu(c.id); }}
+                          className={cn(
+                            "flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900",
+                            "px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
+                          )}
                         >
-                          <MoreHorizontal size={16} />
+                          <CalendarIcon className="h-4 w-4" />
+                          {customerDates[customer.id]
+                            ? displayDate(customerDates[customer.id])
+                            : "Set date"}
                         </button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 z-50" align="start" side="bottom">
+                      <PopoverContent className="w-auto p-0" align="end">
                         <Calendar
                           mode="single"
-                          selected={customerDates[c.id] || new Date()}
-                          onSelect={(date) => {
-                            if (date) handleDateChangeForCustomer(c.id, date);
-                          }}
+                          selected={customerDates[customer.id]}
+                          onSelect={(date) => date && handleDateChangeForCustomer(customer.id, date)}
                           initialFocus
-                          className={cn("p-3 pointer-events-auto")}
                         />
                       </PopoverContent>
                     </Popover>
                   </div>
                 </div>
-                {/* Actions */}
-                <div className="flex flex-col sm:flex-row gap-2 sm:items-center justify-end min-w-[120px] mt-2 sm:mt-0 w-full sm:w-auto">
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="bg-blue-600 hover:bg-blue-700 focus:bg-blue-700 text-white font-medium px-6 py-2.5 rounded-lg transition w-full sm:w-auto text-base shadow-sm"
-                    onClick={() => setFormAndShowForm(c)}
-                    disabled={isAdding}
-                  >
-                    Collect
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="bg-amber-500 hover:bg-amber-600 focus:bg-amber-600 text-white font-medium flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg transition text-base w-full sm:w-auto shadow-sm"
-                    onClick={() => handleOpenReminderModal(c)}
-                  >
-                    <MessageSquare size={18} /> Send Reminder
-                  </Button>
-                </div>
               </div>
-            </li>
-          ))}
-        </ul>
-      )}
+            )}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

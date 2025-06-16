@@ -417,102 +417,105 @@ export function OrderList() {
           return (
             <li
               key={o.id}
-              className={`mb-4 ${cardError} rounded-lg px-4 py-3 shadow border`}
+              className={`mb-6 ${cardError} rounded-xl px-6 py-5 shadow-lg border hover:shadow-xl transition-all duration-200 relative`}
             >
-              {/* Reworked flex to put actions menu consistently at the end */}
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-blue-900 text-base truncate">
-                    {customerName(o.customerId)}
-                    {missingCustomer && (
-                      <span className="ml-2 text-xs text-yellow-700">(not found)</span>
-                    )}
+              {/* Three dot menu positioned absolutely in top right */}
+              <div className="absolute top-3 right-3">
+                <OrderActionsMenu
+                  onEdit={() => openEditModal(o)}
+                  onDelete={() => handleDeleteOrder(o.id)}
+                  canMarkDelivered={o.status === "pending"}
+                  onMarkDelivered={o.status === "pending" ? () => handleMarkDelivered(o) : undefined}
+                />
+              </div>
+
+              {/* Main content with padding to avoid overlap with menu */}
+              <div className="pr-8">
+                <div className="flex flex-col gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-blue-900 text-lg truncate">
+                      {customerName(o.customerId)}
+                      {missingCustomer && (
+                        <span className="ml-2 text-xs text-yellow-700">(not found)</span>
+                      )}
+                    </div>
+                    <div className="text-base text-gray-700 truncate mt-1">
+                      {productName(o.productId)}
+                      {missingProduct && (
+                        <span className="ml-2 text-xs text-yellow-700">(not found)</span>
+                      )}
+                    </div>
+                    <div className="flex gap-3 items-center mt-4">
+                      {/* Show pending credit/udhaar appropriately */}
+                      {o.status === "pending" && pending > 0 && (
+                        <span className="inline-flex items-center bg-yellow-100 text-yellow-800 rounded-lg px-3 py-1.5 text-sm font-semibold shadow-sm">
+                          Pending: ₹{pending}
+                        </span>
+                      )}
+                      {o.status === "delivered" && udhaar > 0 && (
+                        <span className="inline-flex items-center bg-red-100 text-red-700 rounded-lg px-3 py-1.5 text-sm font-semibold shadow-sm">
+                          Udhaar: ₹{udhaar}
+                        </span>
+                      )}
+                      {o.status === "delivered" && (
+                        <button
+                          className="border border-green-200 text-green-700 hover:bg-green-50 px-4 py-1.5 rounded-lg text-sm flex items-center gap-2 font-medium transition-all shadow-sm hover:shadow"
+                          onClick={() => openBillModalFromOrder(o)}
+                          title="Generate Bill"
+                        >
+                          <Receipt size={16} /> Generate Bill
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-sm text-gray-700 truncate">
-                    {productName(o.productId)}
-                    {missingProduct && (
-                      <span className="ml-2 text-xs text-yellow-700">(not found)</span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex gap-2 items-center ml-auto">
-                  {/* Show pending credit/udhaar appropriately
-                      - Pending status: Pending: ₹pending
-                      - Delivered: Udhaar: ₹udhaar (only if >0) */}
-                  {o.status === "pending" && pending > 0 && (
-                    <span className="inline-flex items-center bg-yellow-100 text-yellow-800 rounded px-2 py-0.5 text-xs font-semibold">
-                      Pending: ₹{pending}
+
+                  {/* Info ROW: Qty, status, assignment, job date */}
+                  <div className="flex flex-wrap items-center gap-3 mt-4 pt-4 border-t border-gray-100">
+                    <span className="text-sm bg-gray-100 px-3 py-1.5 rounded-lg font-medium">
+                      Qty: {o.qty}
                     </span>
-                  )}
-                  {o.status === "delivered" && udhaar > 0 && (
-                    <span className="inline-flex items-center bg-red-100 text-red-700 rounded px-2 py-0.5 text-xs font-semibold">
-                      Udhaar: ₹{udhaar}
-                    </span>
-                  )}
-                  {o.status === "delivered" && (
-                    <button
-                      className="border border-green-200 text-green-700 hover:bg-green-50 px-3 py-1 rounded text-xs flex items-center gap-1 font-medium transition-all"
-                      onClick={() => openBillModalFromOrder(o)}
-                      title="Generate Bill"
+                    <span
+                      className={`text-sm px-3 py-1.5 rounded-lg font-medium ${
+                        o.status === "pending"
+                          ? "bg-yellow-200 text-yellow-900"
+                          : "bg-green-200 text-green-900"
+                      }`}
                     >
-                      <Receipt size={14} /> Generate Bill
-                    </button>
+                      {o.status === "pending" ? "Pending" : "Delivered"}
+                    </span>
+                    {o.assignedTo && (
+                      <span className="text-sm text-gray-700 font-medium">
+                        Assigned to: {o.assignedTo}
+                      </span>
+                    )}
+                    <span className="text-gray-500 text-sm">{o.jobDate}</span>
+                    {/* always show total/advance if relevant */}
+                    <span className="text-sm text-blue-700 font-medium ml-2">
+                      Total: ₹{total}
+                    </span>
+                    {o.advanceAmount > 0 && (
+                      <span className="text-sm text-green-700 font-medium ml-2">
+                        Advance: ₹{o.advanceAmount}
+                      </span>
+                    )}
+                    {/* Optionally display amount collected */}
+                    {collected > 0 && (
+                      <span className="text-sm text-emerald-700 font-medium ml-2">
+                        Collected: ₹{collected}
+                      </span>
+                    )}
+                  </div>
+                  {cardError !== "bg-white" && (
+                    <div className="mt-3 text-sm text-yellow-800 italic bg-yellow-50 px-4 py-2 rounded-lg">
+                      Warning: This order references a deleted/missing{" "}
+                      {missingCustomer && "customer"}
+                      {missingCustomer && missingProduct && " and "}
+                      {missingProduct && !missingCustomer && "product"}
+                      . You may need to edit or delete this order.
+                    </div>
                   )}
-                  <OrderActionsMenu
-                    onEdit={() => openEditModal(o)}
-                    onDelete={() => handleDeleteOrder(o.id)}
-                    canMarkDelivered={o.status === "pending"}
-                    onMarkDelivered={o.status === "pending" ? () => handleMarkDelivered(o) : undefined}
-                  />
                 </div>
               </div>
-              {/* Row: ID for debugging */}
-              {/* <div className="text-xs font-mono my-1 break-all text-gray-600">{o.id}</div> */}
-              {/* Info ROW: Qty, status, assignment, job date */}
-              <div className="flex flex-wrap items-center gap-2 mt-1">
-                <span className="text-xs bg-gray-100 px-2 py-1 rounded">
-                  Qty: {o.qty}
-                </span>
-                <span
-                  className={`text-xs px-2 py-1 rounded ${
-                    o.status === "pending"
-                      ? "bg-yellow-200 text-yellow-900"
-                      : "bg-green-200 text-green-900"
-                  }`}
-                >
-                  {o.status === "pending" ? "Pending" : "Delivered"}
-                </span>
-                {o.assignedTo && (
-                  <span className="text-xs text-gray-700">
-                    Assigned to: {o.assignedTo}
-                  </span>
-                )}
-                <span className="text-gray-400 text-xs">{o.jobDate}</span>
-                {/* always show total/advance if relevant */}
-                <span className="text-xs text-blue-700 ml-2">
-                  Total: ₹{total}
-                </span>
-                {o.advanceAmount > 0 && (
-                  <span className="text-xs text-green-700 ml-1">
-                    Advance: ₹{o.advanceAmount}
-                  </span>
-                )}
-                {/* Optionally display amount collected */}
-                {collected > 0 && (
-                  <span className="text-xs text-emerald-700 ml-1">
-                    Collected: ₹{collected}
-                  </span>
-                )}
-              </div>
-              {cardError !== "bg-white" && (
-                <div className="mt-2 text-xs text-yellow-800 italic">
-                  Warning: This order references a deleted/missing{" "}
-                  {missingCustomer && "customer"}
-                  {missingCustomer && missingProduct && " and "}
-                  {missingProduct && !missingCustomer && "product"}
-                  . You may need to edit or delete this order.
-                </div>
-              )}
             </li>
           );
         })}

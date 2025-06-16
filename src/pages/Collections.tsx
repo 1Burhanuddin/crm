@@ -9,6 +9,8 @@ import { CollectionEditModal } from "@/components/CollectionEditModal";
 import { BackButton } from "@/components/BackButton";
 import { format, parseISO, isToday, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2 } from "lucide-react";
 
 // Refactored components
 import { PendingCollectionsPanel } from "@/components/collections/PendingCollectionsPanel";
@@ -315,40 +317,103 @@ export default function Collections() {
     return format(date, "PPP");
   };
 
+  if (!user) {
+    return (
+      <AppLayout title="Collections">
+        <div className="p-4 max-w-lg mx-auto">
+          <div className="text-center py-8">
+            <p className="text-gray-600">Please log in to view collections.</p>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <AppLayout title="Collections">
+        <div className="p-4 max-w-lg mx-auto">
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <span className="ml-2 text-gray-600">Loading collections...</span>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <AppLayout title="Collections">
+        <div className="p-4 max-w-lg mx-auto">
+          <div className="text-center py-8">
+            <p className="text-red-600">Error loading collections. Please try again.</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout title="Collections">
       <div className="p-4 max-w-lg mx-auto">
         <div className="mb-2">
           <BackButton />
         </div>
-        <h2 className="text-xl font-semibold text-blue-900 mb-4">Collections - Pending Payments</h2>
+        <h2 className="text-xl font-semibold text-blue-900 mb-4">Collections</h2>
 
-        {/* Pending section (refactored panel) */}
-        <PendingCollectionsPanel
-          pendingCustomers={pendingCustomers}
-          customers={customers}
-          customerDates={customerDates}
-          openDateMenu={(id) => setDateMenuOpen((prev) => ({ ...prev, [id]: !prev[id] }))}
-          dateMenuOpen={dateMenuOpen}
-          handleDateChangeForCustomer={handleDateChangeForCustomer}
-          displayDate={displayDate}
-          customerDeliveredOrders={customerDeliveredOrders}
-          setFormAndShowForm={(c) => {
-            setForm({
-              customer_id: c.id,
-              amount: c.pending ? String(c.pending) : "",
-              remarks: "",
-              order_id:
-                customerDeliveredOrders[c.id] && customerDeliveredOrders[c.id].length === 1
-                  ? customerDeliveredOrders[c.id][0].id
-                  : "",
-              collection_date: customerDates[c.id] ?? addDays(new Date(), 1),
-            });
-            setShowForm(true);
-          }}
-          isAdding={isAdding}
-          handleOpenReminderModal={handleOpenReminderModal}
-        />
+        <Tabs defaultValue="pending" className="w-full">
+          <TabsList className="grid grid-cols-2 w-full mb-4">
+            <TabsTrigger value="pending">Pending</TabsTrigger>
+            <TabsTrigger value="history">History</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="pending" className="focus-visible:outline-none">
+            <PendingCollectionsPanel
+              pendingCustomers={pendingCustomers}
+              customers={customers}
+              customerDates={customerDates}
+              openDateMenu={(id) => setDateMenuOpen((prev) => ({ ...prev, [id]: !prev[id] }))}
+              dateMenuOpen={dateMenuOpen}
+              handleDateChangeForCustomer={handleDateChangeForCustomer}
+              displayDate={displayDate}
+              customerDeliveredOrders={customerDeliveredOrders}
+              setFormAndShowForm={(c) => {
+                setForm({
+                  customer_id: c.id,
+                  amount: c.pending ? String(c.pending) : "",
+                  remarks: "",
+                  order_id:
+                    customerDeliveredOrders[c.id] && customerDeliveredOrders[c.id].length === 1
+                      ? customerDeliveredOrders[c.id][0].id
+                      : "",
+                  collection_date: customerDates[c.id] ?? addDays(new Date(), 1),
+                });
+                setShowForm(true);
+              }}
+              isAdding={isAdding}
+              handleOpenReminderModal={handleOpenReminderModal}
+            />
+          </TabsContent>
+
+          <TabsContent value="history" className="focus-visible:outline-none">
+            <RecentCollectionsPanel
+              collections={collections}
+              customers={customers}
+              isLoading={isLoading}
+              error={error}
+              handleEditCollection={handleEditCollection}
+              handleDeleteCollection={handleDeleteCollection}
+              dueToday={dueToday}
+            />
+          </TabsContent>
+        </Tabs>
 
         <SendReminderModal
           open={reminderModalOpen}
@@ -370,45 +435,27 @@ export default function Collections() {
           handleFormChange={handleFormChange}
         />
 
-        {/* Recent Collections Section (refactored) */}
-        <RecentCollectionsPanel
-          collections={collections}
-          customers={customers}
-          isLoading={isLoading}
-          error={error}
-          handleEditCollection={handleEditCollection}
-          handleDeleteCollection={handleDeleteCollection}
-          dueToday={dueToday}
+        <CollectionEditModal
+          open={editModalOpen}
+          onClose={() => {
+            setEditModalOpen(false);
+            setEditingCollection(null);
+          }}
+          initial={{
+            amount: editingCollection?.amount || 1,
+            remarks: editingCollection?.remarks || "",
+          }}
+          onSave={saveEditCollection}
+          loading={isEditing}
+        />
+
+        <DeleteCollectionDialog
+          deleteDialog={deleteDialog}
+          setDeleteDialog={setDeleteDialog}
+          isDeleting={isDeleting}
+          performDelete={performDelete}
         />
       </div>
-
-      {/* Edit Collection Modal */}
-      <CollectionEditModal
-        open={editModalOpen}
-        onClose={() => {
-          setEditModalOpen(false);
-          setEditingCollection(null);
-        }}
-        initial={{
-          amount: editingCollection?.amount || 1,
-          remarks: editingCollection?.remarks || "",
-        }}
-        onSave={saveEditCollection}
-        loading={isEditing}
-      />
-
-      <DeleteCollectionDialog
-        deleteDialog={deleteDialog}
-        setDeleteDialog={setDeleteDialog}
-        isDeleting={isDeleting}
-        performDelete={performDelete}
-      />
-
-      <SendReminderModal
-        open={reminderModalOpen}
-        onOpenChange={(open) => setReminderModalOpen(open)}
-        customer={reminderCustomer}
-      />
     </AppLayout>
   );
 }

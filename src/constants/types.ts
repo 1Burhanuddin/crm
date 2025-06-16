@@ -33,6 +33,7 @@ export interface Order {
   siteAddress: string;
   photoUrl?: string;
   advanceAmount: number; // New, required field!
+  remarks?: string;
 }
 
 export interface Supplier {

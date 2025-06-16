@@ -141,9 +141,9 @@ export default function Products() {
           <h2 className="text-xl font-medium text-blue-900">Products</h2>
           <Button
             onClick={handleAddProduct}
-            className="bg-blue-700 text-white px-3 py-1 rounded flex items-center gap-1 text-sm shadow hover:bg-blue-800"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 active:scale-95"
           >
-            <Plus size={18} /> Add Product
+            <Plus size={18} className="stroke-[2.5]" /> Add Product
           </Button>
         </div>
         <ProductCatalog onEdit={handleEditProduct} onDelete={handleDeleteProduct} userId={user?.id ?? null} />
