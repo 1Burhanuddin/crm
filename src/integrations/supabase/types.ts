@@ -221,6 +221,7 @@ export type Database = {
       transactions: {
         Row: {
           amount: number
+          collection_id: string | null
           created_at: string | null
           customer_id: string
           date: string
@@ -231,6 +232,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          collection_id?: string | null
           created_at?: string | null
           customer_id: string
           date?: string
@@ -241,6 +243,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          collection_id?: string | null
           created_at?: string | null
           customer_id?: string
           date?: string
@@ -249,7 +252,15 @@ export type Database = {
           type?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "transactions_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "collections"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

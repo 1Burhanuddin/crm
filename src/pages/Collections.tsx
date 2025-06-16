@@ -1,3 +1,4 @@
+
 import { AppLayout } from "@/components/AppLayout";
 import { useCollections } from "@/hooks/useCollections";
 import { useSession } from "@/hooks/useSession";
@@ -250,7 +251,7 @@ export default function Collections() {
       });
 
       console.log("Collection added successfully");
-      toast({ title: "Collection added!" });
+      toast({ title: "Collection added successfully!" });
       setShowForm(false);
       setForm({
         customer_id: "",
@@ -304,6 +305,7 @@ export default function Collections() {
     setEditingCollection(null);
   };
 
+  // Calculate collections due today properly from actual data
   const dueToday = collections.filter(
     (c) =>
       c.collection_date &&
