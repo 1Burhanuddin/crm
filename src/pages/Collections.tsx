@@ -1,4 +1,3 @@
-
 import { AppLayout } from "@/components/AppLayout";
 import { useCollections } from "@/hooks/useCollections";
 import { useSession } from "@/hooks/useSession";
@@ -41,6 +40,7 @@ export default function Collections() {
     deleteCollection,
     isDeleting
   } = useCollections();
+
   const [customers, setCustomers] = useState<{ id: string; name: string; phone?: string }[]>([]);
   const [pendingCustomers, setPendingCustomers] = useState<CustomerWithPending[]>([]);
   const [customerDeliveredOrders, setCustomerDeliveredOrders] = useState<Record<string, DeliveredOrder[]>>({});
@@ -216,7 +216,10 @@ export default function Collections() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Form submission started", { form });
+    
     if (!form.customer_id || !form.amount) {
+      console.log("Form validation failed", { customer_id: form.customer_id, amount: form.amount });
       toast({
         title: "Missing info",
         description: "Please select customer and amount.",
@@ -224,25 +227,46 @@ export default function Collections() {
       });
       return;
     }
-    const collectionDate = form.collection_date
-      ? format(form.collection_date as Date, "yyyy-MM-dd")
-      : format(new Date(), "yyyy-MM-dd");
-    await addCollection({
-      customer_id: form.customer_id,
-      amount: Number(form.amount),
-      remarks: form.remarks,
-      order_id: form.order_id || null,
-      collection_date: collectionDate,
-    });
-    toast({ title: "Collection added!" });
-    setShowForm(false);
-    setForm({
-      customer_id: "",
-      amount: "",
-      remarks: "",
-      order_id: "",
-      collection_date: addDays(new Date(), 1),
-    });
+
+    try {
+      const collectionDate = form.collection_date
+        ? format(form.collection_date as Date, "yyyy-MM-dd")
+        : format(new Date(), "yyyy-MM-dd");
+      
+      console.log("Adding collection with data:", {
+        customer_id: form.customer_id,
+        amount: Number(form.amount),
+        remarks: form.remarks,
+        order_id: form.order_id || null,
+        collection_date: collectionDate,
+      });
+
+      await addCollection({
+        customer_id: form.customer_id,
+        amount: Number(form.amount),
+        remarks: form.remarks,
+        order_id: form.order_id || null,
+        collection_date: collectionDate,
+      });
+
+      console.log("Collection added successfully");
+      toast({ title: "Collection added!" });
+      setShowForm(false);
+      setForm({
+        customer_id: "",
+        amount: "",
+        remarks: "",
+        order_id: "",
+        collection_date: addDays(new Date(), 1),
+      });
+    } catch (error) {
+      console.error("Error adding collection:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add collection. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleEditCollection = (collection: { id: string; amount: number; remarks: string; }) => {

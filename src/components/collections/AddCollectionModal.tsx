@@ -31,6 +31,9 @@ export function AddCollectionModal({
   handleFormChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
 }) {
   if (!open) return null;
+
+  const selectedCustomer = customers.find(c => c.id === form.customer_id);
+
   return (
     <div className="fixed inset-0 flex items-center justify-center z-30 bg-black/30">
       <div className="bg-white rounded-lg shadow p-6 min-w-[300px] max-w-[90vw]">
@@ -39,19 +42,16 @@ export function AddCollectionModal({
         </h3>
         <form onSubmit={handleSubmit}>
           <label className="block mb-2 text-sm font-medium">Customer</label>
-          <select
+          <div className="w-full border px-2 py-2 rounded mb-3 bg-gray-100 text-gray-700">
+            {selectedCustomer?.name || 'No customer selected'}
+          </div>
+
+          {/* Hidden input to ensure customer_id is submitted */}
+          <input
+            type="hidden"
             name="customer_id"
             value={form.customer_id}
-            onChange={handleFormChange}
-            className="w-full border px-2 py-1 rounded mb-3"
-            required
-            disabled
-          >
-            <option value="">Select Customer</option>
-            {customers.map((c) => (
-              <option value={c.id} key={c.id}>{c.name}</option>
-            ))}
-          </select>
+          />
 
           {/* If there are multiple delivered orders for this customer, show order selection */}
           {form.customer_id &&
@@ -85,7 +85,13 @@ export function AddCollectionModal({
             onChange={handleFormChange}
             className="w-full border px-2 py-1 rounded mb-3"
             required
-            disabled
+          />
+
+          {/* Hidden input to ensure amount is submitted */}
+          <input
+            type="hidden"
+            name="amount_hidden"
+            value={form.amount}
           />
 
           {/* Show the chosen collection date for info only (not editable here) */}
@@ -95,6 +101,7 @@ export function AddCollectionModal({
               {displayDate(form.collection_date as Date)}
             </div>
           </div>
+
           <label className="block mb-2 text-sm font-medium">Remarks</label>
           <input
             name="remarks"
@@ -103,6 +110,7 @@ export function AddCollectionModal({
             className="w-full border px-2 py-1 rounded mb-3"
             placeholder="optional"
           />
+
           <div className="flex gap-2 mt-4">
             <button
               type="button"
@@ -113,8 +121,8 @@ export function AddCollectionModal({
             </button>
             <button
               type="submit"
-              disabled={isAdding}
-              className="bg-green-700 text-white py-2 px-4 rounded hover:bg-green-800"
+              disabled={isAdding || !form.customer_id || !form.amount}
+              className="bg-green-700 text-white py-2 px-4 rounded hover:bg-green-800 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               {isAdding ? "Saving..." : "Add"}
             </button>
