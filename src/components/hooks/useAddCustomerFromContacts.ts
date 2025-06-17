@@ -1,4 +1,3 @@
-
 import { useCallback } from "react";
 import { toast } from "@/hooks/use-toast";
 
@@ -6,31 +5,71 @@ import { toast } from "@/hooks/use-toast";
 type AddCustomerFn = (name: string, phone: string) => void | Promise<void>;
 
 export function useAddCustomerFromContacts(onAdd: AddCustomerFn) {
-  // Only use browser contacts picker; if unavailable, show error
   const addFromContacts = useCallback(async () => {
-    if ("contacts" in navigator && "ContactsManager" in window) {
+    // Modern way to check for Contact Picker API support
+    if ('contacts' in navigator) {
       try {
-        // @ts-ignore
-        const contacts = await (navigator as any).contacts.select(["name", "tel"], { multiple: false });
+        // @ts-ignore - TypeScript doesn't know about the contacts API yet
+        const contacts = await navigator.contacts.select(['name', 'tel'], {
+          multiple: false
+        });
+
         if (contacts && contacts.length > 0) {
-          const selected = contacts[0];
-          const name = Array.isArray(selected.name) ? selected.name[0] : selected.name ?? "Unknown";
-          const phone = Array.isArray(selected.tel) ? selected.tel[0] : selected.tel ?? "";
-          await onAdd(name, phone);
-          toast({ title: "Added from contacts", description: `Imported ${name}.` });
-          return;
+          const contact = contacts[0];
+          const name = Array.isArray(contact.name) ? contact.name[0] : contact.name;
+          const phone = Array.isArray(contact.tel) ? contact.tel[0] : contact.tel;
+
+          if (!name) {
+            toast({
+              title: "Invalid contact",
+              description: "Selected contact must have a name.",
+              variant: "destructive"
+            });
+            return;
+          }
+
+          await onAdd(name, phone || "");
+          toast({
+            title: "Success",
+            description: `Added ${name} to customers.`
+          });
+        } else {
+          toast({
+            title: "No contact selected",
+            description: "Please select a contact to add.",
+            variant: "destructive"
+          });
         }
-        toast({ title: "No contact selected", description: "No contact was added.", variant: "destructive" });
-      } catch (_e: any) {
-        toast({ title: "Permission denied", description: "Contact access was denied.", variant: "destructive" });
+      } catch (error: any) {
+        console.error('Contact Picker error:', error);
+        if (error.name === 'SecurityError' || error.name === 'NotAllowedError') {
+          toast({
+            title: "Permission denied",
+            description: "Please allow access to contacts to use this feature.",
+            variant: "destructive"
+          });
+        } else if (error.name === 'InvalidStateError') {
+          toast({
+            title: "Not available",
+            description: "Contact picker is not available at this moment.",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to access contacts. Please try again.",
+            variant: "destructive"
+          });
+        }
       }
-      return;
+    } else {
+      // If Contact Picker API is not supported
+      toast({
+        title: "Not supported",
+        description: "Contact picker is not supported on this device. Please add customer manually.",
+        variant: "destructive"
+      });
     }
-    toast({
-      title: "Contacts API not supported",
-      description: "This device cannot import contacts directly.",
-      variant: "default"
-    });
   }, [onAdd]);
 
   return addFromContacts;

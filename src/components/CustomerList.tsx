@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, Edit, Trash2, UserPlus, MoreHorizontal } from "lucide-react";
+import * as React from "react";
+import { Plus, Search, Pencil, Trash2, UserPlus, Users } from "lucide-react";
 import { Customer } from "@/constants/types";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -21,259 +22,341 @@ export function CustomerList() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { user, status } = useSession();
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const addFromContacts = useAddCustomerFromContacts(handleAddCustomer);
 
-  // Fetch customers from Supabase when user logged in
+  // Filter customers based on search input
+  const displayedCustomers = React.useMemo(() => {
+    return customers.filter((customer) =>
+      customer.name.toLowerCase().includes(filter.toLowerCase())
+    );
+  }, [customers, filter]);
+
+  // Handle card click to toggle active state
+  const handleCardClick = (customerId: string) => {
+    setActiveCardId(activeCardId === customerId ? null : customerId);
+  };
+
+  // Handle click outside to close active card
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.customer-card')) {
+        setActiveCardId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Fetch customers from Supabase
   useEffect(() => {
-    async function fetchCustomers() {
-      setLoading(true);
-      setError(null);
-      if (!user) {
-        setCustomers([]);
-        setLoading(false);
-        return;
-      }
-      const { data, error } = await supabase
-        .from("customers")
-        .select("id, name, phone")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-      if (error) {
-        setError("Could not fetch customers.");
-        setCustomers([]);
-      } else if (data) {
-        setCustomers(data);
-      }
-      setLoading(false);
+    if (user) {
+      fetchCustomers();
     }
-    fetchCustomers();
   }, [user]);
 
-  const displayedCustomers = customers.filter((c) =>
-    c.name.toLowerCase().includes(filter.toLowerCase())
-  );
+  async function fetchCustomers() {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("customers")
+        .select("*")
+        .order("created_at", { ascending: false });
 
-  async function reloadCustomers() {
-    if (!user) return;
-    const { data, error } = await supabase
-      .from("customers")
-      .select("id, name, phone")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
-    if (!error && data) setCustomers(data);
+      if (error) throw error;
+      setCustomers(data || []);
+    } catch (error: any) {
+      setError(error.message);
+      toast({
+        title: "Error fetching customers",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   }
 
+  // Add new customer
   async function handleAddCustomer(name: string, phone: string) {
-    if (!user) {
+    try {
+      const { data, error } = await supabase
+        .from("customers")
+        .insert([{ name, phone, user_id: user?.id }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setCustomers((prev) => [data, ...prev]);
       toast({
-        title: "Not signed in",
-        description: "Please log in to add customers.",
+        title: "Success",
+        description: "Customer added successfully",
+      });
+      setAddDialogOpen(false);
+    } catch (error: any) {
+      toast({
+        title: "Error adding customer",
+        description: error.message,
         variant: "destructive",
       });
-      return;
     }
-    // Check duplicate name (case-insensitive)
-    if (customers.some((c) => c.name.toLowerCase() === name.toLowerCase())) {
+  }
+
+  // Edit customer
+  async function handleEditCustomer(id: string, name: string, phone: string) {
+    try {
+      const { data, error } = await supabase
+        .from("customers")
+        .update({ name, phone })
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setCustomers((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, name, phone } : c))
+      );
       toast({
-        title: "Customer already exists",
-        description: `A customer named "${name}" already exists.`,
+        title: "Success",
+        description: "Customer updated successfully",
+      });
+      setEditDialogOpen(false);
+    } catch (error: any) {
+      toast({
+        title: "Error updating customer",
+        description: error.message,
         variant: "destructive",
       });
-      return;
     }
-    const { error } = await supabase
-      .from("customers")
-      .insert([{ name, phone, user_id: user.id }]);
-    if (error) {
-      toast({ title: "Error", description: "Could not add customer.", variant: "destructive" });
-      return;
+  }
+
+  // Delete customer
+  async function handleDeleteCustomer(id: string) {
+    try {
+      const { error } = await supabase
+        .from("customers")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      setCustomers((prev) => prev.filter((c) => c.id !== id));
+      toast({
+        title: "Success",
+        description: "Customer deleted successfully",
+      });
+      setDeleteDialogOpen(false);
+      setActiveCardId(null);
+    } catch (error: any) {
+      toast({
+        title: "Error deleting customer",
+        description: error.message,
+        variant: "destructive",
+      });
     }
-    toast({
-      title: "Customer Added",
-      description: name + " added successfully.",
-    });
-    await reloadCustomers();
   }
 
   function handleEditStart(customer: Customer) {
     setSelectedCustomer(customer);
     setEditDialogOpen(true);
-    setOpenMenuId(null);
-  }
-
-  async function handleEditCustomer(id: string, name: string, phone: string) {
-    if (!user) return;
-    const { error } = await supabase
-      .from("customers")
-      .update({ name, phone })
-      .eq("id", id)
-      .eq("user_id", user.id);
-    if (error) {
-      toast({ title: "Error", description: "Could not update customer.", variant: "destructive" });
-      return;
-    }
-    toast({
-      title: "Customer Updated",
-      description: `${name}'s details updated successfully.`,
-    });
-    setEditDialogOpen(false);
-    await reloadCustomers();
   }
 
   function handleDeleteStart(customer: Customer) {
     setSelectedCustomer(customer);
     setDeleteDialogOpen(true);
-    setOpenMenuId(null);
   }
-
-  async function handleDeleteCustomer(id: string) {
-    if (!user) return;
-    const { error } = await supabase
-      .from("customers")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", user.id);
-    if (error) {
-      toast({ title: "Error", description: "Could not delete customer.", variant: "destructive" });
-      return;
-    }
-    toast({
-      title: "Customer Deleted",
-      description: "Customer deleted successfully.",
-      variant: "destructive"
-    });
-    setDeleteDialogOpen(false);
-    await reloadCustomers();
-  }
-
-  // Hook for Add from Contacts (uses new version)
-  const addFromContacts = useAddCustomerFromContacts(handleAddCustomer);
 
   // Show loading and error state
   if (status === "loading" || loading) {
-    return <div className="p-6 text-center text-gray-500">Loading customers…</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[200px]">
+        <div className="text-blue-900/70 flex flex-col items-center gap-2">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-900"></div>
+          <span>Loading customers…</span>
+        </div>
+      </div>
+    );
   }
+
   if (error) {
-    return <div className="p-6 text-center text-red-700">{error}</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[200px]">
+        <div className="text-red-600 flex flex-col items-center gap-2">
+          <span className="text-lg">⚠️ {error}</span>
+          <button 
+            onClick={fetchCustomers}
+            className="text-sm text-blue-600 hover:underline"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="p-4 pb-0">
-      <div className="mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <h2 className="text-xl font-semibold text-blue-900">Customers</h2>
-        <div className="flex flex-row flex-wrap gap-3 w-full sm:w-auto">
+    <div className="space-y-6">
+      {/* Header Stats */}
+      <div className="bg-blue-100/60 rounded-2xl p-4">
+        <div className="flex items-center gap-3 mb-1">
+          <div className="bg-blue-100 p-2 rounded-lg">
+            <Users className="h-5 w-5 text-blue-700" />
+          </div>
+          <h2 className="text-xl font-semibold text-blue-900">Customers</h2>
+        </div>
+        <div className="grid grid-cols-2 gap-4 mt-4">
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-100">
+            <div className="text-2xl font-bold text-blue-900">{customers.length}</div>
+            <div className="text-gray-500 text-sm">Total Customers</div>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-100">
+            <div className="text-2xl font-bold text-blue-900">{displayedCustomers.length}</div>
+            <div className="text-gray-500 text-sm">Showing Now</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Search and Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="flex-1 relative">
+          <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+            <Search size={18} className="text-gray-400" />
+          </div>
+          <input
+            type="text"
+            className="w-full bg-white border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+            placeholder="Search customers by name…"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          />
+        </div>
+        <div className="flex gap-3">
           <Button
             onClick={() => setAddDialogOpen(true)}
-            className="flex-1 sm:flex-initial bg-primary text-white px-6 py-3 rounded-lg flex items-center gap-2 text-base font-semibold shadow-lg hover:bg-primary/90 min-w-[135px] justify-center transition"
-            size="lg"
+            className="flex-1 sm:flex-initial bg-blue-600 text-white px-6 py-2.5 rounded-xl flex items-center gap-2 text-base font-semibold hover:bg-blue-700 min-w-[120px] justify-center transition-all shadow-sm"
           >
-            <Plus size={22} strokeWidth={2.2} />
+            <Plus size={20} />
             Add
           </Button>
           <Button
             onClick={addFromContacts}
-            className="flex-1 sm:flex-initial bg-blue-500 text-white px-6 py-3 rounded-lg flex items-center gap-2 text-base font-semibold shadow-lg hover:bg-blue-600 min-w-[180px] justify-center transition"
-            size="lg"
+            className="flex-1 sm:flex-initial bg-blue-100 text-blue-700 px-6 py-2.5 rounded-xl flex items-center gap-2 text-base font-semibold hover:bg-blue-200 min-w-[180px] justify-center transition-all"
             variant="secondary"
             type="button"
+            disabled={loading}
           >
-            <UserPlus size={22} strokeWidth={2.2} />
+            <UserPlus size={20} />
             Add From Contacts
           </Button>
         </div>
       </div>
-      <div className="mb-3 flex items-center gap-2">
-        <Search size={18} className="text-gray-400" />
-        <input
-          type="text"
-          className="flex-1 border-b border-blue-100 focus:outline-none px-2 py-1 text-base"
-          placeholder="Search by name…"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-        />
-      </div>
-      {displayedCustomers.length === 0 && (
-        <div className="text-center text-gray-500 mt-8">No customers found.</div>
-      )}
-      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
-        {displayedCustomers.map((c) => (
-          <li
-            key={c.id}
-            className="bg-white shadow-sm border border-blue-100 rounded-xl px-5 py-4 flex flex-col min-h-[105px] relative transition hover:shadow-md hover:scale-[1.01] hover:bg-blue-50/30 duration-150 group"
-            onClick={() => navigate(`/customers/${c.id}`)}
-            tabIndex={0}
-            aria-label={`View details for ${c.name}`}
-            style={{ cursor: "pointer" }}
+
+      {/* Customer List */}
+      {loading ? (
+        <div className="text-center py-12 bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-200">
+          <div className="text-gray-500">Loading customers...</div>
+        </div>
+      ) : error ? (
+        <div className="text-center py-12 bg-red-50/50 rounded-2xl border-2 border-dashed border-red-200">
+          <div className="text-red-500">{error}</div>
+        </div>
+      ) : displayedCustomers.length === 0 ? (
+        <div className="text-center py-12 bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-200">
+          <div className="text-gray-500">
+            {filter ? "No customers found matching your search" : "No customers found"}
+          </div>
+          <button
+            onClick={() => setAddDialogOpen(true)}
+            className="mt-2 text-blue-600 hover:underline"
           >
-            {/* Three dot menu centered along right side */}
+            Add your first customer
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {displayedCustomers.map((c) => (
             <div
-              className="absolute right-2 top-1/2 -translate-y-1/2 z-10"
-              style={{ /* Center vertically along the right edge */ }}
+              key={c.id}
+              className="customer-card group bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:border-blue-200 transition-all duration-200 p-4 relative cursor-pointer"
+              onClick={() => handleCardClick(c.id)}
             >
-              <DropdownMenu open={openMenuId === c.id} onOpenChange={(open) => setOpenMenuId(open ? c.id : null)}>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    className="p-1.5 rounded-full hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-400 border transition"
-                    onClick={e => { e.stopPropagation(); setOpenMenuId(c.id); }}
-                    aria-label="Customer actions"
-                  >
-                    <MoreHorizontal size={20} />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="z-30 min-w-[130px] bg-white border shadow-lg rounded-md py-1">
-                  <DropdownMenuItem
-                    onSelect={e => {
-                      e.preventDefault();
-                      handleEditStart(c);
-                    }}
-                    className="flex items-center gap-2 text-blue-900 hover:bg-blue-50 cursor-pointer"
-                  >
-                    <Edit size={16} /> Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={e => {
-                      e.preventDefault();
-                      handleDeleteStart(c);
-                    }}
-                    className="flex items-center gap-2 text-red-600 hover:bg-red-50 cursor-pointer"
-                  >
-                    <Trash2 size={16} /> Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-blue-900 text-lg truncate group-hover:text-blue-700 transition-colors">
+                      {c.name}
+                    </h3>
+                    {c.phone && (
+                      <p className="text-gray-500 text-sm mt-0.5 truncate">
+                        {c.phone}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions - Shown when card is active */}
+              <div 
+                className={`absolute inset-0 bg-white/90 backdrop-blur-sm rounded-xl flex items-center justify-center gap-3 transition-all duration-200
+                  ${activeCardId === c.id ? 'opacity-100 visible' : 'opacity-0 invisible'}`}
+              >
+                <Button
+                  size="default"
+                  variant="default"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 rounded-lg h-10 flex items-center gap-2 font-medium shadow-sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditStart(c);
+                  }}
+                >
+                  <Pencil size={18} />
+                  Edit
+                </Button>
+                <Button
+                  size="icon"
+                  variant="destructive"
+                  className="bg-red-600 hover:bg-red-700 text-white rounded-full w-10 h-10 flex items-center justify-center shadow-sm transition-transform hover:scale-105"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteStart(c);
+                  }}
+                  title="Delete customer"
+                >
+                  <Trash2 size={18} />
+                </Button>
+              </div>
             </div>
-            <div className="flex-1 flex flex-col justify-center">
-              <span className="font-semibold text-blue-900 text-lg">{c.name}</span>
-              {c.phone && <span className="block text-gray-500 text-sm mt-1">{c.phone}</span>}
-            </div>
-          </li>
-        ))}
-      </ul>
+          ))}
+        </div>
+      )}
+
       <AddCustomerDialog
         open={addDialogOpen}
         onOpenChange={setAddDialogOpen}
-        onAdd={async (name, phone) => {
-          await handleAddCustomer(name, phone);
-        }}
+        onAdd={handleAddCustomer}
       />
-      <EditCustomerDialog
-        open={editDialogOpen}
-        onOpenChange={setEditDialogOpen}
-        customer={selectedCustomer}
-        onEdit={async (id, name, phone) => {
-          await handleEditCustomer(id, name, phone);
-        }}
-      />
-      <DeleteCustomerDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        customer={selectedCustomer}
-        onDelete={async (id) => {
-          await handleDeleteCustomer(id);
-        }}
-      />
+      {selectedCustomer && (
+        <>
+          <EditCustomerDialog
+            open={editDialogOpen}
+            onOpenChange={setEditDialogOpen}
+            customer={selectedCustomer}
+            onEdit={handleEditCustomer}
+          />
+          <DeleteCustomerDialog
+            open={deleteDialogOpen}
+            onOpenChange={setDeleteDialogOpen}
+            customer={selectedCustomer}
+            onDelete={handleDeleteCustomer}
+          />
+        </>
+      )}
     </div>
   );
 }
