@@ -8,7 +8,7 @@ import { BillHtmlPreview } from "@/components/BillHtmlPreview";
 import { BillPdfDoc } from "@/components/BillPdf";
 import { AppLayout } from "@/components/AppLayout";
 import { pdf } from "@react-pdf/renderer";
-import { ChevronDown, ChevronUp, Eye, Download, Share } from "lucide-react";
+import { ChevronDown, ChevronUp, Eye, Download, Share, Printer } from "lucide-react";
 
 type Bill = {
   id: string;
@@ -286,13 +286,23 @@ export default function Bills() {
       {previewBill && (
         <div className="fixed inset-0 bg-white z-50">
           <div className="container mx-auto p-4">
-            <Button
-              variant="outline"
-              className="mb-4"
-              onClick={() => setPreviewBill(null)}
-            >
-              Close Preview
-            </Button>
+            <div className="flex justify-between mb-4">
+              <Button
+                variant="outline"
+                className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+                onClick={() => window.print()}
+              >
+                <Printer className="h-4 w-4 mr-2" />
+                Print
+              </Button>
+              <Button
+                variant="outline"
+                className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+                onClick={() => setPreviewBill(null)}
+              >
+                Close Preview
+              </Button>
+            </div>
             <BillHtmlPreview
               bill={previewBill}
               userName={profile.name || ""}
