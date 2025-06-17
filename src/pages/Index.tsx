@@ -42,7 +42,7 @@ const DASH_ACTIONS = [
   },
   {
     title: "Product Catalog",
-    desc: "Glass, Aluminium, Mirrors, etc.",
+    desc: "Add your products",
     bg: "bg-yellow-50",
     hover: "hover:bg-yellow-100 active:bg-yellow-200",
     color: "text-yellow-700",
