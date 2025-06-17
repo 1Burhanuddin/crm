@@ -178,9 +178,9 @@ export function PendingCollectionsPanel({
                 </div>
               </div>
             )}
-          </li>
-        ))}
-      </ul>
+            </li>
+          ))}
+        </ul>
     </div>
   );
 }

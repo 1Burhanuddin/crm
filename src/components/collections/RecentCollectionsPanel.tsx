@@ -94,8 +94,8 @@ export function RecentCollectionsPanel({
                       {collection.remarks}
                     </div>
                   )}
-                </div>
-              </li>
+              </div>
+            </li>
             );
           })}
         </ul>

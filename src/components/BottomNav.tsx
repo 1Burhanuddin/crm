@@ -1,4 +1,3 @@
-
 import { ClipboardList, Home, FileText, UserCircle } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -15,7 +14,7 @@ export function BottomNav() {
   const navigate = useNavigate();
 
   return (
-    <nav className="w-full fixed bottom-0 left-0 right-0 bg-white border-t z-20 flex justify-around shadow-inner md:hidden">
+    <nav className="w-full fixed bottom-0 left-0 right-0 z-20 flex justify-around md:hidden backdrop-blur bg-white/40">
       {navItems.map((item) => {
         const active = location.pathname === item.path;
         return (

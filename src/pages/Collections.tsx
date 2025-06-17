@@ -372,31 +372,31 @@ export default function Collections() {
           </TabsList>
 
           <TabsContent value="pending" className="focus-visible:outline-none">
-            <PendingCollectionsPanel
-              pendingCustomers={pendingCustomers}
-              customers={customers}
-              customerDates={customerDates}
-              openDateMenu={(id) => setDateMenuOpen((prev) => ({ ...prev, [id]: !prev[id] }))}
-              dateMenuOpen={dateMenuOpen}
-              handleDateChangeForCustomer={handleDateChangeForCustomer}
-              displayDate={displayDate}
-              customerDeliveredOrders={customerDeliveredOrders}
-              setFormAndShowForm={(c) => {
-                setForm({
-                  customer_id: c.id,
-                  amount: c.pending ? String(c.pending) : "",
-                  remarks: "",
-                  order_id:
-                    customerDeliveredOrders[c.id] && customerDeliveredOrders[c.id].length === 1
-                      ? customerDeliveredOrders[c.id][0].id
-                      : "",
-                  collection_date: customerDates[c.id] ?? addDays(new Date(), 1),
-                });
-                setShowForm(true);
-              }}
-              isAdding={isAdding}
-              handleOpenReminderModal={handleOpenReminderModal}
-            />
+        <PendingCollectionsPanel
+          pendingCustomers={pendingCustomers}
+          customers={customers}
+          customerDates={customerDates}
+          openDateMenu={(id) => setDateMenuOpen((prev) => ({ ...prev, [id]: !prev[id] }))}
+          dateMenuOpen={dateMenuOpen}
+          handleDateChangeForCustomer={handleDateChangeForCustomer}
+          displayDate={displayDate}
+          customerDeliveredOrders={customerDeliveredOrders}
+          setFormAndShowForm={(c) => {
+            setForm({
+              customer_id: c.id,
+              amount: c.pending ? String(c.pending) : "",
+              remarks: "",
+              order_id:
+                customerDeliveredOrders[c.id] && customerDeliveredOrders[c.id].length === 1
+                  ? customerDeliveredOrders[c.id][0].id
+                  : "",
+              collection_date: customerDates[c.id] ?? addDays(new Date(), 1),
+            });
+            setShowForm(true);
+          }}
+          isAdding={isAdding}
+          handleOpenReminderModal={handleOpenReminderModal}
+        />
           </TabsContent>
 
           <TabsContent value="history" className="focus-visible:outline-none">
@@ -432,26 +432,26 @@ export default function Collections() {
           handleFormChange={handleFormChange}
         />
 
-        <CollectionEditModal
-          open={editModalOpen}
-          onClose={() => {
-            setEditModalOpen(false);
-            setEditingCollection(null);
-          }}
-          initial={{
-            amount: editingCollection?.amount || 1,
-            remarks: editingCollection?.remarks || "",
-          }}
-          onSave={saveEditCollection}
-          loading={isEditing}
-        />
+      <CollectionEditModal
+        open={editModalOpen}
+        onClose={() => {
+          setEditModalOpen(false);
+          setEditingCollection(null);
+        }}
+        initial={{
+          amount: editingCollection?.amount || 1,
+          remarks: editingCollection?.remarks || "",
+        }}
+        onSave={saveEditCollection}
+        loading={isEditing}
+      />
 
-        <DeleteCollectionDialog
-          deleteDialog={deleteDialog}
-          setDeleteDialog={setDeleteDialog}
-          isDeleting={isDeleting}
-          performDelete={performDelete}
-        />
+      <DeleteCollectionDialog
+        deleteDialog={deleteDialog}
+        setDeleteDialog={setDeleteDialog}
+        isDeleting={isDeleting}
+        performDelete={performDelete}
+      />
       </div>
     </AppLayout>
   );

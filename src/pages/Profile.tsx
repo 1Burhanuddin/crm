@@ -179,27 +179,27 @@ export default function ProfilePage() {
           <div className="text-blue-800 text-lg font-semibold">Loading...</div>
         </div>
       ) : (
-        <div className="max-w-3xl mx-auto p-6 pb-24 relative">
-          {/* Logout button: only in Profile, top-right */}
-          {status === "signed_in" && user && (
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={async () => {
-                await signOut();
-                navigate("/auth");
-              }}
-              className="absolute right-2 top-2 z-20 bg-white text-blue-900 hover:bg-blue-100 border border-blue-800 shadow-lg animate-pop"
-              title="Logout"
-            >
-              <LogOut className="h-5 w-5" />
-              <span className="sr-only">Logout</span>
-            </Button>
-          )}
-          <Card className="p-0 shadow-xl border border-gray-200">
+        <div className="max-w-3xl mx-auto p-4 pb-24 relative">
+          <Card className="p-0 shadow-xl border border-gray-200 relative overflow-visible">
+            {/* Logout button: inside card, top right, rounded */}
+            {status === "signed_in" && user && (
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={async () => {
+                  await signOut();
+                  navigate("/auth");
+                }}
+                className="absolute right-4 top-4 z-20 bg-white text-blue-900 hover:bg-blue-100 border border-blue-800 shadow-lg rounded-full w-10 h-10 flex items-center justify-center"
+                title="Logout"
+              >
+                <LogOut className="h-5 w-5" />
+                <span className="sr-only">Logout</span>
+              </Button>
+            )}
             {/* Profile header */}
-            <div className="flex flex-col items-center justify-center rounded-t-lg bg-gradient-to-r from-blue-100 via-indigo-50 to-purple-100 pb-2 pt-5">
-              <div className="relative">
+            <div className="flex flex-col items-center justify-center rounded-t-lg bg-gradient-to-r from-blue-100 via-indigo-50 to-purple-100 pb-2 pt-7 px-4">
+              <div className="relative mb-2">
                 <Avatar className="h-24 w-24 border-4 border-white shadow-lg bg-gradient-to-br from-indigo-100 to-blue-200">
                   <AvatarImage
                     src={
@@ -230,54 +230,57 @@ export default function ProfilePage() {
                   </div>
                 )}
               </div>
-              <span className="font-bold text-2xl text-blue-900 mt-2 flex items-center gap-2">
-                <User className="w-5 h-5 text-blue-400" />
-                {editing ? (
-                  <Input
-                    type="text"
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    className="w-[160px] font-bold text-center border-blue-200"
-                    maxLength={50}
-                    placeholder="Name"
-                  />
-                ) : profile?.name ? (
-                  profile.name
-                ) : (
-                  <span className="text-gray-400 italic">No name</span>
-                )}
-              </span>
-              <span className="text-sm text-indigo-700 font-semibold flex gap-2 items-center mt-1">
-                <Store className="w-4 h-4 text-indigo-400" />
-                {editing ? (
-                  <Input
-                    type="text"
-                    value={newShopName}
-                    onChange={(e) => setNewShopName(e.target.value)}
-                    className="w-[160px] text-center border-blue-100"
-                    maxLength={60}
-                    placeholder="Shop/Enterprise Name"
-                  />
-                ) : profile?.shop_name ? (
-                  profile.shop_name
-                ) : (
-                  <span className="text-gray-300 italic">No shop/enterprise</span>
-                )}
-              </span>
-              <span className="text-xs text-gray-500 mt-1 flex gap-2 items-center">
-                <AtSign className="w-4 h-4 text-blue-300" />
-                {editing ? (
-                  <Input
-                    type="email"
-                    value={newEmail}
-                    onChange={(e) => setNewEmail(e.target.value)}
-                    className="w-[190px] text-center border-blue-100"
-                    placeholder="Email"
-                  />
-                ) : (
-                  profile?.email
-                )}
-              </span>
+              {/* Cleaned up text layout */}
+              <div className="flex flex-col items-center gap-1 w-full">
+                <span className="font-bold text-2xl text-blue-900 flex items-center gap-2 text-center break-words">
+                  <User className="w-5 h-5 text-blue-400" />
+                  {editing ? (
+                    <Input
+                      type="text"
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      className="w-[160px] font-bold text-center border-blue-200"
+                      maxLength={50}
+                      placeholder="Name"
+                    />
+                  ) : profile?.name ? (
+                    profile.name
+                  ) : (
+                    <span className="text-gray-400 italic">No name</span>
+                  )}
+                </span>
+                <span className="text-sm text-indigo-700 font-semibold flex gap-2 items-center mt-0.5 text-center break-words">
+                  <Store className="w-4 h-4 text-indigo-400" />
+                  {editing ? (
+                    <Input
+                      type="text"
+                      value={newShopName}
+                      onChange={(e) => setNewShopName(e.target.value)}
+                      className="w-[160px] text-center border-blue-100"
+                      maxLength={60}
+                      placeholder="Shop/Enterprise Name"
+                    />
+                  ) : profile?.shop_name ? (
+                    profile.shop_name
+                  ) : (
+                    <span className="text-gray-300 italic">No shop/enterprise</span>
+                  )}
+                </span>
+                <span className="text-xs text-gray-500 mt-0.5 flex gap-2 items-center text-center break-words">
+                  <AtSign className="w-4 h-4 text-blue-300" />
+                  {editing ? (
+                    <Input
+                      type="email"
+                      value={newEmail}
+                      onChange={(e) => setNewEmail(e.target.value)}
+                      className="w-[190px] text-center border-blue-100"
+                      placeholder="Email"
+                    />
+                  ) : (
+                    profile?.email
+                  )}
+                </span>
+              </div>
             </div>
             {/* Edit Actions */}
             <div className="flex flex-col items-center px-6 pt-2 pb-6">

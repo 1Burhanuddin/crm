@@ -171,88 +171,88 @@ export function AddOrderModal({
         </DialogHeader>
         <div className="space-y-4 pt-4">
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-            <div>
+          <div>
               <label className="block text-sm font-medium mb-1 text-blue-900">Customer</label>
-              <Select value={customerId} onValueChange={setCustomerId}>
+            <Select value={customerId} onValueChange={setCustomerId}>
                 <SelectTrigger className="bg-white">
-                  <SelectValue placeholder="Select customer" />
-                </SelectTrigger>
-                <SelectContent>
-                  {customers.length === 0 ? (
-                    <div className="text-gray-400 px-3 py-2 text-xs">
-                      No customers found.
-                    </div>
-                  ) : (
-                    customers.map((customer) => (
-                      <SelectItem key={customer.id} value={customer.id}>
-                        {customer.name}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
+                <SelectValue placeholder="Select customer" />
+              </SelectTrigger>
+              <SelectContent>
+                {customers.length === 0 ? (
+                  <div className="text-gray-400 px-3 py-2 text-xs">
+                    No customers found.
+                  </div>
+                ) : (
+                  customers.map((customer) => (
+                    <SelectItem key={customer.id} value={customer.id}>
+                      {customer.name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
+          <div>
               <label className="block text-sm font-medium mb-1 text-gray-700">Product</label>
-              <Select value={productId} onValueChange={setProductId}>
+            <Select value={productId} onValueChange={setProductId}>
                 <SelectTrigger className="bg-white">
-                  <SelectValue placeholder="Select product" />
-                </SelectTrigger>
-                <SelectContent>
-                  {products.length === 0 ? (
-                    <div className="text-gray-400 px-3 py-2 text-xs">
-                      No products found.
-                    </div>
-                  ) : (
-                    products.map((product) => (
-                      <SelectItem key={product.id} value={product.id}>
-                        {product.name}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
+                <SelectValue placeholder="Select product" />
+              </SelectTrigger>
+              <SelectContent>
+                {products.length === 0 ? (
+                  <div className="text-gray-400 px-3 py-2 text-xs">
+                    No products found.
+                  </div>
+                ) : (
+                  products.map((product) => (
+                    <SelectItem key={product.id} value={product.id}>
+                      {product.name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
 
-            <div>
+          <div>
               <label className="block text-sm font-medium mb-1 text-gray-700">Quantity</label>
-              <Input
-                type="number"
-                placeholder="Enter quantity"
-                value={qty}
-                onChange={(e) => setQty(e.target.value)}
-                min="1"
+            <Input
+              type="number"
+              placeholder="Enter quantity"
+              value={qty}
+              onChange={(e) => setQty(e.target.value)}
+              min="1"
                 className="bg-white"
-              />
+            />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
+          <div>
               <label className="block text-sm font-medium mb-1 text-gray-700">Job Date</label>
-              <Input
-                type="date"
-                value={jobDate}
-                onChange={(e) => setJobDate(e.target.value)}
+            <Input
+              type="date"
+              value={jobDate}
+              onChange={(e) => setJobDate(e.target.value)}
                 className="bg-white"
-              />
-            </div>
+            />
+          </div>
 
-            <div>
+          <div>
               <label className="block text-sm font-medium mb-1 text-gray-700">
-                Assigned To
-              </label>
-              <Input
-                placeholder="Enter assigned person"
-                value={assignedTo}
-                onChange={(e) => setAssignedTo(e.target.value)}
-                maxLength={50}
+              Assigned To
+            </label>
+            <Input
+              placeholder="Enter assigned person"
+              value={assignedTo}
+              onChange={(e) => setAssignedTo(e.target.value)}
+              maxLength={50}
                 className="bg-white"
-              />
-            </div>
+            />
+          </div>
           </div>
 
           <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
@@ -283,7 +283,7 @@ export function AddOrderModal({
                     <span>Pending Amount:</span>
                     <span className={`font-medium ${pending > 0 ? "text-red-600" : "text-green-600"}`}>
                       ₹{pending}
-                    </span>
+                </span>
                   </div>
                 </>
               )}

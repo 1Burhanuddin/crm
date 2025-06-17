@@ -59,18 +59,18 @@ export function AddProductModal({ open, onOpenChange, onSubmit }: AddProductModa
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <IndianRupee className="h-4 w-4 text-gray-500" />
               </div>
-              <Input
-                type="number"
-                min={0}
+            <Input
+              type="number"
+              min={0}
                 step="0.01"
-                value={price}
-                onChange={e => setPrice(e.target.value)}
+              value={price}
+              onChange={e => setPrice(e.target.value)}
                 placeholder="0.00"
                 className="bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500 pl-8"
-                required
+              required
                 inputMode="decimal"
                 pattern="[0-9]*"
-              />
+            />
             </div>
           </div>
           <div className="space-y-2">

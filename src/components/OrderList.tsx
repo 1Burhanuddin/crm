@@ -432,88 +432,88 @@ export function OrderList() {
               {/* Main content with padding to avoid overlap with menu */}
               <div className="pr-8">
                 <div className="flex flex-col gap-3">
-                  <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0">
                     <div className="font-bold text-blue-900 text-lg truncate">
-                      {customerName(o.customerId)}
-                      {missingCustomer && (
-                        <span className="ml-2 text-xs text-yellow-700">(not found)</span>
-                      )}
-                    </div>
+                    {customerName(o.customerId)}
+                    {missingCustomer && (
+                      <span className="ml-2 text-xs text-yellow-700">(not found)</span>
+                    )}
+                  </div>
                     <div className="text-base text-gray-700 truncate mt-1">
-                      {productName(o.productId)}
-                      {missingProduct && (
-                        <span className="ml-2 text-xs text-yellow-700">(not found)</span>
-                      )}
-                    </div>
+                    {productName(o.productId)}
+                    {missingProduct && (
+                      <span className="ml-2 text-xs text-yellow-700">(not found)</span>
+                    )}
+                  </div>
                     <div className="flex gap-3 items-center mt-4">
                       {/* Show pending credit/udhaar appropriately */}
-                      {o.status === "pending" && pending > 0 && (
+                  {o.status === "pending" && pending > 0 && (
                         <span className="inline-flex items-center bg-yellow-100 text-yellow-800 rounded-lg px-3 py-1.5 text-sm font-semibold shadow-sm">
-                          Pending: ₹{pending}
-                        </span>
-                      )}
-                      {o.status === "delivered" && udhaar > 0 && (
+                      Pending: ₹{pending}
+                    </span>
+                  )}
+                  {o.status === "delivered" && udhaar > 0 && (
                         <span className="inline-flex items-center bg-red-100 text-red-700 rounded-lg px-3 py-1.5 text-sm font-semibold shadow-sm">
-                          Udhaar: ₹{udhaar}
-                        </span>
-                      )}
-                      {o.status === "delivered" && (
-                        <button
+                      Udhaar: ₹{udhaar}
+                    </span>
+                  )}
+                  {o.status === "delivered" && (
+                    <button
                           className="border border-green-200 text-green-700 hover:bg-green-50 px-4 py-1.5 rounded-lg text-sm flex items-center gap-2 font-medium transition-all shadow-sm hover:shadow"
-                          onClick={() => openBillModalFromOrder(o)}
-                          title="Generate Bill"
-                        >
+                      onClick={() => openBillModalFromOrder(o)}
+                      title="Generate Bill"
+                    >
                           <Receipt size={16} /> Generate Bill
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                    </button>
+                  )}
+                </div>
+              </div>
 
-                  {/* Info ROW: Qty, status, assignment, job date */}
+              {/* Info ROW: Qty, status, assignment, job date */}
                   <div className="flex flex-wrap items-center gap-3 mt-4 pt-4 border-t border-gray-100">
                     <span className="text-sm bg-gray-100 px-3 py-1.5 rounded-lg font-medium">
-                      Qty: {o.qty}
-                    </span>
-                    <span
+                  Qty: {o.qty}
+                </span>
+                <span
                       className={`text-sm px-3 py-1.5 rounded-lg font-medium ${
-                        o.status === "pending"
-                          ? "bg-yellow-200 text-yellow-900"
-                          : "bg-green-200 text-green-900"
-                      }`}
-                    >
-                      {o.status === "pending" ? "Pending" : "Delivered"}
-                    </span>
-                    {o.assignedTo && (
+                    o.status === "pending"
+                      ? "bg-yellow-200 text-yellow-900"
+                      : "bg-green-200 text-green-900"
+                  }`}
+                >
+                  {o.status === "pending" ? "Pending" : "Delivered"}
+                </span>
+                {o.assignedTo && (
                       <span className="text-sm text-gray-700 font-medium">
-                        Assigned to: {o.assignedTo}
-                      </span>
-                    )}
+                    Assigned to: {o.assignedTo}
+                  </span>
+                )}
                     <span className="text-gray-500 text-sm">{o.jobDate}</span>
-                    {/* always show total/advance if relevant */}
+                {/* always show total/advance if relevant */}
                     <span className="text-sm text-blue-700 font-medium ml-2">
-                      Total: ₹{total}
-                    </span>
-                    {o.advanceAmount > 0 && (
+                  Total: ₹{total}
+                </span>
+                {o.advanceAmount > 0 && (
                       <span className="text-sm text-green-700 font-medium ml-2">
-                        Advance: ₹{o.advanceAmount}
-                      </span>
-                    )}
-                    {/* Optionally display amount collected */}
-                    {collected > 0 && (
+                    Advance: ₹{o.advanceAmount}
+                  </span>
+                )}
+                {/* Optionally display amount collected */}
+                {collected > 0 && (
                       <span className="text-sm text-emerald-700 font-medium ml-2">
-                        Collected: ₹{collected}
-                      </span>
-                    )}
-                  </div>
-                  {cardError !== "bg-white" && (
+                    Collected: ₹{collected}
+                  </span>
+                )}
+              </div>
+              {cardError !== "bg-white" && (
                     <div className="mt-3 text-sm text-yellow-800 italic bg-yellow-50 px-4 py-2 rounded-lg">
-                      Warning: This order references a deleted/missing{" "}
-                      {missingCustomer && "customer"}
-                      {missingCustomer && missingProduct && " and "}
-                      {missingProduct && !missingCustomer && "product"}
-                      . You may need to edit or delete this order.
-                    </div>
-                  )}
+                  Warning: This order references a deleted/missing{" "}
+                  {missingCustomer && "customer"}
+                  {missingCustomer && missingProduct && " and "}
+                  {missingProduct && !missingCustomer && "product"}
+                  . You may need to edit or delete this order.
+                </div>
+              )}
                 </div>
               </div>
             </li>
