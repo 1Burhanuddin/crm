@@ -13,6 +13,8 @@ import { useNavigate } from "react-router-dom";
 
 export default function ProfilePage() {
   const { user, status, refresh, signOut } = useSession();
+  console.log("Current Auth User:", user);
+
   const [profile, setProfile] = useState<{
     email: string;
     name: string | null;
@@ -41,6 +43,13 @@ export default function ProfilePage() {
         .eq("id", user.id)
         .maybeSingle()
         .then(({ data, error }) => {
+          // console
+          console.log("Fetching profile for user ID:", user.id);
+          console.log("Fetched profile data:", data);
+          if (error) console.error("Profile fetch error:", error);
+
+
+
           if (data) {
             setProfile(data);
             setCurrentPinHash(data.pin_hash || null);
