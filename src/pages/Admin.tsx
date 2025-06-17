@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trash2, AlertTriangle } from "lucide-react";
+import { Trash2, AlertTriangle, Shield } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +30,7 @@ export default function AdminPage() {
   const navigate = useNavigate();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [accessDenied, setAccessDenied] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; user: AdminUser | null }>({
     open: false,
     user: null,
@@ -47,15 +48,26 @@ export default function AdminPage() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
+      setAccessDenied(false);
       const { data, error } = await supabase.rpc('get_all_users');
       
       if (error) {
         console.error('Error fetching users:', error);
-        toast({
-          title: "Error",
-          description: "Failed to fetch users. You might not have admin permissions.",
-          variant: "destructive",
-        });
+        
+        if (error.message.includes('Access denied') || error.message.includes('Admin role required')) {
+          setAccessDenied(true);
+          toast({
+            title: "Access Denied",
+            description: "You need admin privileges to access this page.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to fetch users: " + error.message,
+            variant: "destructive",
+          });
+        }
         return;
       }
 
@@ -83,11 +95,20 @@ export default function AdminPage() {
 
       if (error) {
         console.error('Error deleting user:', error);
-        toast({
-          title: "Error",
-          description: "Failed to delete user: " + error.message,
-          variant: "destructive",
-        });
+        
+        if (error.message.includes('Access denied') || error.message.includes('Admin role required')) {
+          toast({
+            title: "Access Denied",
+            description: "You need admin privileges to delete users.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to delete user: " + error.message,
+            variant: "destructive",
+          });
+        }
         return;
       }
 
@@ -126,11 +147,33 @@ export default function AdminPage() {
     );
   }
 
+  if (accessDenied) {
+    return (
+      <AppLayout title="Admin - Access Denied">
+        <div className="p-6 max-w-4xl mx-auto">
+          <div className="text-center py-16">
+            <Shield className="h-16 w-16 text-red-500 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-red-600 mb-2">Access Denied</h1>
+            <p className="text-gray-600 mb-6">
+              You need administrator privileges to access this page.
+            </p>
+            <Button onClick={() => navigate("/")} variant="outline">
+              Return to Home
+            </Button>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout title="Admin - User Management">
       <div className="p-6 max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-blue-900">User Management</h1>
+          <div className="flex items-center gap-2">
+            <Shield className="h-6 w-6 text-blue-600" />
+            <h1 className="text-2xl font-bold text-blue-900">User Management</h1>
+          </div>
           <Button onClick={fetchUsers} variant="outline">
             Refresh
           </Button>
@@ -171,6 +214,7 @@ export default function AdminPage() {
                         size="sm"
                         onClick={() => setDeleteDialog({ open: true, user: adminUser })}
                         disabled={adminUser.id === user?.id}
+                        title={adminUser.id === user?.id ? "Cannot delete your own account" : "Delete user"}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
