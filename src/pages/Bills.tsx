@@ -4,11 +4,11 @@ import { useSession } from "@/hooks/useSession";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { BillCreateModal } from "@/components/BillCreateModal";
+import { BillHtmlPreview } from "@/components/BillHtmlPreview";
 import { BillPdfDoc } from "@/components/BillPdf";
-import { PDFDownloadLink } from "@react-pdf/renderer";
-import { Download } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
-import { BackButton } from "@/components/BackButton";
+import { pdf } from "@react-pdf/renderer";
+import { ChevronDown, ChevronUp, Eye, Download, Share } from "lucide-react";
 
 type Bill = {
   id: string;
@@ -30,6 +30,15 @@ export default function Bills() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [profile, setProfile] = useState<ProfileInfo>({ name: null, shop_name: null });
+  const [previewBill, setPreviewBill] = useState<Bill | null>(null);
+  const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
+
+  const toggleCard = (billId: string) => {
+    setExpandedCards(prev => ({
+      ...prev,
+      [billId]: !prev[billId]
+    }));
+  };
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -72,112 +81,226 @@ export default function Bills() {
     // eslint-disable-next-line
   }, [user]);
 
-  return (
-    <AppLayout title="Bills">
-      <div className="p-6 max-w-4xl w-full mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <div className="text-2xl font-bold text-blue-900">Bills</div>
-          <Button onClick={() => setShowCreate(true)} className="px-5 py-2 text-base rounded-lg">+ New Bill</Button>
-        </div>
-        <BillCreateModal
-          open={showCreate}
-          setOpen={setShowCreate}
-          onBillCreated={fetchBills}
+  // Generate PDF and notify for WhatsApp sharing
+  async function handleWhatsAppShare(bill: Bill) {
+    try {
+      // Show loading toast
+      toast({
+        title: "Generating PDF...",
+        description: "Please wait while we generate your invoice.",
+      });
+
+      // Generate PDF blob
+      const blob = await pdf(
+        <BillPdfDoc
+          bill={bill}
+          userName={profile.name || ""}
+          shopName={profile.shop_name || ""}
         />
+      ).toBlob();
+
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `invoice-${bill.id.slice(0, 8)}.pdf`;
+      
+      // Trigger download
+      link.click();
+      
+      // Clean up
+      URL.revokeObjectURL(url);
+
+      // Show success notification with instructions
+      toast({
+        title: "PDF Generated Successfully!",
+        description: "The PDF has been downloaded. You can now share it via WhatsApp manually.",
+        duration: 5000,
+      });
+    } catch (error) {
+      console.error('PDF Generation Error:', error);  // Add error logging
+      toast({
+        title: "Error Generating PDF",
+        description: "There was an error generating the PDF. Please try again.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    }
+  }
+
+  // Handle print preview
+  const handlePrintPreview = (bill: Bill) => {
+    setPreviewBill(bill);
+  };
+
+  // Handle download PDF
+  const handleDownloadPdf = async (bill: Bill) => {
+    try {
+      toast({
+        title: "Generating PDF...",
+        description: "Please wait while we generate your invoice.",
+      });
+
+      const blob = await pdf(
+        <BillPdfDoc
+          bill={bill}
+          userName={profile.name || ""}
+          shopName={profile.shop_name || ""}
+        />
+      ).toBlob();
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `invoice-${bill.id.slice(0, 8)}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "PDF Downloaded Successfully!",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('PDF Download Error:', error);
+      toast({
+        title: "Error Downloading PDF",
+        description: "There was an error generating the PDF. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <AppLayout>
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold">Bills</h1>
+          <Button onClick={() => setShowCreate(true)}>Create Bill</Button>
+        </div>
+
         {loading ? (
-          <div className="flex flex-col min-h-[40vh] items-center justify-center text-blue-800 text-lg font-semibold">
-            Loading...
-          </div>
+          <div className="text-center">Loading...</div>
         ) : bills.length === 0 ? (
           <div className="text-gray-400 text-center mt-10">No bills created yet.</div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="space-y-4">
             {bills.map((bill) => (
               <div
                 key={bill.id}
-                className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 w-full transition-all relative hover:shadow-xl"
+                className="bg-white rounded-xl shadow-lg border hover:shadow-xl transition-all duration-200 relative overflow-hidden"
               >
-                {/* Export PDF top-right */}
-                <div className="absolute right-4 top-4">
-                  <PDFDownloadLink
-                    document={
-                      <BillPdfDoc
-                        bill={bill}
-                        shopName={profile.shop_name || ""}
-                        userName={profile.name || ""}
-                      />
-                    }
-                    fileName={`Bill_${bill.id.slice(0, 8)}.pdf`}
-                    className="inline-flex"
-                  >
-                    {({ loading: pdfLoading }) => (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="bg-blue-50 border border-blue-100 text-blue-900 hover:bg-blue-100 hover:text-blue-900 shadow-none font-medium px-3 py-1 rounded-md transition"
-                      >
-                        <Download size={15} className="mr-1" />
-                        {pdfLoading ? "Generating..." : "Export PDF"}
-                      </Button>
-                    )}
-                  </PDFDownloadLink>
-                </div>
-                {/* Bill Header */}
-                <div className="flex flex-col gap-0.5 pr-[130px] min-h-[60px]">
-                  <span className="font-bold text-base text-blue-900">INVOICE</span>
-                  <span className="font-medium text-[1.02rem] text-zinc-800 truncate">
-                    {profile.shop_name || bill.customer_name || "No Name"}
-                  </span>
-                  <span className="text-sm text-gray-500">
-                    {bill.customer_phone}
-                  </span>
-                </div>
-                <div className="mt-2 flex flex-row flex-wrap justify-between items-center text-xs text-gray-700">
-                  <div>
-                    <div>
-                      Date: <span className="font-[500]">{bill.bill_date}</span>
+                {/* Collapsed View */}
+                <div 
+                  className="p-4 cursor-pointer"
+                  onClick={() => toggleCard(bill.id)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-blue-900">
+                        {bill.customer_name}
+                      </h3>
+                      {bill.customer_phone && (
+                        <p className="text-sm text-gray-600 mt-1">{bill.customer_phone}</p>
+                      )}
                     </div>
-                    <div>
-                      Bill #: {" "}
-                      <span className="font-mono text-[13px] text-blue-900 underline decoration-blue-200 underline-offset-4">
-                        {bill.id.slice(0, 8).toUpperCase()}
-                      </span>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <div className="text-xl font-bold text-blue-600">
+                          ₹{bill.total}
+                        </div>
+                        <div className="text-sm text-gray-500">Bill #{bill.id.slice(0, 8)}</div>
+                      </div>
+                      <div className="text-gray-400">
+                        {expandedCards[bill.id] ? (
+                          <ChevronUp className="h-5 w-5" />
+                        ) : (
+                          <ChevronDown className="h-5 w-5" />
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
+
                 {/* Bill Items Table */}
-                <div className="mt-3 rounded-lg bg-white border border-gray-200 overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-gray-50">
-                        <th className="text-left p-2 font-semibold border-b">Item</th>
-                        <th className="text-right p-2 font-semibold border-b">Qty</th>
-                        <th className="text-right p-2 font-semibold border-b">Price</th>
-                        <th className="text-right p-2 font-semibold border-b">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(bill.items || []).map((item: any, idx: number) => (
-                        <tr key={idx} className="hover:bg-gray-50">
-                          <td className="p-2">{item.name}</td>
-                          <td className="p-2 text-right">{item.qty}</td>
-                          <td className="p-2 text-right">₹{item.price}</td>
-                          <td className="p-2 text-right">₹{Number(item.qty) * Number(item.price)}</td>
+                <div className="px-4 pb-4">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm border">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th className="text-left p-2 font-semibold border-b">Item</th>
+                          <th className="text-right p-2 font-semibold border-b">Qty</th>
+                          <th className="text-right p-2 font-semibold border-b">Price</th>
+                          <th className="text-right p-2 font-semibold border-b">Total</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {/* Total */}
-                <div className="mt-3 flex justify-end items-center">
-                  <span className="text-base font-semibold text-blue-900 mr-2">Total:</span>
-                  <span className="text-lg font-bold text-blue-900">₹{bill.total}</span>
+                      </thead>
+                      <tbody>
+                        {(bill.items || []).map((item: any, idx: number) => (
+                          <tr key={idx} className="hover:bg-gray-50">
+                            <td className="p-2">{item.name}</td>
+                            <td className="p-2 text-right">{item.qty}</td>
+                            <td className="p-2 text-right">₹{item.price}</td>
+                            <td className="p-2 text-right">₹{Number(item.qty) * Number(item.price)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Expanded View - Only for Action Buttons */}
+                  {expandedCards[bill.id] && (
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <Button
+                          variant="outline"
+                          className="flex-1 justify-center bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+                          onClick={() => handlePrintPreview(bill)}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          Preview
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="flex-1 justify-center bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+                          onClick={() => handleDownloadPdf(bill)}
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Download PDF
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      <BillCreateModal
+        open={showCreate}
+        setOpen={setShowCreate}
+        onBillCreated={fetchBills}
+      />
+
+      {/* Print Preview Modal */}
+      {previewBill && (
+        <div className="fixed inset-0 bg-white z-50">
+          <div className="container mx-auto p-4">
+            <Button
+              variant="outline"
+              className="mb-4"
+              onClick={() => setPreviewBill(null)}
+            >
+              Close Preview
+            </Button>
+            <BillHtmlPreview
+              bill={previewBill}
+              userName={profile.name || ""}
+              shopName={profile.shop_name || ""}
+            />
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }

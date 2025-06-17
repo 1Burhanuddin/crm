@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { useAddCustomerFromContacts } from "./hooks/useAddCustomerFromContacts";
 import { supabase } from "@/integrations/supabase/client";
-import { useSession } from "@/hooks/useSession";
+import { useAuthRedirect } from "@/hooks/useAuthRedirect";
 
 export function CustomerList() {
   const [filter, setFilter] = useState("");
@@ -24,7 +24,7 @@ export function CustomerList() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { user, status } = useSession();
+  const { user } = useAuthRedirect();
   const addFromContacts = useAddCustomerFromContacts(handleAddCustomer);
 
   // Filter customers based on search input
@@ -173,7 +173,7 @@ export function CustomerList() {
   }
 
   // Show loading and error state
-  if (status === "loading" || loading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
         <div className="text-blue-900/70 flex flex-col items-center gap-2">

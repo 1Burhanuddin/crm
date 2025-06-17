@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -17,6 +16,7 @@ import Bills from "./pages/Bills";
 import Suppliers from "./pages/Suppliers";
 import Collections from "./pages/Collections";
 import Admin from "./pages/Admin";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 const Profile = lazy(() => import("./pages/Profile"));
 
@@ -38,28 +38,62 @@ const App = () => {
           <Sonner />
           <BrowserRouter>
             <Routes>
-              <Route path="/" element={<Index />} />
               <Route path="/auth" element={<AuthPage />} />
-              <Route path="/customers" element={<Customers />} />
-              {/* Added route */}
-              <Route path="/suppliers" element={<Suppliers />} />
-              <Route path="/customers/:id" element={<CustomerLedgerPage />} />
-              <Route path="/products" element={<Products />} />
-              <Route path="/orders" element={<Orders />} />
-              <Route path="/bills" element={<Bills />} />
-              {/* Add collections page */}
-              <Route path="/collections" element={<Collections />} />
-              {/* Add admin page */}
-              <Route path="/admin" element={<Admin />} />
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <Index />
+                </ProtectedRoute>
+              } />
+              <Route path="/customers" element={
+                <ProtectedRoute>
+                  <Customers />
+                </ProtectedRoute>
+              } />
+              <Route path="/suppliers" element={
+                <ProtectedRoute>
+                  <Suppliers />
+                </ProtectedRoute>
+              } />
+              <Route path="/customers/:id" element={
+                <ProtectedRoute>
+                  <CustomerLedgerPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/products" element={
+                <ProtectedRoute>
+                  <Products />
+                </ProtectedRoute>
+              } />
+              <Route path="/orders" element={
+                <ProtectedRoute>
+                  <Orders />
+                </ProtectedRoute>
+              } />
+              <Route path="/bills" element={
+                <ProtectedRoute>
+                  <Bills />
+                </ProtectedRoute>
+              } />
+              <Route path="/collections" element={
+                <ProtectedRoute>
+                  <Collections />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin" element={
+                <ProtectedRoute>
+                  <Admin />
+                </ProtectedRoute>
+              } />
               <Route
                 path="/profile"
                 element={
-                  <Suspense fallback={<div>Loading...</div>}>
-                    <Profile />
-                  </Suspense>
+                  <ProtectedRoute>
+                    <Suspense fallback={<div>Loading...</div>}>
+                      <Profile />
+                    </Suspense>
+                  </ProtectedRoute>
                 }
               />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

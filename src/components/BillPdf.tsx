@@ -1,16 +1,19 @@
-import React from "react";
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { PDFViewer, Document, Page, Text, View, StyleSheet, Font, pdf } from "@react-pdf/renderer";
+import { useState } from "react";
+import { Bill } from "../types/bill";
+import { amountInWords } from "../utils/amountInWords";
+
+// Register fonts if needed
+Font.register({
+  family: 'Helvetica',
+  fonts: [
+    { src: 'https://fonts.gstatic.com/s/roboto/v27/KFOmCnqEu92Fr1Me5Q.ttf' }, // normal
+    { src: 'https://fonts.gstatic.com/s/roboto/v27/KFOlCnqEu92Fr1MmWUlvAw.ttf', fontWeight: 700 }, // bold
+  ]
+});
 
 // props now accepts userName, shopName
 type Item = { name: string; qty: number; price: number };
-type Bill = {
-  id: string;
-  customer_name: string;
-  customer_phone: string | null;
-  bill_date: string;
-  items: Item[];
-  total: number;
-};
 
 interface BillPdfDocProps {
   bill: Bill;
@@ -172,6 +175,7 @@ const styles = StyleSheet.create({
     borderBottom: "1 solid #e0e0e0",
     backgroundColor: "#fff",
     alignItems: "center",
+    minHeight: 25, // Ensure minimum height for empty rows
   },
   tdItem: {
     flex: 3,
@@ -200,13 +204,15 @@ const styles = StyleSheet.create({
     fontSize: 11,
     paddingVertical: 4,
     borderRight: "1 solid #ccc",
-    textAlign: "center",
+    textAlign: "right",
+    paddingRight: 4,
   },
   tdAmount: {
     flex: 1.5,
     fontSize: 11,
     paddingVertical: 4,
-    textAlign: "center",
+    textAlign: "right",
+    paddingRight: 4,
   },
   summaryBlock: {
     marginTop: 4,
@@ -225,11 +231,11 @@ const styles = StyleSheet.create({
   },
   summaryValue: {
     fontWeight: "bold",
-    fontSize: 14,
-    fontFamily: "Courier",
+    fontSize: 12,
     minWidth: 70,
     textAlign: "right",
     letterSpacing: 1,
+    paddingRight: 4,
   },
   wordsBlock: {
     fontSize: 10,
@@ -242,6 +248,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 32,
+    position: "absolute",
+    bottom: 24,
+    left: 24,
+    right: 24,
   },
   notes: {
     fontSize: 9,
@@ -259,93 +269,38 @@ const styles = StyleSheet.create({
   },
 });
 
-function amountInWords(n: number) {
-  if (!n && n !== 0) return "";
-  const num = Math.floor(n);
-  const single = [
-    "",
-    "One",
-    "Two",
-    "Three",
-    "Four",
-    "Five",
-    "Six",
-    "Seven",
-    "Eight",
-    "Nine",
-  ];
-  const teen = [
-    "Ten",
-    "Eleven",
-    "Twelve",
-    "Thirteen",
-    "Fourteen",
-    "Fifteen",
-    "Sixteen",
-    "Seventeen",
-    "Eighteen",
-    "Nineteen",
-  ];
-  const tens = [
-    "",
-    "",
-    "Twenty",
-    "Thirty",
-    "Forty",
-    "Fifty",
-    "Sixty",
-    "Seventy",
-    "Eighty",
-    "Ninety",
-  ];
-  const scale = [
-    "",
-    "Thousand",
-    "Lakh",
-    "Crore"
-  ];
-
-  let s = "";
-  let i = 0;
-  let number = num;
-  if (number === 0) return "Zero Rupees Only";
-  while (number > 0) {
-    let divider = i === 0 ? 1000 : 100;
-    let p = number % divider;
-    number = Math.floor(number / divider);
-    if (p) {
-      let str = "";
-      if (p > 99) {
-        str += single[Math.floor(p / 100)] + " Hundred ";
-        p = p % 100;
-      }
-      if (p > 19) {
-        str += tens[Math.floor(p / 10)] + " ";
-        str += single[p % 10 > 0 ? p % 10 : 0] + " ";
-      } else if (p > 9) {
-        str += teen[p - 10] + " ";
-      } else if (p > 0) {
-        str += single[p] + " ";
-      }
-      s = str + scale[i] + " " + s;
-    }
-    i++;
-  }
-  return (s + "Rupees Only").replace(/\s+/g, " ");
+interface BillPdfProps {
+  bill: Bill;
+  userName: string;
+  shopName: string;
+  compact?: boolean;
 }
 
-export function BillPdfDoc({ bill, userName, shopName }: BillPdfDocProps) {
-  // Fake GSTIN for demo, you may pass as prop if you store it
-  const gstinDemo = "29ABCDE1234F1Z5";
+// Helper function to format currency without the default "1"
+const formatCurrency = (amount: number) => {
+  // Convert to string with 2 decimal places
+  const formattedAmount = amount.toLocaleString('en-IN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    useGrouping: false
+  });
+  return formattedAmount;
+};
+
+// Separate the PDF document component
+export function BillPdfDoc({ bill, userName, shopName }: BillPdfProps) {
+  // Get GSTIN from props or profile in the future
+  const gstin = "";  // Empty string if no GSTIN
   // HSN code is not in products/items, so we'll use a placeholder
   const hsnDemo = "9987";
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         <View style={styles.headerBlock}>
           {shopName && <Text style={styles.shopName}>{shopName}</Text>}
-          <Text style={styles.gstin}>GSTIN: {gstinDemo}</Text>
-          <Text style={styles.taxInvoice}>TAX INVOICE</Text>
+          {gstin && <Text style={styles.gstin}>GSTIN: {gstin}</Text>}
+          <Text style={styles.taxInvoice}>INVOICE</Text>
         </View>
         <View style={styles.line} />
         {/* INFO ROWS (BUYER + INVOICE INFO) */}
@@ -382,20 +337,35 @@ export function BillPdfDoc({ bill, userName, shopName }: BillPdfDocProps) {
             <Text style={styles.thPrice}>Price</Text>
             <Text style={styles.thAmount}>Amount</Text>
           </View>
-          {(bill.items || []).map((item, idx) => (
-            <View style={styles.tableRow} key={idx}>
-              <Text style={styles.tdItem}>{item.name}</Text>
-              <Text style={styles.tdHSN}>{hsnDemo}</Text>
-              <Text style={styles.tdQty}>{item.qty}</Text>
-              <Text style={styles.tdPrice}>₹{item.price}</Text>
-              <Text style={styles.tdAmount}>₹{Number(item.qty) * Number(item.price)}</Text>
+          {(bill.items || []).map((item, idx) => {
+            const price = Number(item.price);
+            const qty = Number(item.qty);
+            const amount = price * qty;
+            return (
+              <View style={styles.tableRow} key={idx}>
+                <Text style={styles.tdItem}>{item.name}</Text>
+                <Text style={styles.tdHSN}>{hsnDemo}</Text>
+                <Text style={styles.tdQty}>{qty}</Text>
+                <Text style={styles.tdPrice}>₹{formatCurrency(price)}</Text>
+                <Text style={styles.tdAmount}>₹{formatCurrency(amount)}</Text>
+              </View>
+            );
+          })}
+          {/* Add 3 empty rows for manual entries */}
+          {[1, 2, 3].map((_, idx) => (
+            <View style={styles.tableRow} key={`empty-${idx}`}>
+              <Text style={styles.tdItem}></Text>
+              <Text style={styles.tdHSN}></Text>
+              <Text style={styles.tdQty}></Text>
+              <Text style={styles.tdPrice}></Text>
+              <Text style={styles.tdAmount}></Text>
             </View>
           ))}
         </View>
         {/* Total & Summary Section */}
         <View style={styles.summaryBlock}>
           <Text style={styles.summaryLabel}>Total Amount</Text>
-          <Text style={styles.summaryValue}>₹{bill.total}</Text>
+          <Text style={styles.summaryValue}>₹{formatCurrency(Number(bill.total))}</Text>
         </View>
         {/* Amount in words */}
         <Text style={styles.wordsBlock}>Amount in words: {amountInWords(Number(bill.total))}</Text>
@@ -417,5 +387,95 @@ export function BillPdfDoc({ bill, userName, shopName }: BillPdfDocProps) {
         </View>
       </Page>
     </Document>
+  );
+}
+
+// The component that handles preview and buttons
+export function BillPdf({ bill, userName, shopName, compact }: BillPdfProps) {
+  const [showPreview, setShowPreview] = useState(false);
+
+  const handlePreview = () => {
+    setShowPreview(true);
+  };
+
+  const handleClosePreview = () => {
+    setShowPreview(false);
+  };
+
+  const handleExport = async () => {
+    const blob = await pdf(<BillPdfDoc bill={bill} userName={userName} shopName={shopName} />).toBlob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `invoice-${bill.id.slice(0, 8)}.pdf`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const buttonStyle = compact
+    ? {
+        padding: '4px 10px',
+        fontSize: '0.85rem',
+        minWidth: 0,
+        borderRadius: '4px',
+        cursor: 'pointer',
+        fontWeight: 500,
+      }
+    : {
+        padding: '8px 16px',
+        fontSize: '1rem',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        fontWeight: 500,
+      };
+
+  if (showPreview) {
+    return (
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000, background: 'white' }}>
+        <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 1001 }}>
+          <button 
+            onClick={handleClosePreview}
+            style={{
+              ...buttonStyle,
+              background: '#f44336',
+              color: 'white',
+              border: 'none',
+            }}
+          >
+            Close Preview
+          </button>
+        </div>
+        <PDFViewer style={{ width: '100%', height: '100%' }}>
+          <BillPdfDoc bill={bill} userName={userName} shopName={shopName} />
+        </PDFViewer>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', gap: '8px' }}>
+      <button
+        onClick={handlePreview}
+        style={{
+          ...buttonStyle,
+          background: '#2196f3',
+          color: 'white',
+          border: 'none',
+        }}
+      >
+        Preview PDF
+      </button>
+      <button
+        onClick={handleExport}
+        style={{
+          ...buttonStyle,
+          background: '#4caf50',
+          color: 'white',
+          border: 'none',
+        }}
+      >
+        Export PDF
+      </button>
+    </div>
   );
 }
