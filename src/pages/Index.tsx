@@ -42,7 +42,7 @@ const DASH_ACTIONS = [
   },
   {
     title: "Product Catalog",
-    desc: "Add your products",
+    desc: "Add your products in your catalog",
     bg: "bg-yellow-50",
     hover: "hover:bg-yellow-100 active:bg-yellow-200",
     color: "text-yellow-700",
