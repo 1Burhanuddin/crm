@@ -119,12 +119,12 @@ const Index = () => {
     <AppLayout
       shopName={shopName || undefined}
       loadingTitle={loadingShopName}
-      title="Glass Shop - Khata"
+      title="Shop - Khata"
     >
       <div className="p-6 pb-28 sm:pb-24 w-full max-w-4xl mx-auto">
-        <div className="font-bold text-2xl mb-6 text-blue-800 text-center">
+        {/* <div className="font-bold text-2xl mb-6 text-blue-800 text-center">
           Welcome! Track your orders, sales and credits.
-        </div>
+        </div> */}
         <div className="flex flex-wrap gap-4 mb-8 w-full justify-center">
           {/* Show KPIs, WITHOUT Total Sales */}
           {reportLoading ? (

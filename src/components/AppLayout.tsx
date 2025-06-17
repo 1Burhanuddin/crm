@@ -82,7 +82,7 @@ export function AppLayout({ children, title, shopName, loadingTitle }: AppLayout
               ? <span className="animate-pulse text-gray-200">Loading...</span>
               : shopName
                 ? shopName
-                : (title || "Glass Shop for KhataBook")
+                : (title || "Shop for KhataBook")
             }
           </span>
         </div>
