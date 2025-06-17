@@ -267,7 +267,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      delete_user_permanently: {
+        Args: { user_id_to_delete: string }
+        Returns: boolean
+      }
+      get_all_users: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          email: string
+          created_at: string
+          last_sign_in_at: string
+          email_confirmed_at: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,6 +16,7 @@ import { SessionProvider } from "@/hooks/useSession";
 import Bills from "./pages/Bills";
 import Suppliers from "./pages/Suppliers";
 import Collections from "./pages/Collections";
+import Admin from "./pages/Admin";
 
 const Profile = lazy(() => import("./pages/Profile"));
 
@@ -47,6 +49,8 @@ const App = () => {
               <Route path="/bills" element={<Bills />} />
               {/* Add collections page */}
               <Route path="/collections" element={<Collections />} />
+              {/* Add admin page */}
+              <Route path="/admin" element={<Admin />} />
               <Route
                 path="/profile"
                 element={

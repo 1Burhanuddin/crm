@@ -4,7 +4,7 @@ import { OfflineBanner } from "./OfflineBanner";
 import { toast } from "@/hooks/use-toast";
 import { useSession } from "@/hooks/useSession";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Home, ClipboardList, FileText, UserCircle } from "lucide-react";
+import { Home, ClipboardList, FileText, UserCircle, Shield } from "lucide-react";
 import { BackButton } from "./BackButton";
 
 interface AppLayoutProps {
@@ -34,6 +34,11 @@ const navItems = [
     title: "Profile",
     icon: UserCircle,
     path: "/profile",
+  },
+  {
+    title: "Admin",
+    icon: Shield,
+    path: "/admin",
   },
 ];
 
