@@ -37,10 +37,7 @@ export default function AuthPage() {
       return;
     }
 
-    // Check for duplicate registration
-    const { data: existingUser, error: checkError } = await supabase.auth.admin.getUserByEmail(email);
-    
-    // Since we can't use admin functions, we'll try to sign up and handle the error
+    // Try to sign up - Supabase will handle duplicate user detection
     const redirectURL = `${window.location.origin}/`;
     const { data, error } = await supabase.auth.signUp({
       email,
