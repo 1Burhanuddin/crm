@@ -175,31 +175,44 @@ export default function ProfilePage() {
       title="Profile"
     >
       {loading ? (
-        <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center justify-center min-h-[60vh] ">
           <div className="text-blue-800 text-lg font-semibold">Loading...</div>
         </div>
       ) : (
         <div className="max-w-3xl mx-auto p-4 pb-24 relative">
-          <Card className="p-0 shadow-xl border border-gray-200 relative overflow-visible">
-            {/* Logout button: inside card, top right, rounded */}
-            {status === "signed_in" && user && (
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={async () => {
-                  await signOut();
-                  navigate("/auth");
-                }}
-                className="absolute right-4 top-4 z-20 bg-white text-blue-900 hover:bg-blue-100 border border-blue-800 shadow-lg rounded-full w-10 h-10 flex items-center justify-center"
-                title="Logout"
-              >
-                <LogOut className="h-5 w-5" />
-                <span className="sr-only">Logout</span>
-              </Button>
-            )}
-            {/* Profile header */}
-            <div className="flex flex-col items-center justify-center rounded-t-lg bg-gradient-to-r from-blue-100 via-indigo-50 to-purple-100 pb-2 pt-7 px-4">
-              <div className="relative mb-2">
+          <Card className="p-0 shadow-xl border-0 relative overflow-visible bg-white min-h-[95vh]">
+            {/* Profile header with navy/light gradient */}
+            <div className="flex flex-col items-center justify-center rounded-t-lg bg-white pb-2 pt-7 px-4 relative">
+              {/* Edit icon button (left) */}
+              {!editing && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleEdit}
+                  className="absolute left-4 top-4 z-20 bg-white text-blue-900 hover:bg-blue-100 border border-blue-800 shadow-lg rounded-full w-10 h-10 flex items-center justify-center"
+                  title="Edit Profile"
+                >
+                  <Edit2 className="h-5 w-5" />
+                  <span className="sr-only">Edit</span>
+                </Button>
+              )}
+              {/* Logout button (right) */}
+              {status === "signed_in" && user && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={async () => {
+                    await signOut();
+                    navigate("/auth");
+                  }}
+                  className="absolute right-4 top-4 z-20 bg-white text-blue-900 hover:bg-blue-100 border border-blue-800 shadow-lg rounded-full w-10 h-10 flex items-center justify-center"
+                  title="Logout"
+                >
+                  <LogOut className="h-5 w-5" />
+                  <span className="sr-only">Logout</span>
+                </Button>
+              )}
+              <div className="relative mb-2 mt-2">
                 <Avatar className="h-24 w-24 border-4 border-white shadow-lg bg-gradient-to-br from-indigo-100 to-blue-200">
                   <AvatarImage
                     src={
@@ -230,67 +243,76 @@ export default function ProfilePage() {
                   </div>
                 )}
               </div>
-              {/* Cleaned up text layout */}
-              <div className="flex flex-col items-center gap-1 w-full">
-                <span className="font-bold text-2xl text-blue-900 flex items-center gap-2 text-center break-words">
+              {/* Name and shop name fields with improved background/alignment */}
+              <div className="flex flex-col items-start gap-4 w-full max-w-xs mt-2">
+                {/* Name field */}
+                <div className="w-full bg-white rounded-xl px-4 py-3 shadow flex items-center gap-2">
                   <User className="w-5 h-5 text-blue-400" />
-                  {editing ? (
-                    <Input
-                      type="text"
-                      value={newName}
-                      onChange={(e) => setNewName(e.target.value)}
-                      className="w-[160px] font-bold text-center border-blue-200"
-                      maxLength={50}
-                      placeholder="Name"
-                    />
-                  ) : profile?.name ? (
-                    profile.name
-                  ) : (
-                    <span className="text-gray-400 italic">No name</span>
-                  )}
-                </span>
-                <span className="text-sm text-indigo-700 font-semibold flex gap-2 items-center mt-0.5 text-center break-words">
+                  <span className="font-bold text-xl text-blue-900 break-words w-full">
+                    {editing ? (
+                      <Input
+                        type="text"
+                        value={newName}
+                        onChange={(e) => setNewName(e.target.value)}
+                        className="w-full font-bold text-left border-blue-200 bg-blue-50/60"
+                        maxLength={50}
+                        placeholder="Name"
+                      />
+                    ) : profile?.name ? (
+                      profile.name
+                    ) : (
+                      <span className="text-gray-400 italic">No name</span>
+                    )}
+                  </span>
+                </div>
+                {/* Shop name field */}
+                <div className="w-full bg-white rounded-xl px-4 py-3 shadow flex items-center gap-2">
                   <Store className="w-4 h-4 text-indigo-400" />
-                  {editing ? (
-                    <Input
-                      type="text"
-                      value={newShopName}
-                      onChange={(e) => setNewShopName(e.target.value)}
-                      className="w-[160px] text-center border-blue-100"
-                      maxLength={60}
-                      placeholder="Shop/Enterprise Name"
-                    />
-                  ) : profile?.shop_name ? (
-                    profile.shop_name
-                  ) : (
-                    <span className="text-gray-300 italic">No shop/enterprise</span>
-                  )}
-                </span>
-                <span className="text-xs text-gray-500 mt-0.5 flex gap-2 items-center text-center break-words">
+                  <span className="text-sm text-indigo-700 font-semibold break-words w-full">
+                    {editing ? (
+                      <Input
+                        type="text"
+                        value={newShopName}
+                        onChange={(e) => setNewShopName(e.target.value)}
+                        className="w-full text-left border-blue-100 bg-blue-50/60"
+                        maxLength={60}
+                        placeholder="Shop/Enterprise Name"
+                      />
+                    ) : profile?.shop_name ? (
+                      profile.shop_name
+                    ) : (
+                      <span className="text-gray-300 italic">No shop/enterprise</span>
+                    )}
+                  </span>
+                </div>
+                {/* Email field */}
+                <div className="w-full bg-white rounded-xl px-4 py-3 shadow flex items-center gap-2">
                   <AtSign className="w-4 h-4 text-blue-300" />
-                  {editing ? (
-                    <Input
-                      type="email"
-                      value={newEmail}
-                      onChange={(e) => setNewEmail(e.target.value)}
-                      className="w-[190px] text-center border-blue-100"
-                      placeholder="Email"
-                    />
-                  ) : (
-                    profile?.email
-                  )}
-                </span>
+                  <span className="text-xs text-gray-500 break-words w-full">
+                    {editing ? (
+                      <Input
+                        type="email"
+                        value={newEmail}
+                        onChange={(e) => setNewEmail(e.target.value)}
+                        className="w-full text-left border-blue-100 bg-blue-50/60"
+                        placeholder="Email"
+                      />
+                    ) : (
+                      profile?.email
+                    )}
+                  </span>
+                </div>
               </div>
             </div>
             {/* Edit Actions */}
-            <div className="flex flex-col items-center px-6 pt-2 pb-6">
-              {editing && newImageFile && (
-                <span className="text-xs text-blue-800 mt-1">
-                  {newImageFile.name}
-                </span>
-              )}
-              <div className={`flex flex-col w-full gap-2 mt-5`}>
-                {editing ? (
+            {editing && (
+              <div className="flex flex-col items-center px-6 pt-2 pb-6">
+                {editing && newImageFile && (
+                  <span className="text-xs text-blue-800 mt-1">
+                    {newImageFile.name}
+                  </span>
+                )}
+                <div className={`flex flex-col w-full gap-2 mt-5`}>
                   <div className="flex w-full gap-3 flex-col sm:flex-row">
                     <Button
                       className="w-full bg-blue-600 text-white hover:bg-blue-700 shadow"
@@ -311,23 +333,10 @@ export default function ProfilePage() {
                       Cancel
                     </Button>
                   </div>
-                ) : (
-                  <Button
-                    className="w-full bg-gradient-to-r from-blue-400 to-violet-400 text-white font-semibold shadow hover:from-blue-500 hover:to-violet-500 transition"
-                    size="lg"
-                    variant="default"
-                    onClick={handleEdit}
-                  >
-                    Edit Profile
-                  </Button>
-                )}
+                </div>
               </div>
-            </div>
+            )}
           </Card>
-          {/* Only render tabs once not loading */}
-          <div className="mt-8">
-            <ProfileTabs initialTab="reports" />
-          </div>
         </div>
       )}
     </AppLayout>

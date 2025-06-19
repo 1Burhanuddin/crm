@@ -6,7 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { SendReminderModal } from "@/components/SendReminderModal";
 import { CollectionEditModal } from "@/components/CollectionEditModal";
-import { BackButton } from "@/components/BackButton";
+import { BackButton } from "@/components/ui/BackButton";
 import { format, parseISO, isToday, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

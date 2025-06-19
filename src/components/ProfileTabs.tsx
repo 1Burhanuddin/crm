@@ -8,8 +8,8 @@ interface ProfileTabsProps {
 export function ProfileTabs({ initialTab = "reports" }: ProfileTabsProps) {
   return (
     <Tabs defaultValue={initialTab} className="w-full mt-6">
-      <TabsList className="w-full mb-2">
-        <TabsTrigger value="reports">Reports</TabsTrigger>
+      <TabsList className="w-full mb-2 ">
+        <TabsTrigger className="flex-1 " value="reports">Reports</TabsTrigger>
       </TabsList>
       <TabsContent value="reports" className="focus-visible:outline-none">
         <ReportPanel />

@@ -8,7 +8,7 @@ import { BillCreateModal } from "@/components/BillCreateModal";
 import { BillPdfDoc } from "@/components/BillPdf";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { Download } from "lucide-react";
-import { BackButton } from "@/components/BackButton";
+import { BackButton } from "@/components/ui/BackButton";
 
 type Bill = {
   id: string;

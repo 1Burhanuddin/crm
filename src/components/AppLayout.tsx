@@ -1,11 +1,11 @@
 import { ReactNode, useState, useEffect } from "react";
-import { BottomNav } from "./BottomNav";
+import { BottomNav } from "./ui/BottomNav";
 import { OfflineBanner } from "./OfflineBanner";
 import { toast } from "@/hooks/use-toast";
 import { useSession } from "@/hooks/useSession";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Home, ClipboardList, FileText, UserCircle, Shield } from "lucide-react";
-import { BackButton } from "./BackButton";
+import { BackButton } from "./ui/BackButton";
 
 interface AppLayoutProps {
   children: ReactNode;

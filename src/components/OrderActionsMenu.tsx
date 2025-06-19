@@ -1,12 +1,12 @@
-
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical, Edit, Trash2, CheckCircle } from "lucide-react";
+import { MoreVertical, Edit, Trash2 } from "lucide-react";
 
 type OrderActionsMenuProps = {
   onEdit: () => void;
@@ -25,37 +25,30 @@ export function OrderActionsMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className="p-1.5 rounded hover:bg-gray-100 transition-colors text-gray-500"
+          className="p-2 rounded-full bg-blue-50 hover:bg-blue-100 transition-colors text-blue-700 shadow"
           aria-label="Show actions"
           type="button"
         >
-          <MoreVertical size={20} />
+          <MoreVertical size={22} />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="z-50 w-40">
-        <DropdownMenuItem onClick={onEdit} className="flex items-center gap-2">
-          <Edit size={16} className="text-blue-700" />
-          Edit
+      <DropdownMenuContent align="end" className="z-50 w-52 rounded-xl shadow-2xl border border-blue-100 p-2 bg-white">
+        <DropdownMenuLabel className="text-blue-900 text-sm font-bold mb-1">Order Actions</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={onEdit}
+          className="flex items-center gap-3 py-3 px-3 rounded-lg text-base hover:bg-blue-50 group"
+        >
+          <Edit size={18} className="text-blue-700 group-hover:scale-110 transition-transform" />
+          <span>Edit</span>
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={onDelete}
-          className="flex items-center gap-2 text-red-700 focus:text-red-700"
+          className="flex items-center gap-3 py-3 px-3 rounded-lg text-base text-red-700 hover:bg-red-50 group"
         >
-          <Trash2 size={16} />
-          Delete
+          <Trash2 size={18} className="text-red-700 group-hover:scale-110 transition-transform" />
+          <span>Delete</span>
         </DropdownMenuItem>
-        {canMarkDelivered && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={onMarkDelivered}
-              className="flex items-center gap-2 text-green-700 focus:text-green-700"
-            >
-              <CheckCircle size={16} />
-              Mark as Delivered
-            </DropdownMenuItem>
-          </>
-        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

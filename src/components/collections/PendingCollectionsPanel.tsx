@@ -128,6 +128,16 @@ export function PendingCollectionsPanel({
                   >
                     Send Reminder
                   </button>
+                  {customer.phone && (
+                    <a
+                      href={`tel:${customer.phone}`}
+                      className="flex-1 border border-green-200 hover:border-green-400 text-green-700 font-medium px-4 py-2.5 rounded-lg transition-all duration-200 shadow-sm hover:shadow flex items-center justify-center bg-green-50 hover:bg-green-100"
+                      style={{ textDecoration: 'none' }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm0 14a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5a2 2 0 00-2 2v2zm14-14a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5a2 2 0 012-2h2zm0 14a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2h-2a2 2 0 00-2 2v2z" /></svg>
+                      Call Customer
+                    </a>
+                  )}
                 </div>
 
                 {/* Order Details Section */}
