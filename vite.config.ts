@@ -55,17 +55,17 @@ export default defineConfig(({ mode }) => ({
         orientation: 'portrait-primary',
         icons: [
           {
-            src: 'pwa-192x192.png',
+            src: '/lovable-uploads/f1a1441b-7c67-4f70-86c6-1c0c199a8cd0.png',
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: 'pwa-512x512.png',
+            src: '/lovable-uploads/f1a1441b-7c67-4f70-86c6-1c0c199a8cd0.png',
             sizes: '512x512',
             type: 'image/png'
           },
           {
-            src: 'pwa-512x512.png',
+            src: '/lovable-uploads/f1a1441b-7c67-4f70-86c6-1c0c199a8cd0.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'
@@ -78,14 +78,14 @@ export default defineConfig(({ mode }) => ({
             short_name: 'New Order',
             description: 'Create a new customer order',
             url: '/orders',
-            icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }]
+            icons: [{ src: '/lovable-uploads/f1a1441b-7c67-4f70-86c6-1c0c199a8cd0.png', sizes: '192x192' }]
           },
           {
             name: 'Customer Ledger',
             short_name: 'Customers',
             description: 'View customer accounts',
             url: '/customers',
-            icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }]
+            icons: [{ src: '/lovable-uploads/f1a1441b-7c67-4f70-86c6-1c0c199a8cd0.png', sizes: '192x192' }]
           }
         ]
       }
