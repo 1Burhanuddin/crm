@@ -194,7 +194,7 @@ export type Database = {
           email: string
           id: string
           name: string | null
-          pin_hash: string
+          pin_hash: string | null
           profile_image_url: string | null
           shop_name: string | null
         }
@@ -203,7 +203,7 @@ export type Database = {
           email: string
           id: string
           name?: string | null
-          pin_hash: string
+          pin_hash?: string | null
           profile_image_url?: string | null
           shop_name?: string | null
         }
@@ -212,7 +212,7 @@ export type Database = {
           email?: string
           id?: string
           name?: string | null
-          pin_hash?: string
+          pin_hash?: string | null
           profile_image_url?: string | null
           shop_name?: string | null
         }

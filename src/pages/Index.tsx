@@ -11,6 +11,7 @@ import { format } from 'date-fns';
 import { PendingOrdersNotification } from "@/components/ui/PendingOrdersNotification";
 import { ChartContainer } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 
 const KPICard = ({ value, label }: { value: string | number; label: string }) => (
   <div className="bg-gray-50 rounded-2xl shadow p-4 flex flex-col items-center min-w-[120px] min-h-[80px] border border-gray-200 cursor-default select-none">
@@ -268,6 +269,9 @@ const Index = () => {
       <div className="md:hidden">
         <BottomNav />
       </div>
+
+      {/* PWA Install Prompt */}
+      <PWAInstallPrompt />
     </div>
   );
 };
