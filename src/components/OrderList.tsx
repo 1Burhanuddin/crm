@@ -198,13 +198,20 @@ export function OrderList() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["orders", user?.id] });
       toast({ title: "Order Added", description: "New order has been added successfully." });
-      setShowAdd(false);
     },
     onError: (error: any) => {
-      toast({ title: "Error", description: error?.message || "Could not add order.", variant: "destructive" });
-    },
-    meta: { onError: true }
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to add order", 
+        variant: "destructive" 
+      });
+    }
   });
+
+  // Refresh customers function
+  const refreshCustomers = () => {
+    queryClient.invalidateQueries({ queryKey: ["customers", user?.id] });
+  };
 
   // Edit existing order
   const editOrderMutation = useMutation({
@@ -434,7 +441,7 @@ export function OrderList() {
           <TabsTrigger value="history" className="flex-1 min-w-0">History</TabsTrigger>
         </TabsList>
         <TabsContent value="pending">
-          <ul>
+      <ul>
             {pendingOrders.map((o) => renderOrderCard(o))}
           </ul>
           {pendingOrders.length === 0 && (
@@ -465,6 +472,7 @@ export function OrderList() {
         onAdd={handleAddOrder}
         customers={customers}
         products={products}
+        refreshCustomers={refreshCustomers}
       />
       <EditOrderModal
         open={showEdit}
@@ -486,122 +494,122 @@ export function OrderList() {
 
   // Helper to render a single order card (moved from map inline)
   function renderOrderCard(o: Order) {
-    const { total, pending, udhaar, collected } = orderTotals(o);
-    const missingCustomer = !customers.find((c) => c.id === o.customerId);
-    const missingProduct = !products.find((p) => p.id === o.productId);
-    const cardError =
-      missingCustomer || missingProduct
-        ? "bg-yellow-50 border-yellow-300"
-        : "bg-white";
-    const isExpanded = expandedOrderId === o.id;
-    return (
-      <li
-        key={o.id}
-        className={`mb-6 ${cardError} rounded-xl px-0 py-0 shadow-lg border hover:shadow-xl transition-all duration-200 relative cursor-pointer`}
-        onClick={() => setExpandedOrderId(isExpanded ? null : o.id)}
-      >
-        {/* Card container */}
-        <div className={`rounded-xl bg-white transition-all duration-200 ${isExpanded ? "shadow-2xl border-2 border-blue-200" : "border border-gray-100"} relative`}>
-          {/* Collapsed view */}
-          {!isExpanded && (
-            <div className="px-4 py-3 flex flex-col gap-1 relative">
-              <div className="font-bold text-blue-900 text-base truncate">
-                {customerName(o.customerId)}
-                {missingCustomer && (
-                  <span className="ml-2 text-xs text-yellow-700">(not found)</span>
-                )}
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-700 truncate">
-                  {productName(o.productId)}
-                  {missingProduct && (
-                    <span className="ml-2 text-xs text-yellow-700">(not found)</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="bg-blue-50 text-blue-800 font-bold text-sm rounded-lg px-2 py-0.5">
-                    ₹{total}
-                  </span>
+          const { total, pending, udhaar, collected } = orderTotals(o);
+          const missingCustomer = !customers.find((c) => c.id === o.customerId);
+          const missingProduct = !products.find((p) => p.id === o.productId);
+          const cardError =
+            missingCustomer || missingProduct
+              ? "bg-yellow-50 border-yellow-300"
+              : "bg-white";
+          const isExpanded = expandedOrderId === o.id;
+          return (
+            <li
+              key={o.id}
+              className={`mb-6 ${cardError} rounded-xl px-0 py-0 shadow-lg border hover:shadow-xl transition-all duration-200 relative cursor-pointer`}
+              onClick={() => setExpandedOrderId(isExpanded ? null : o.id)}
+            >
+              {/* Card container */}
+              <div className={`rounded-xl bg-white transition-all duration-200 ${isExpanded ? "shadow-2xl border-2 border-blue-200" : "border border-gray-100"} relative`}>
+                {/* Collapsed view */}
+                {!isExpanded && (
+                  <div className="px-4 py-3 flex flex-col gap-1 relative">
+                    <div className="font-bold text-blue-900 text-base truncate">
+                      {customerName(o.customerId)}
+                      {missingCustomer && (
+                        <span className="ml-2 text-xs text-yellow-700">(not found)</span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-gray-700 truncate">
+                        {productName(o.productId)}
+                        {missingProduct && (
+                          <span className="ml-2 text-xs text-yellow-700">(not found)</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="bg-blue-50 text-blue-800 font-bold text-sm rounded-lg px-2 py-0.5">
+                          ₹{total}
+                        </span>
                   {pending === 0 && udhaar === 0 && (
                     <span className="inline-flex items-center bg-green-100 text-green-700 rounded-full px-2 py-0.5 text-xs font-semibold">
                       Paid
                     </span>
                   )}
-                  {o.status === "pending" && pending > 0 && (
-                    <span className="inline-flex items-center bg-yellow-100 text-yellow-800 rounded-full px-2 py-0.5 text-xs font-semibold">
-                      Pending: ₹{pending}
-                    </span>
-                  )}
-                  {o.status === "delivered" && udhaar > 0 && (
-                    <span className="inline-flex items-center bg-red-100 text-red-700 rounded-full px-2 py-0.5 text-xs font-semibold">
-                      Udhaar: ₹{udhaar}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-          {/* Expanded view */}
-          {isExpanded && (
-            <div className="px-6 py-6 relative">
-              {/* Three dot menu positioned absolutely in top right */}
-              <div className="absolute top-3 right-3 z-10">
-                <OrderActionsMenu
-                  onEdit={() => openEditModal(o)}
-                  onDelete={() => handleDeleteOrder(o.id)}
-                  canMarkDelivered={o.status === "pending"}
-                  onMarkDelivered={o.status === "pending" ? () => handleMarkDelivered(o) : undefined}
-                />
-              </div>
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <div className="font-bold text-blue-900 text-xl">
-                    {customerName(o.customerId)}
-                    {missingCustomer && (
-                      <span className="ml-2 text-xs text-yellow-700">(not found)</span>
-                    )}
+                        {o.status === "pending" && pending > 0 && (
+                          <span className="inline-flex items-center bg-yellow-100 text-yellow-800 rounded-full px-2 py-0.5 text-xs font-semibold">
+                            Pending: ₹{pending}
+                          </span>
+                        )}
+                        {o.status === "delivered" && udhaar > 0 && (
+                          <span className="inline-flex items-center bg-red-100 text-red-700 rounded-full px-2 py-0.5 text-xs font-semibold">
+                            Udhaar: ₹{udhaar}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-base text-gray-700 mt-1">
-                    {productName(o.productId)}
-                    {missingProduct && (
-                      <span className="ml-2 text-xs text-yellow-700">(not found)</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-2 mb-4 mt-2">
-                <span className={`text-xs px-3 py-1 rounded-full font-semibold ${o.status === "pending" ? "bg-yellow-200 text-yellow-900" : "bg-green-200 text-green-900"}`}>
-                  {o.status === "pending" ? "Pending" : "Delivered"}
-                </span>
+                )}
+                {/* Expanded view */}
+                {isExpanded && (
+                  <div className="px-6 py-6 relative">
+                    {/* Three dot menu positioned absolutely in top right */}
+                    <div className="absolute top-3 right-3 z-10">
+                      <OrderActionsMenu
+                        onEdit={() => openEditModal(o)}
+                        onDelete={() => handleDeleteOrder(o.id)}
+                        canMarkDelivered={o.status === "pending"}
+                        onMarkDelivered={o.status === "pending" ? () => handleMarkDelivered(o) : undefined}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <div className="font-bold text-blue-900 text-xl">
+                          {customerName(o.customerId)}
+                          {missingCustomer && (
+                            <span className="ml-2 text-xs text-yellow-700">(not found)</span>
+                          )}
+                        </div>
+                        <div className="text-base text-gray-700 mt-1">
+                          {productName(o.productId)}
+                          {missingProduct && (
+                            <span className="ml-2 text-xs text-yellow-700">(not found)</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 mb-4 mt-2">
+                      <span className={`text-xs px-3 py-1 rounded-full font-semibold ${o.status === "pending" ? "bg-yellow-200 text-yellow-900" : "bg-green-200 text-green-900"}`}>
+                        {o.status === "pending" ? "Pending" : "Delivered"}
+                      </span>
                 {pending === 0 && udhaar === 0 && (
                   <span className="inline-flex items-center bg-green-100 text-green-700 rounded-full px-3 py-1 text-xs font-semibold shadow-sm">
                     Paid
                   </span>
                 )}
-                {o.status === "pending" && pending > 0 && (
-                  <span className="inline-flex items-center bg-yellow-100 text-yellow-800 rounded-full px-3 py-1 text-xs font-semibold shadow-sm">
-                    Pending: ₹{pending}
-                  </span>
-                )}
-                {o.status === "delivered" && udhaar > 0 && (
-                  <span className="inline-flex items-center bg-red-100 text-red-700 rounded-full px-3 py-1 text-xs font-semibold shadow-sm">
-                    Udhaar: ₹{udhaar}
-                  </span>
-                )}
-              </div>
-              {/* Pending: Only show total and advance, and a message */}
-              {o.status === "pending" ? (
-                <>
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div className="flex flex-col gap-2 bg-blue-50 rounded-lg p-4">
-                      <span className="text-xs text-gray-500">Total</span>
-                      <span className="text-blue-900 font-bold text-lg">₹{total}</span>
+                      {o.status === "pending" && pending > 0 && (
+                        <span className="inline-flex items-center bg-yellow-100 text-yellow-800 rounded-full px-3 py-1 text-xs font-semibold shadow-sm">
+                          Pending: ₹{pending}
+                        </span>
+                      )}
+                      {o.status === "delivered" && udhaar > 0 && (
+                        <span className="inline-flex items-center bg-red-100 text-red-700 rounded-full px-3 py-1 text-xs font-semibold shadow-sm">
+                          Udhaar: ₹{udhaar}
+                        </span>
+                      )}
                     </div>
-                    <div className="flex flex-col gap-2 bg-green-50 rounded-lg p-4">
-                      <span className="text-xs text-gray-500">Advance</span>
-                      <span className="text-green-700 font-bold text-lg">₹{o.advanceAmount || 0}</span>
-                    </div>
-                  </div>
+                    {/* Pending: Only show total and advance, and a message */}
+                    {o.status === "pending" ? (
+                      <>
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                          <div className="flex flex-col gap-2 bg-blue-50 rounded-lg p-4">
+                            <span className="text-xs text-gray-500">Total</span>
+                            <span className="text-blue-900 font-bold text-lg">₹{total}</span>
+                          </div>
+                          <div className="flex flex-col gap-2 bg-green-50 rounded-lg p-4">
+                            <span className="text-xs text-gray-500">Advance</span>
+                            <span className="text-green-700 font-bold text-lg">₹{o.advanceAmount || 0}</span>
+                          </div>
+                        </div>
                   <div className="w-full mb-2">
                     <button
                       className="w-full flex items-center justify-center gap-2 px-0 py-3 rounded-lg border border-green-200 bg-green-50 hover:bg-green-100 text-green-700 font-semibold text-base transition-all focus:outline-none focus:ring-2 focus:ring-green-400"
@@ -611,67 +619,67 @@ export function OrderList() {
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24"><path stroke="#22c55e" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
                       Mark as Delivered
                     </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div className="flex flex-col gap-2 bg-blue-50 rounded-lg p-4">
-                      <span className="text-xs text-gray-500">Total</span>
-                      <span className="text-blue-900 font-bold text-lg">₹{total}</span>
-                    </div>
-                    <div className="flex flex-col gap-2 bg-green-50 rounded-lg p-4">
-                      <span className="text-xs text-gray-500">Advance</span>
-                      <span className="text-green-700 font-bold text-lg">₹{o.advanceAmount || 0}</span>
-                    </div>
-                    <div className="flex flex-col gap-2 bg-gray-50 rounded-lg p-4">
-                      <span className="text-xs text-gray-500">Collected</span>
-                      <span className="text-emerald-700 font-bold text-lg">₹{collected}</span>
-                    </div>
-                    <div className="flex flex-col gap-2 bg-yellow-50 rounded-lg p-4">
-                      <span className="text-xs text-gray-500">Pending</span>
-                      <span className="text-yellow-700 font-bold text-lg">₹{pending}</span>
-                    </div>
-                    <div className="flex flex-col gap-2 bg-red-50 rounded-lg p-4 col-span-2">
-                      <span className="text-xs text-gray-500">Udhaar</span>
-                      <span className="text-red-700 font-bold text-lg">₹{udhaar}</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3 mb-4">
-                    <span className="text-sm bg-gray-100 px-3 py-1.5 rounded-lg font-medium">
-                      Qty: {o.qty}
-                    </span>
-                    {o.assignedTo && (
-                      <span className="text-sm text-gray-700 font-medium">
-                        Assigned to: {o.assignedTo}
-                      </span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                          <div className="flex flex-col gap-2 bg-blue-50 rounded-lg p-4">
+                            <span className="text-xs text-gray-500">Total</span>
+                            <span className="text-blue-900 font-bold text-lg">₹{total}</span>
+                          </div>
+                          <div className="flex flex-col gap-2 bg-green-50 rounded-lg p-4">
+                            <span className="text-xs text-gray-500">Advance</span>
+                            <span className="text-green-700 font-bold text-lg">₹{o.advanceAmount || 0}</span>
+                          </div>
+                          <div className="flex flex-col gap-2 bg-gray-50 rounded-lg p-4">
+                            <span className="text-xs text-gray-500">Collected</span>
+                            <span className="text-emerald-700 font-bold text-lg">₹{collected}</span>
+                          </div>
+                          <div className="flex flex-col gap-2 bg-yellow-50 rounded-lg p-4">
+                            <span className="text-xs text-gray-500">Pending</span>
+                            <span className="text-yellow-700 font-bold text-lg">₹{pending}</span>
+                          </div>
+                          <div className="flex flex-col gap-2 bg-red-50 rounded-lg p-4 col-span-2">
+                            <span className="text-xs text-gray-500">Udhaar</span>
+                            <span className="text-red-700 font-bold text-lg">₹{udhaar}</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3 mb-4">
+                          <span className="text-sm bg-gray-100 px-3 py-1.5 rounded-lg font-medium">
+                            Qty: {o.qty}
+                          </span>
+                          {o.assignedTo && (
+                            <span className="text-sm text-gray-700 font-medium">
+                              Assigned to: {o.assignedTo}
+                            </span>
+                          )}
+                          <span className="text-gray-500 text-sm">{o.jobDate}</span>
+                        </div>
+                        {o.status === "delivered" && (
+                          <button
+                            className="border border-green-200 text-green-700 hover:bg-green-50 px-4 py-2 rounded-lg text-sm flex items-center gap-2 font-medium transition-all shadow-sm hover:shadow"
+                            onClick={e => { e.stopPropagation(); openBillModalFromOrder(o); }}
+                            title="Generate Bill"
+                          >
+                            <Receipt size={16} /> Generate Bill
+                          </button>
+                        )}
+                      </>
                     )}
-                    <span className="text-gray-500 text-sm">{o.jobDate}</span>
+                    {cardError !== "bg-white" && (
+                      <div className="mt-3 text-sm text-yellow-800 italic bg-yellow-50 px-4 py-2 rounded-lg">
+                        Warning: This order references a deleted/missing{" "}
+                        {missingCustomer && "customer"}
+                        {missingCustomer && missingProduct && " and "}
+                        {missingProduct && !missingCustomer && "product"}
+                        . You may need to edit or delete this order.
+                      </div>
+                    )}
                   </div>
-                  {o.status === "delivered" && (
-                    <button
-                      className="border border-green-200 text-green-700 hover:bg-green-50 px-4 py-2 rounded-lg text-sm flex items-center gap-2 font-medium transition-all shadow-sm hover:shadow"
-                      onClick={e => { e.stopPropagation(); openBillModalFromOrder(o); }}
-                      title="Generate Bill"
-                    >
-                      <Receipt size={16} /> Generate Bill
-                    </button>
-                  )}
-                </>
-              )}
-              {cardError !== "bg-white" && (
-                <div className="mt-3 text-sm text-yellow-800 italic bg-yellow-50 px-4 py-2 rounded-lg">
-                  Warning: This order references a deleted/missing{" "}
-                  {missingCustomer && "customer"}
-                  {missingCustomer && missingProduct && " and "}
-                  {missingProduct && !missingCustomer && "product"}
-                  . You may need to edit or delete this order.
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </li>
-    );
+                )}
+              </div>
+            </li>
+          );
   }
 }

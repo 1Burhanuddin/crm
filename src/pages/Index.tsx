@@ -28,6 +28,14 @@ const Index = () => {
   const { data: reportData, isLoading: reportLoading } = useReportsData();
   const [filteredSales, setFilteredSales] = useState<number>(0);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [filterCollapsed, setFilterCollapsed] = useState(true);
+
+  const filterOptions = [
+    { key: 'day', label: 'Today' },
+    { key: 'week', label: 'Week' },
+    { key: 'month', label: 'Month' },
+    { key: 'all', label: 'All' },
+  ];
 
   useEffect(() => {
     if (!reportData) return;
@@ -93,7 +101,7 @@ const Index = () => {
   }, [filterOpen]);
 
   return (
-    <div className="min-h-screen bg-blue-50 pb-20">
+    <div className="min-h-screen bg-gray-50 pb-20">
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-6 pb-3">
         {/* Mobile View */}
@@ -136,13 +144,60 @@ const Index = () => {
       {/* Main Stats Card */}
       <div className="px-4 mt-2">
         <div className="w-full bg-white rounded-2xl shadow-lg border border-gray-100 flex flex-col items-stretch mb-6 p-4 gap-4">
-          <div className="bg-blue-50 border border-blue-100 rounded-xl shadow p-4 w-full flex flex-col lg:flex-row items-stretch gap-6">
+          <div className="bg-gray-50 border border-gray-200 rounded-xl shadow p-4 w-full flex flex-col lg:flex-row items-stretch gap-6">
             {/* Left: Total Sales info, vertically centered */}
-            <div className="flex-1 flex flex-col justify-center lg:justify-center lg:pl-2 mb-4 lg:mb-0">
-              <div className="flex items-center gap-3">
-                <TrendingUp className="w-5 h-5 text-blue-500" />
-                <span className="text-base font-semibold text-blue-900">Total Sales</span>
-                <span className="text-2xl font-extrabold text-blue-800 tracking-tight">{reportLoading ? '...' : `₹${filteredSales}`}</span>
+            <div className="flex-1 flex flex-col justify-center lg:justify-center lg:pl-2 mb-4 lg:mb-0 w-full">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 w-full">
+                <div className="flex items-center gap-3 w-full flex-wrap">
+                  <TrendingUp className="w-5 h-5 text-blue-500" />
+                  <span className="text-base font-semibold text-blue-900">Total Sales</span>
+                  <span className="text-2xl font-extrabold text-blue-800 tracking-tight">{reportLoading ? '...' : `₹${filteredSales}`}</span>
+                  {/* Collapsible Filter for Mobile */}
+                  <div className="block sm:hidden ml-auto">
+                    <button
+                      className="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-blue-800 font-semibold text-sm"
+                      onClick={() => setFilterCollapsed((v) => !v)}
+                    >
+                      <span>Filter</span>
+                      <ChevronDown className={`w-4 h-4 transition-transform ${filterCollapsed ? '' : 'rotate-180'}`} />
+                    </button>
+                  </div>
+                  {/* Modern Segmented Control Filter for Desktop */}
+                  <div className="hidden sm:flex gap-1 bg-gray-100 rounded-full p-1 ml-4">
+                    {filterOptions.map(opt => (
+                      <button
+                        key={opt.key}
+                        onClick={() => setSalesFilter(opt.key as typeof salesFilter)}
+                        className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-150
+                          ${salesFilter === opt.key
+                            ? 'bg-blue-600 text-white shadow'
+                            : 'bg-transparent text-blue-800 hover:bg-blue-100'}
+                        `}
+                        style={{ minWidth: 64 }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {/* Mobile filter options row below, when expanded */}
+                {(!filterCollapsed && window.innerWidth < 640) && (
+                  <div className="flex flex-row gap-1 bg-gray-50 rounded-xl p-2 mt-1 shadow w-full justify-between">
+                    {filterOptions.map(opt => (
+                      <button
+                        key={opt.key}
+                        onClick={() => { setSalesFilter(opt.key as typeof salesFilter); setFilterCollapsed(true); }}
+                        className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-150
+                          ${salesFilter === opt.key
+                            ? 'bg-blue-600 text-white shadow'
+                            : 'bg-transparent text-blue-800 hover:bg-blue-100'}
+                        `}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="text-xs text-gray-500 mt-2">{salesStartDate ? `Since ${format(salesStartDate, 'dd MMM yyyy')}` : 'All completed orders'}</div>
               <div className="text-xs text-gray-600 min-h-[16px]">{dateDisplay}</div>
@@ -197,41 +252,28 @@ const Index = () => {
       {/* Main Action Cards */}
       <div className="flex flex-col gap-5 px-4 mt-7">
         <div className="w-full rounded-2xl bg-white p-4 flex flex-col gap-3 shadow">
-          <button
-            onClick={() => navigate("/orders")}
+            <button
+              onClick={() => navigate("/orders")}
             className="w-full bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg shadow-black/10 border border-gray-100 border-l-4 border-l-black flex flex-col items-center justify-center min-h-[90px] p-4 hover:shadow-xl transition-all mb-2"
-          >
-            <div className="flex items-center w-full">
-              <span className="rounded-full bg-green-100 p-3 flex items-center justify-center mr-3">
-                <ClipboardList className="h-6 w-6 text-blue-700" />
-              </span>
-              <div className="w-full bg-gray-100/80 rounded-xl px-3 py-2">
-                <div className="font-bold text-black text-base mb-0.5">Orders</div>
-                <div className="text-gray-500 text-xs">Manage job orders</div>
-              </div>
+            >
+            <div className="w-full bg-gray-100/80 rounded-xl px-3 py-2">
+              <div className="font-bold text-black text-base mb-0.5">Orders</div>
+              <div className="text-gray-500 text-xs">Manage job orders</div>
             </div>
-          </button>
-          <button
-            onClick={() => navigate("/bills")}
+            </button>
+            <button
+              onClick={() => navigate("/bills")}
             className="w-full bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg shadow-black/10 border border-gray-100 border-l-4 border-l-black flex flex-col items-center justify-center min-h-[90px] p-4 hover:shadow-xl transition-all mb-2"
-          >
-            <div className="flex items-center w-full">
-              <span className="rounded-full bg-purple-100 p-3 flex items-center justify-center mr-3">
-                <FileText className="h-6 w-6 text-blue-700" />
-              </span>
-              <div className="w-full bg-gray-100/80 rounded-xl px-3 py-2">
-                <div className="font-bold text-black text-base mb-0.5">Bills</div>
-                <div className="text-gray-500 text-xs">Customer bills</div>
-              </div>
+            >
+            <div className="w-full bg-gray-100/80 rounded-xl px-3 py-2">
+              <div className="font-bold text-black text-base mb-0.5">Bills</div>
+              <div className="text-gray-500 text-xs">Customer bills</div>
             </div>
-          </button>
+            </button>
           <button
             onClick={() => navigate("/customers")}
             className="w-full bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg shadow-black/10 border border-gray-100 border-l-4 border-l-black flex items-center gap-3 min-h-[80px] p-4 hover:shadow-xl transition-all mb-2"
           >
-            <span className="rounded-full bg-blue-100 p-3 flex items-center justify-center">
-              <BookOpen className="h-6 w-6 text-blue-700" />
-            </span>
             <div className="w-full bg-gray-100/80 rounded-xl px-3 py-2">
               <div className="font-bold text-black text-base">Customer Ledger</div>
               <div className="text-gray-500 text-xs mt-0.5">Add/View udhaar or paid transactions</div>
@@ -241,9 +283,6 @@ const Index = () => {
             onClick={() => navigate("/collections")}
             className="w-full bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg shadow-black/10 border border-gray-100 border-l-4 border-l-black flex items-center gap-3 min-h-[80px] p-4 hover:shadow-xl transition-all mb-2"
           >
-            <span className="rounded-full bg-yellow-100 p-3 flex items-center justify-center">
-              <ShoppingBag className="h-6 w-6 text-blue-700" />
-            </span>
             <div className="w-full bg-gray-100/80 rounded-xl px-3 py-2">
               <div className="font-bold text-black text-base">Collection</div>
               <div className="text-gray-500 text-xs mt-0.5">Record customer payments</div>
@@ -253,9 +292,6 @@ const Index = () => {
             onClick={() => navigate("/products")}
             className="w-full bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg shadow-black/10 border border-gray-100 border-l-4 border-l-black flex items-center gap-3 min-h-[80px] p-4 hover:shadow-xl transition-all"
           >
-            <span className="rounded-full bg-purple-100 p-3 flex items-center justify-center">
-              <Package className="h-6 w-6 text-blue-700" />
-            </span>
             <div className="w-full bg-gray-100/80 rounded-xl px-3 py-2">
               <div className="font-bold text-black text-base">Product Catalog</div>
               <div className="text-gray-500 text-xs mt-0.5">Add your products</div>

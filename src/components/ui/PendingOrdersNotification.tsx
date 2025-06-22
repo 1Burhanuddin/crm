@@ -132,7 +132,7 @@ export function PendingOrdersNotification({ open, onOpenChange }: PendingOrdersN
           <h2 className="text-lg font-bold text-blue-900">Pending Orders</h2>
           <button onClick={() => onOpenChange(false)} className="p-2 rounded-full hover:bg-gray-100">
             <X className="w-5 h-5" />
-          </button>
+      </button>
         </div>
         <div className="max-h-[70vh] overflow-y-auto px-5 py-4">
           {pendingOrders.length === 0 ? (
@@ -146,15 +146,15 @@ export function PendingOrdersNotification({ open, onOpenChange }: PendingOrdersN
                     <div className="flex items-center justify-between">
                       <div className="font-bold text-blue-900 text-base truncate">{customerName(o.customerId)}</div>
                       <span className="bg-blue-50 text-blue-800 font-bold text-sm rounded-lg px-2 py-0.5">₹{total}</span>
-                    </div>
+                  </div>
                     <div className="flex items-center justify-between">
                       <div className="text-sm text-gray-700 truncate">{productName(o.productId)}</div>
                       {pending > 0 && (
                         <span className="inline-flex items-center bg-yellow-100 text-yellow-800 rounded-full px-2 py-0.5 text-xs font-semibold">Pending: ₹{pending}</span>
                       )}
-                    </div>
+                  </div>
                     <div className="text-xs text-gray-500 mt-1">Job Date: {o.jobDate}</div>
-                  </li>
+                </li>
                 );
               })}
             </ul>
@@ -163,4 +163,4 @@ export function PendingOrdersNotification({ open, onOpenChange }: PendingOrdersN
       </DialogContent>
     </Dialog>
   );
-} 
+}

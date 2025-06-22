@@ -9,40 +9,32 @@ import {
 } from "./ui/dialog";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
 import { toast } from "@/hooks/use-toast";
-import { Order, Customer, Product } from "@/constants/types";
+import { Quotation, Customer, Product } from "@/constants/types";
 import { ChevronDown, ChevronUp, Search, Plus, UserPlus } from "lucide-react";
-import { Dialog as Modal, DialogContent as ModalContent } from "./ui/dialog";
 import { Sheet, SheetContent } from "./ui/sheet";
 import { AddCustomerDialog } from "./AddCustomerDialog";
 import { useAddCustomerFromContacts } from "./hooks/useAddCustomerFromContacts";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
 
-interface AddOrderModalProps {
+interface AddQuotationModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAdd: (order: Omit<Order, "id">) => void;
+  onAdd: (quotation: Omit<Quotation, "id">) => void;
   customers: Customer[];
   products: Product[];
   refreshCustomers?: () => void;
 }
 
-export function AddOrderModal({
+export function AddQuotationModal({
   open,
   onOpenChange,
   onAdd,
   customers,
   products,
   refreshCustomers,
-}: AddOrderModalProps) {
+}: AddQuotationModalProps) {
   const { user } = useSession();
   const [customerId, setCustomerId] = useState("");
   const [productId, setProductId] = useState("");
@@ -51,7 +43,6 @@ export function AddOrderModal({
   const [assignedTo, setAssignedTo] = useState("");
   const [siteAddress, setSiteAddress] = useState("");
   const [remarks, setRemarks] = useState("");
-  const [advanceAmount, setAdvanceAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [showAdditionalFields, setShowAdditionalFields] = useState(false);
   const [contactDropdownOpen, setContactDropdownOpen] = useState(false);
@@ -92,8 +83,6 @@ export function AddOrderModal({
 
       if (error) throw error;
 
-      // Refresh the customers list by calling the parent component's refresh function
-      // We'll need to add this to the props
       toast({
         title: "Success",
         description: "Customer added successfully",
@@ -125,16 +114,13 @@ export function AddOrderModal({
     setAssignedTo("");
     setSiteAddress("");
     setRemarks("");
-    setAdvanceAmount("");
     setShowAdditionalFields(false);
   };
 
   // Helper to get product price for preview
   const selectedProduct = products.find((p) => p.id === productId);
   const qtyNum = qty ? parseInt(qty) : 0;
-  const advanceNum = advanceAmount ? parseFloat(advanceAmount) : 0;
   const total = selectedProduct ? selectedProduct.price * qtyNum : 0;
-  const pending = Math.max(0, total - advanceNum);
 
   const filteredContacts = customers.filter((c) =>
     c.name.toLowerCase().includes(contactSearch.toLowerCase())
@@ -184,26 +170,10 @@ export function AddOrderModal({
       });
       return;
     }
-    if (advanceAmount && parseFloat(advanceAmount) < 0) {
-      toast({
-        title: "Invalid Advance",
-        description: "Advance amount cannot be negative.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (advanceNum > total) {
-      toast({
-        title: "Too Much Advance",
-        description: "Advance cannot exceed total order amount.",
-        variant: "destructive",
-      });
-      return;
-    }
 
     setSubmitting(true);
 
-    const newOrder: Omit<Order, "id"> = {
+    const newQuotation: Omit<Quotation, "id"> = {
       customerId,
       productId,
       qty: parseInt(qty),
@@ -212,10 +182,11 @@ export function AddOrderModal({
       assignedTo: assignedTo.trim(),
       siteAddress: siteAddress.trim(),
       remarks: remarks.trim(),
-      advanceAmount: advanceNum,
+      validUntil: "",
+      terms: "",
     };
 
-    onAdd(newOrder);
+    onAdd(newQuotation);
     resetForm();
     setSubmitting(false);
     onOpenChange(false);
@@ -227,9 +198,7 @@ export function AddOrderModal({
     qty &&
     parseInt(qty) > 0 &&
     jobDate &&
-    assignedTo.trim() &&
-    advanceNum >= 0 &&
-    advanceNum <= total;
+    assignedTo.trim();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -237,7 +206,7 @@ export function AddOrderModal({
         <DialogHeader className="bg-blue-50 rounded-t-2xl px-6 pt-6 pb-2">
           <div className="flex items-center justify-between w-full">
             <DialogTitle className="text-2xl font-bold text-blue-900 flex items-center gap-2 m-0 p-0">
-              Add New Order
+              Add New Quotation
             </DialogTitle>
             <DialogClose asChild>
               <button
@@ -285,7 +254,6 @@ export function AddOrderModal({
                       onChange={e => setContactSearch(e.target.value)}
                       tabIndex={0}
                       autoFocus={false}
-                      
                     />
                   </div>
                   <div className="max-h-80 overflow-y-auto rounded-xl bg-white">
@@ -457,26 +425,25 @@ export function AddOrderModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium mb-2 text-blue-900">Job Date</label>
-              <Input
-                type="date"
-                value={jobDate}
-                onChange={(e) => setJobDate(e.target.value)}
-                className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 h-14 min-h-[56px]"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2 text-blue-900">Assigned To</label>
-              <Input
-                placeholder="Enter assigned person"
-                value={assignedTo}
-                onChange={(e) => setAssignedTo(e.target.value)}
-                maxLength={50}
-                className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 h-14 min-h-[56px]"
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium mb-2 text-blue-900">Job Date</label>
+            <Input
+              type="date"
+              value={jobDate}
+              onChange={(e) => setJobDate(e.target.value)}
+              className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 h-14 min-h-[56px]"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2 text-blue-900">Assigned To</label>
+            <Input
+              placeholder="Enter assigned person"
+              value={assignedTo}
+              onChange={(e) => setAssignedTo(e.target.value)}
+              maxLength={50}
+              className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 h-14 min-h-[56px]"
+            />
           </div>
 
           <div className="border rounded-2xl overflow-hidden">
@@ -518,34 +485,11 @@ export function AddOrderModal({
             )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2 text-blue-900">Advance Amount (₹)</label>
-            <Input
-              type="number"
-              placeholder="Advance amount"
-              value={advanceAmount}
-              onChange={(e) => setAdvanceAmount(e.target.value)}
-              min="0"
-              max={total}
-              className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 h-14 min-h-[56px]"
-            />
-          </div>
-
           <div className="bg-white p-6 rounded-2xl border border-gray-100">
-            <div className="font-semibold text-base text-gray-700 mb-3">Order Summary</div>
+            <div className="font-semibold text-base text-gray-700 mb-3">Quotation Summary</div>
             <div className="flex items-center justify-between mb-2">
               <div className="text-gray-500 text-base">Sub Total ({qtyNum})</div>
               <div className="text-gray-700 font-medium text-base">₹{total}</div>
-            </div>
-            {advanceNum > 0 && (
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-green-700 text-base">Advance Paid</div>
-                <div className="text-green-700 font-medium text-base">₹{advanceNum}</div>
-              </div>
-            )}
-            <div className="flex items-center justify-between">
-              <div className="font-bold text-base text-gray-900">Pending Amount</div>
-              <div className={pending > 0 ? "text-red-600 font-bold text-base" : "text-green-700 font-bold text-base"}>₹{pending}</div>
             </div>
           </div>
 
@@ -559,7 +503,7 @@ export function AddOrderModal({
               disabled={submitting || !isFormValid}
               className="rounded-2xl px-10 py-4 bg-blue-700 hover:bg-blue-800 text-white shadow-lg font-semibold tracking-wide transition-all duration-150 focus:ring-2 focus:ring-blue-400 focus:outline-none disabled:opacity-60 text-base"
             >
-              {submitting ? "Adding..." : "Create Order"}
+              {submitting ? "Creating..." : "Create Quotation"}
             </Button>
           </DialogFooter>
         </div>

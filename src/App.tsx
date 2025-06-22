@@ -10,6 +10,7 @@ import Customers from "./pages/Customers";
 import CustomerLedgerPage from "./pages/CustomerLedger";
 import Products from "./pages/Products";
 import Orders from "./pages/Orders";
+import Quotations from "./pages/Quotations";
 import AuthPage from "./pages/Auth";
 import { SessionProvider } from "@/hooks/useSession";
 import Bills from "./pages/Bills";
@@ -94,6 +95,11 @@ const App = () => {
                   </ProtectedRoute>
                 }
               />
+              <Route path="/quotations" element={
+                <ProtectedRoute>
+                  <Quotations />
+                </ProtectedRoute>
+              } />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

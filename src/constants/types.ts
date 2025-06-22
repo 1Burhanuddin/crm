@@ -22,6 +22,8 @@ export interface Transaction {
 }
 
 export type OrderStatus = "pending" | "delivered";
+export type QuotationStatus = "pending" | "approved" | "rejected";
+
 export interface Order {
   id: string;
   customerId: string;
@@ -34,6 +36,20 @@ export interface Order {
   photoUrl?: string;
   advanceAmount: number; // New, required field!
   remarks?: string;
+}
+
+export interface Quotation {
+  id: string;
+  customerId: string;
+  productId: string;
+  qty: number;
+  status: QuotationStatus;
+  jobDate: string;
+  assignedTo: string;
+  siteAddress: string;
+  remarks?: string;
+  validUntil: string; // Quotation validity date
+  terms?: string; // Terms and conditions
 }
 
 export interface Supplier {

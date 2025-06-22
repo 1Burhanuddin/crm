@@ -4,7 +4,7 @@ import { OfflineBanner } from "./OfflineBanner";
 import { toast } from "@/hooks/use-toast";
 import { useSession } from "@/hooks/useSession";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Home, ClipboardList, FileText, UserCircle, Shield } from "lucide-react";
+import { Home, ClipboardList, FileText, UserCircle, Shield, Quote } from "lucide-react";
 import { BackButton } from "./ui/BackButton";
 
 interface AppLayoutProps {
@@ -24,6 +24,11 @@ const navItems = [
     title: "Orders",
     icon: ClipboardList,
     path: "/orders",
+  },
+  {
+    title: "Quotations",
+    icon: Quote,
+    path: "/quotations",
   },
   {
     title: "Bills",
