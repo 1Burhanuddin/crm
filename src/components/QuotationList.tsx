@@ -1,4 +1,3 @@
-
 import { useSession } from "@/hooks/useSession";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +9,15 @@ import { AddQuotationModal } from "./AddQuotationModal";
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 
 // Helper: fetch customers for current user
 const fetchCustomers = async (user_id: string): Promise<Customer[]> => {
@@ -57,6 +65,7 @@ const fetchQuotations = async (user_id: string): Promise<Quotation[]> => {
     remarks: q.remarks || "",
     validUntil: q.valid_until || "",
     terms: q.terms || "",
+    convertedToOrder: q.converted_to_order || false,
   }));
 };
 
@@ -66,6 +75,9 @@ export function QuotationList() {
 
   // Modal state
   const [showAdd, setShowAdd] = useState(false);
+  const [showAdvanceModal, setShowAdvanceModal] = useState(false);
+  const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
+  const [advanceAmount, setAdvanceAmount] = useState("");
 
   // Expanded quotation state
   const [expandedQuotationId, setExpandedQuotationId] = useState<string | null>(null);
@@ -165,20 +177,11 @@ export function QuotationList() {
     }
   });
 
-  // Refresh customers function
-  const refreshCustomers = () => {
-    queryClient.invalidateQueries({ queryKey: ["customers", user?.id] });
-  };
-
-  // Handle quotation status updates
-  const updateQuotationStatus = async (quotationId: string, status: "approved" | "rejected") => {
-    updateQuotationStatusMutation.mutate({ quotationId, status });
-  };
-
-  // Convert quotation to order
-  const convertToOrder = async (quotation: Quotation) => {
-    try {
-      const { error } = await supabase
+  // Convert quotation to order mutation
+  const convertToOrderMutation = useMutation({
+    mutationFn: async ({ quotation, advanceAmount }: { quotation: Quotation; advanceAmount: number }) => {
+      // Create the order
+      const { error: orderError } = await supabase
         .from("orders")
         .insert([{
           user_id: user?.id,
@@ -189,27 +192,77 @@ export function QuotationList() {
           assigned_to: quotation.assignedTo,
           site_address: quotation.siteAddress || null,
           status: "pending",
-          advance_amount: 0,
+          advance_amount: advanceAmount,
         }]);
 
-      if (error) throw error;
+      if (orderError) throw orderError;
 
-      // Update quotation status to approved if not already
-      if (quotation.status !== "approved") {
-        await updateQuotationStatus(quotation.id, "approved");
-      }
+      // Update quotation to mark as converted
+      const { error: quotationError } = await supabase
+        .from("quotations")
+        .update({ 
+          status: "approved",
+          converted_to_order: true 
+        })
+        .eq("id", quotation.id)
+        .eq("user_id", user?.id);
 
+      if (quotationError) throw quotationError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quotations", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["orders", user?.id] });
       toast({
         title: "Order Created",
         description: "Quotation has been converted to an order successfully.",
       });
-    } catch (error: any) {
+      setShowAdvanceModal(false);
+      setSelectedQuotation(null);
+      setAdvanceAmount("");
+    },
+    onError: (error: any) => {
       toast({
         title: "Error",
         description: error.message || "Failed to convert quotation to order",
         variant: "destructive"
       });
     }
+  });
+
+  // Refresh customers function
+  const refreshCustomers = () => {
+    queryClient.invalidateQueries({ queryKey: ["customers", user?.id] });
+  };
+
+  // Handle quotation status updates
+  const updateQuotationStatus = async (quotationId: string, status: "approved" | "rejected") => {
+    updateQuotationStatusMutation.mutate({ quotationId, status });
+  };
+
+  // Handle convert to order with advance amount
+  const handleConvertToOrder = (quotation: Quotation) => {
+    setSelectedQuotation(quotation);
+    setShowAdvanceModal(true);
+  };
+
+  // Confirm convert to order
+  const confirmConvertToOrder = () => {
+    if (!selectedQuotation) return;
+    
+    const advance = parseFloat(advanceAmount) || 0;
+    const product = products.find((p) => p.id === selectedQuotation.productId);
+    const total = product ? product.price * selectedQuotation.qty : 0;
+    
+    if (advance > total) {
+      toast({
+        title: "Invalid Amount",
+        description: "Advance amount cannot exceed total order amount.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    convertToOrderMutation.mutate({ quotation: selectedQuotation, advanceAmount: advance });
   };
 
   // Helper functions
@@ -301,6 +354,11 @@ export function QuotationList() {
                   }`}>
                     {q.status === "pending" ? "Pending" : q.status === "approved" ? "Approved" : "Rejected"}
                   </span>
+                  {q.convertedToOrder && (
+                    <span className="bg-purple-100 text-purple-700 text-xs font-semibold rounded-full px-2 py-0.5">
+                      Converted
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -334,6 +392,11 @@ export function QuotationList() {
                 }`}>
                   {q.status === "pending" ? "Pending" : q.status === "approved" ? "Approved" : "Rejected"}
                 </span>
+                {q.convertedToOrder && (
+                  <span className="bg-purple-200 text-purple-900 text-xs px-3 py-1 rounded-full font-semibold">
+                    Converted to Order
+                  </span>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4 mb-4">
@@ -425,11 +488,11 @@ export function QuotationList() {
                   </>
                 )}
 
-                {q.status === "approved" && (
+                {q.status === "approved" && !q.convertedToOrder && (
                   <Button
                     onClick={(e) => {
                       e.stopPropagation();
-                      convertToOrder(q);
+                      handleConvertToOrder(q);
                     }}
                     className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
                   >
@@ -527,6 +590,57 @@ export function QuotationList() {
         products={products}
         refreshCustomers={refreshCustomers}
       />
+
+      {/* Advance Amount Modal */}
+      <Dialog open={showAdvanceModal} onOpenChange={setShowAdvanceModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Convert to Order</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            {selectedQuotation && (
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="text-sm text-gray-600 mb-2">Quotation Details:</div>
+                <div className="text-sm">
+                  <div><strong>Customer:</strong> {customerName(selectedQuotation.customerId)}</div>
+                  <div><strong>Product:</strong> {productName(selectedQuotation.productId)}</div>
+                  <div><strong>Quantity:</strong> {selectedQuotation.qty}</div>
+                  <div><strong>Total:</strong> ₹{products.find(p => p.id === selectedQuotation.productId)?.price * selectedQuotation.qty || 0}</div>
+                </div>
+              </div>
+            )}
+            <div>
+              <label className="block text-sm font-medium mb-2">Advance Amount (₹)</label>
+              <Input
+                type="number"
+                placeholder="Enter advance amount"
+                value={advanceAmount}
+                onChange={(e) => setAdvanceAmount(e.target.value)}
+                min="0"
+                max={selectedQuotation ? (products.find(p => p.id === selectedQuotation.productId)?.price * selectedQuotation.qty || 0) : 0}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Leave empty or enter 0 for no advance payment
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 pt-2">
+            <DialogClose asChild>
+              <Button type="button" variant="outline">
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              type="button"
+              onClick={confirmConvertToOrder}
+              disabled={convertToOrderMutation.isPending}
+            >
+              {convertToOrderMutation.isPending ? "Converting..." : "Convert to Order"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

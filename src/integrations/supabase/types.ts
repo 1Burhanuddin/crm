@@ -221,6 +221,7 @@ export type Database = {
       quotations: {
         Row: {
           assigned_to: string
+          converted_to_order: boolean
           created_at: string
           customer_id: string
           id: string
@@ -237,6 +238,7 @@ export type Database = {
         }
         Insert: {
           assigned_to: string
+          converted_to_order?: boolean
           created_at?: string
           customer_id: string
           id?: string
@@ -253,6 +255,7 @@ export type Database = {
         }
         Update: {
           assigned_to?: string
+          converted_to_order?: boolean
           created_at?: string
           customer_id?: string
           id?: string

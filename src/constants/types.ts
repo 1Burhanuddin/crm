@@ -50,6 +50,7 @@ export interface Quotation {
   remarks?: string;
   validUntil: string; // Quotation validity date
   terms?: string; // Terms and conditions
+  convertedToOrder?: boolean; // Track if quotation has been converted to order
 }
 
 export interface Supplier {
