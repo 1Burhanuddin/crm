@@ -131,6 +131,7 @@ export function QuotationList() {
           remarks: quotationData.remarks || null,
           valid_until: quotationData.validUntil || null,
           terms: quotationData.terms || null,
+          converted_to_order: false,
         }])
         .select()
         .single();
