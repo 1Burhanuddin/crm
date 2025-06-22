@@ -1,3 +1,4 @@
+
 import { useSession } from "@/hooks/useSession";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,19 +37,27 @@ const fetchProducts = async (user_id?: string): Promise<Product[]> => {
   return (data || []) as Product[];
 };
 
-// Helper: fetch quotations for current user (to be implemented with SQL)
+// Helper: fetch quotations for current user
 const fetchQuotations = async (user_id: string): Promise<Quotation[]> => {
-  // TODO: Implement SQL query for quotations
-  // const { data, error } = await supabase
-  //   .from("quotations")
-  //   .select("*")
-  //   .eq("user_id", user_id)
-  //   .order("created_at", { ascending: false });
-  // if (error) throw error;
-  // return data || [];
-  
-  // For now, return empty array until SQL is implemented
-  return [];
+  const { data, error } = await supabase
+    .from("quotations")
+    .select("*")
+    .eq("user_id", user_id)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data || []).map((q) => ({
+    id: q.id,
+    customerId: q.customer_id,
+    productId: q.product_id,
+    qty: q.qty,
+    status: q.status as "pending" | "approved" | "rejected",
+    jobDate: q.job_date,
+    assignedTo: q.assigned_to,
+    siteAddress: q.site_address || "",
+    remarks: q.remarks || "",
+    validUntil: q.valid_until || "",
+    terms: q.terms || "",
+  }));
 };
 
 export function QuotationList() {
@@ -82,7 +91,7 @@ export function QuotationList() {
     enabled: !!user?.id,
   });
 
-  // Fetch quotations (empty for now until SQL is implemented)
+  // Fetch quotations
   const {
     data: quotations = [],
     isLoading: loadingQuotations,
@@ -96,18 +105,25 @@ export function QuotationList() {
   // Add new quotation
   const addQuotationMutation = useMutation({
     mutationFn: async (quotationData: Omit<Quotation, 'id'>) => {
-      // TODO: Implement SQL insert for quotations
-      // const { data, error } = await supabase
-      //   .from("quotations")
-      //   .insert([{ ...quotationData, user_id: user?.id }])
-      //   .select()
-      //   .single();
-      // if (error) throw error;
-      // return data;
-      
-      // For now, just log the data until SQL is implemented
-      console.log("Adding quotation:", quotationData);
-      return Promise.resolve();
+      const { data, error } = await supabase
+        .from("quotations")
+        .insert([{
+          user_id: user?.id,
+          customer_id: quotationData.customerId,
+          product_id: quotationData.productId,
+          qty: quotationData.qty,
+          status: quotationData.status,
+          job_date: quotationData.jobDate,
+          assigned_to: quotationData.assignedTo,
+          site_address: quotationData.siteAddress || null,
+          remarks: quotationData.remarks || null,
+          valid_until: quotationData.validUntil || null,
+          terms: quotationData.terms || null,
+        }])
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["quotations", user?.id] });
@@ -123,6 +139,32 @@ export function QuotationList() {
     }
   });
 
+  // Update quotation status mutation
+  const updateQuotationStatusMutation = useMutation({
+    mutationFn: async ({ quotationId, status }: { quotationId: string; status: "approved" | "rejected" }) => {
+      const { error } = await supabase
+        .from("quotations")
+        .update({ status })
+        .eq("id", quotationId)
+        .eq("user_id", user?.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quotations", user?.id] });
+      toast({
+        title: "Status Updated",
+        description: "Quotation status updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update quotation status",
+        variant: "destructive"
+      });
+    }
+  });
+
   // Refresh customers function
   const refreshCustomers = () => {
     queryClient.invalidateQueries({ queryKey: ["customers", user?.id] });
@@ -130,31 +172,44 @@ export function QuotationList() {
 
   // Handle quotation status updates
   const updateQuotationStatus = async (quotationId: string, status: "approved" | "rejected") => {
-    // TODO: Implement SQL update for quotation status
-    // const { error } = await supabase
-    //   .from("quotations")
-    //   .update({ status })
-    //   .eq("id", quotationId);
-    // if (error) throw error;
-    
-    // For now, just show a toast
-    toast({
-      title: "Status Updated",
-      description: `Quotation ${status} successfully.`,
-    });
+    updateQuotationStatusMutation.mutate({ quotationId, status });
   };
 
   // Convert quotation to order
   const convertToOrder = async (quotation: Quotation) => {
-    // TODO: Implement conversion logic
-    // This should create a new order from the quotation data
-    // and potentially update the quotation status
-    
-    // For now, just show a toast
-    toast({
-      title: "Convert to Order",
-      description: "This will convert the quotation to an order. (SQL implementation needed)",
-    });
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .insert([{
+          user_id: user?.id,
+          customer_id: quotation.customerId,
+          product_id: quotation.productId,
+          qty: quotation.qty,
+          job_date: quotation.jobDate,
+          assigned_to: quotation.assignedTo,
+          site_address: quotation.siteAddress || null,
+          status: "pending",
+          advance_amount: 0,
+        }]);
+
+      if (error) throw error;
+
+      // Update quotation status to approved if not already
+      if (quotation.status !== "approved") {
+        await updateQuotationStatus(quotation.id, "approved");
+      }
+
+      toast({
+        title: "Order Created",
+        description: "Quotation has been converted to an order successfully.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to convert quotation to order",
+        variant: "destructive"
+      });
+    }
   };
 
   // Helper functions

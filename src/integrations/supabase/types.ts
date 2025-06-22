@@ -218,6 +218,57 @@ export type Database = {
         }
         Relationships: []
       }
+      quotations: {
+        Row: {
+          assigned_to: string
+          created_at: string
+          customer_id: string
+          id: string
+          job_date: string
+          product_id: string
+          qty: number
+          remarks: string | null
+          site_address: string | null
+          status: string
+          terms: string | null
+          updated_at: string
+          user_id: string
+          valid_until: string | null
+        }
+        Insert: {
+          assigned_to: string
+          created_at?: string
+          customer_id: string
+          id?: string
+          job_date: string
+          product_id: string
+          qty: number
+          remarks?: string | null
+          site_address?: string | null
+          status?: string
+          terms?: string | null
+          updated_at?: string
+          user_id: string
+          valid_until?: string | null
+        }
+        Update: {
+          assigned_to?: string
+          created_at?: string
+          customer_id?: string
+          id?: string
+          job_date?: string
+          product_id?: string
+          qty?: number
+          remarks?: string | null
+          site_address?: string | null
+          status?: string
+          terms?: string | null
+          updated_at?: string
+          user_id?: string
+          valid_until?: string | null
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount: number
