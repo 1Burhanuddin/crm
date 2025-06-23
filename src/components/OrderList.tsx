@@ -148,20 +148,18 @@ export function OrderList() {
   const addOrderMutation = useMutation({
     mutationFn: async (orderData: Omit<Order, 'id'>) => {
       if (!user) throw new Error('User not authenticated');
-      const { error } = await supabase.from("orders").insert([
-        {
-          user_id: user.id,
-          customer_id: orderData.customerId,
-          products: orderData.products,
-          status: orderData.status,
-          job_date: orderData.jobDate,
-          assigned_to: orderData.assignedTo,
-          site_address: orderData.siteAddress,
-          photo_url: orderData.photoUrl || "",
-          advance_amount: orderData.advanceAmount || 0,
-          remarks: orderData.remarks || "",
-        }
-      ]);
+      const { error } = await supabase.from("orders").insert({
+        user_id: user.id,
+        customer_id: orderData.customerId,
+        products: orderData.products as any, // Cast to match JSONB type
+        status: orderData.status,
+        job_date: orderData.jobDate,
+        assigned_to: orderData.assignedTo,
+        site_address: orderData.siteAddress,
+        photo_url: orderData.photoUrl || "",
+        advance_amount: orderData.advanceAmount || 0,
+        remarks: orderData.remarks || "",
+      });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -189,7 +187,7 @@ export function OrderList() {
       const { error } = await supabase.from("orders")
         .update({
           customer_id: updatedOrder.customerId,
-          products: updatedOrder.products,
+          products: updatedOrder.products as any, // Cast to match JSONB type
           status: updatedOrder.status,
           job_date: updatedOrder.jobDate,
           assigned_to: updatedOrder.assignedTo,

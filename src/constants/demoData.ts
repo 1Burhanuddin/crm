@@ -1,5 +1,4 @@
 
-
 import { Customer, Product, Order, Transaction } from "./types";
 
 export const DEMO_CUSTOMERS: Customer[] = [
@@ -19,26 +18,26 @@ export const DEMO_ORDERS: Order[] = [
   {
     id: "o1",
     customerId: "c1",
-    productId: "p2",
-    qty: 12,
+    products: [{ productId: "p2", qty: 12 }],
     status: "pending",
     jobDate: "2025-06-14",
     assignedTo: "Rakesh",
     siteAddress: "Raj Nagar Main Road",
     photoUrl: "",
     advanceAmount: 0,
+    remarks: "",
   },
   {
     id: "o2",
     customerId: "c2",
-    productId: "p3",
-    qty: 20,
+    products: [{ productId: "p3", qty: 20 }],
     status: "delivered",
     jobDate: "2025-06-11",
     assignedTo: "Suresh",
     siteAddress: "Behind SBI, Ring Road",
     photoUrl: "",
     advanceAmount: 0,
+    remarks: "",
   },
 ];
 
@@ -68,4 +67,3 @@ export const DEMO_TRANSACTIONS: Transaction[] = [
     note: "Aluminium frames job",
   },
 ];
-

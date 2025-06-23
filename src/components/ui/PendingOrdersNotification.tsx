@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useSession } from "@/hooks/useSession";
 import { useQuery } from "@tanstack/react-query";
@@ -45,14 +46,14 @@ const fetchOrders = async (user_id: string): Promise<Order[]> => {
     return {
       id: row.id,
       customerId: row.customer_id,
-      productId: row.product_id,
-      qty: row.qty,
+      products: Array.isArray(row.products) ? row.products : [],
       status: row.status as "pending" | "delivered",
       jobDate: row.job_date,
       assignedTo: row.assigned_to || "",
       siteAddress: row.site_address || "",
       photoUrl: row.photo_url || "",
       advanceAmount: typeof row.advance_amount === "number" && !isNaN(row.advance_amount) ? row.advance_amount : 0,
+      remarks: row.remarks || "",
     };
   });
 };
@@ -104,8 +105,13 @@ export function PendingOrdersNotification({ open, onOpenChange }: PendingOrdersN
 
   // Helper for calculating order total & pending
   function orderTotals(order: Order) {
-    const product = products.find(p => p.id === order.productId);
-    const total = product ? product.price * order.qty : 0;
+    let total = 0;
+    if (Array.isArray(order.products)) {
+      for (const item of order.products) {
+        const product = products.find(p => p.id === item.productId);
+        total += product ? product.price * item.qty : 0;
+      }
+    }
     const advance = order.advanceAmount || 0;
     const collected = collectionsPerOrder[order.id] || 0;
     const pending = Math.max(0, total - advance - collected);
@@ -120,9 +126,16 @@ export function PendingOrdersNotification({ open, onOpenChange }: PendingOrdersN
     const c = customers.find((c) => c.id === id);
     return c ? c.name : "(Unknown customer)";
   }
-  function productName(id: string) {
-    const p = products.find((p) => p.id === id);
-    return p ? p.name : "(Unknown product)";
+  
+  function getProductsSummary(order: Order) {
+    if (!Array.isArray(order.products) || order.products.length === 0) {
+      return "No products";
+    }
+    
+    return order.products.map((item) => {
+      const product = products.find(p => p.id === item.productId);
+      return `${product ? product.name : 'Product'} (${item.qty})`;
+    }).join(', ');
   }
 
   return (
@@ -148,7 +161,7 @@ export function PendingOrdersNotification({ open, onOpenChange }: PendingOrdersN
                       <span className="bg-blue-50 text-blue-800 font-bold text-sm rounded-lg px-2 py-0.5">₹{total}</span>
                   </div>
                     <div className="flex items-center justify-between">
-                      <div className="text-sm text-gray-700 truncate">{productName(o.productId)}</div>
+                      <div className="text-sm text-gray-700 truncate">{getProductsSummary(o)}</div>
                       {pending > 0 && (
                         <span className="inline-flex items-center bg-yellow-100 text-yellow-800 rounded-full px-2 py-0.5 text-xs font-semibold">Pending: ₹{pending}</span>
                       )}
