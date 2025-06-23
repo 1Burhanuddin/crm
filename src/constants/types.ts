@@ -24,11 +24,15 @@ export interface Transaction {
 export type OrderStatus = "pending" | "delivered";
 export type QuotationStatus = "pending" | "approved" | "rejected";
 
+export interface OrderProduct {
+  productId: string;
+  qty: number;
+}
+
 export interface Order {
   id: string;
   customerId: string;
-  productId: string;
-  qty: number;
+  products: OrderProduct[];
   status: OrderStatus;
   jobDate: string;
   assignedTo: string;

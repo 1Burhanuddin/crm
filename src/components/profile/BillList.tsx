@@ -1,14 +1,15 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { BillCreateModal } from "@/components/BillCreateModal";
-import { BillPdfDoc } from "@/components/BillPdf";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { Download } from "lucide-react";
 import { BackButton } from "@/components/ui/BackButton";
+import html2pdf from "html2pdf.js";
+import { BillHtmlPreview } from "@/components/BillHtmlPreview";
+import { useRef } from "react";
 
 type Bill = {
   id: string;
@@ -31,6 +32,8 @@ export function BillList() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [profile, setProfile] = useState<ProfileInfo>({ name: null, shop_name: null });
+  const [pdfBill, setPdfBill] = useState<Bill | null>(null);
+  const pdfRef = useRef<HTMLDivElement>(null);
 
   // Fetch profile info for user
   useEffect(() => {
@@ -108,24 +111,30 @@ export function BillList() {
                   <div>Bill #: <span className="font-mono">{bill.id.slice(0, 8).toUpperCase()}</span></div>
                   {/* PDF Export Button */}
                   <div className="mt-2 flex justify-end">
-                    <PDFDownloadLink
-                      document={
-                        <BillPdfDoc
-                          bill={bill}
-                          userName={profile.name || ""}
-                          shopName={profile.shop_name || ""}
-                        />
-                      }
-                      fileName={`Bill_${bill.id.slice(0, 8)}.pdf`}
-                      className="inline-flex"
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex gap-1 items-center"
+                      onClick={async () => {
+                        setPdfBill(bill);
+                        setTimeout(() => {
+                          if (pdfRef.current) {
+                            html2pdf()
+                              .set({
+                                margin: 0.5,
+                                filename: `Bill_${bill.id.slice(0,8)}.pdf`,
+                                html2canvas: { scale: 2 },
+                                jsPDF: { unit: "in", format: "a4", orientation: "portrait" }
+                              })
+                              .from(pdfRef.current)
+                              .save();
+                          }
+                        }, 100);
+                      }}
                     >
-                      {({ loading: pdfLoading }) => (
-                        <Button variant="outline" size="sm" className="flex gap-1 items-center">
-                          <Download size={15} />
-                          {pdfLoading ? "Generating..." : "Export PDF"}
-                        </Button>
-                      )}
-                    </PDFDownloadLink>
+                      <Download size={15} />
+                      Export PDF
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -161,6 +170,18 @@ export function BillList() {
           ))}
         </div>
       )}
+      {/* Hidden PDF preview for html2pdf */}
+      <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+        {pdfBill && (
+          <div ref={pdfRef}>
+            <BillHtmlPreview
+              bill={pdfBill}
+              userName={profile.name || ""}
+              shopName={profile.shop_name || "Company Name"}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

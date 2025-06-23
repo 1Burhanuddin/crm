@@ -1,13 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { BillCreateModal } from "@/components/BillCreateModal";
 import { BillHtmlPreview } from "@/components/BillHtmlPreview";
-import { BillPdfDoc } from "@/components/BillPdf";
 import { AppLayout } from "@/components/AppLayout";
-import { pdf } from "@react-pdf/renderer";
+import html2pdf from "html2pdf.js";
 import { ChevronDown, ChevronUp, Eye, Download, Share, Printer } from "lucide-react";
 
 type Bill = {
@@ -32,6 +31,8 @@ export default function Bills() {
   const [profile, setProfile] = useState<ProfileInfo>({ name: null, shop_name: null });
   const [previewBill, setPreviewBill] = useState<Bill | null>(null);
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
+  const [pdfBill, setPdfBill] = useState<Bill | null>(null);
+  const pdfRef = useRef<HTMLDivElement>(null);
 
   const toggleCard = (billId: string) => {
     setExpandedCards(prev => ({
@@ -140,22 +141,20 @@ export default function Bills() {
         title: "Generating PDF...",
         description: "Please wait while we generate your invoice.",
       });
-
-      const blob = await pdf(
-        <BillPdfDoc
-          bill={bill}
-          userName={profile.name || ""}
-          shopName={profile.shop_name || ""}
-        />
-      ).toBlob();
-
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `invoice-${bill.id.slice(0, 8)}.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
-
+      setPdfBill(bill);
+      setTimeout(() => {
+        if (pdfRef.current) {
+          html2pdf()
+            .set({
+              margin: 0.5,
+              filename: `Bill_${bill.id.slice(0,8)}.pdf`,
+              html2canvas: { scale: 2 },
+              jsPDF: { unit: "in", format: "a4", orientation: "portrait" }
+            })
+            .from(pdfRef.current)
+            .save();
+        }
+      }, 100);
       toast({
         title: "PDF Downloaded Successfully!",
         duration: 3000,
@@ -311,6 +310,19 @@ export default function Bills() {
           </div>
         </div>
       )}
+
+      {/* Hidden PDF preview for html2pdf */}
+      <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+        {pdfBill && (
+          <div ref={pdfRef}>
+            <BillHtmlPreview
+              bill={pdfBill}
+              userName={profile.name || ""}
+              shopName={profile.shop_name || "Company Name"}
+            />
+          </div>
+        )}
+      </div>
     </AppLayout>
   );
 }

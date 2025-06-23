@@ -67,26 +67,11 @@ const fetchOrders = async (user_id: string): Promise<Order[]> => {
   if (error) throw error;
   return (data || []).map((o) => {
     // Use the Supabase field directly; fallback to zero if missing or null
-    const row = o as {
-      assigned_to: string | null;
-      created_at: string;
-      customer_id: string;
-      id: string;
-      job_date: string;
-      photo_url: string | null;
-      product_id: string;
-      qty: number;
-      site_address: string | null;
-      status: string;
-      updated_at: string;
-      user_id: string;
-      advance_amount?: number | null;
-    };
+    const row = o as any;
     return {
       id: row.id,
       customerId: row.customer_id,
-      productId: row.product_id,
-      qty: row.qty,
+      products: Array.isArray(row.products) ? row.products : [],
       status: row.status as "pending" | "delivered",
       jobDate: row.job_date,
       assignedTo: row.assigned_to || "",
@@ -96,6 +81,7 @@ const fetchOrders = async (user_id: string): Promise<Order[]> => {
         typeof row.advance_amount === "number" && !isNaN(row.advance_amount)
           ? row.advance_amount
           : 0,
+      remarks: row.remarks || "",
     };
   });
 };
@@ -183,14 +169,14 @@ export function OrderList() {
         {
           user_id: user.id,
           customer_id: orderData.customerId,
-          product_id: orderData.productId,
-          qty: orderData.qty,
+          products: orderData.products,
           status: orderData.status,
           job_date: orderData.jobDate,
           assigned_to: orderData.assignedTo,
           site_address: orderData.siteAddress,
           photo_url: orderData.photoUrl || "",
           advance_amount: orderData.advanceAmount || 0,
+          remarks: orderData.remarks || "",
         }
       ]);
       if (error) throw error;
@@ -220,8 +206,7 @@ export function OrderList() {
       const { error } = await supabase.from("orders")
         .update({
           customer_id: updatedOrder.customerId,
-          product_id: updatedOrder.productId,
-          qty: updatedOrder.qty,
+          products: updatedOrder.products,
           status: updatedOrder.status,
           job_date: updatedOrder.jobDate,
           assigned_to: updatedOrder.assignedTo,
@@ -229,6 +214,7 @@ export function OrderList() {
           photo_url: updatedOrder.photoUrl || "",
           updated_at: new Date().toISOString(),
           advance_amount: updatedOrder.advanceAmount || 0,
+          remarks: updatedOrder.remarks || "",
         })
         .eq("id", updatedOrder.id)
         .eq("user_id", user.id);
@@ -349,17 +335,15 @@ export function OrderList() {
 
   // === BILL GENERATION ===
   function openBillModalFromOrder(order: Order) {
-    const prodInfo = productUnitAndPrice(order.productId);
+    const prodInfo = productUnitAndPrice(order.products[0].productId);
     setBillInitialData({
       customerName: customerName(order.customerId),
       customerPhone: customerPhone(order.customerId),
-      items: [
-        {
-          name: productName(order.productId),
-          qty: order.qty,
-          price: prodInfo.price,
-        }
-      ]
+      items: order.products.map((item) => ({
+        name: productName(item.productId),
+        qty: item.qty,
+        price: prodInfo.price,
+      }))
     });
     setShowBillModal(true);
   }
@@ -369,8 +353,13 @@ export function OrderList() {
 
   // Helper for calculating order total & pending/udhaar (CHANGED)
   function orderTotals(order: Order) {
-    const product = products.find(p => p.id === order.productId);
-    const total = product ? product.price * order.qty : 0;
+    let total = 0;
+    if (Array.isArray(order.products)) {
+      for (const item of order.products) {
+        const product = products.find(p => p.id === item.productId);
+        total += product ? product.price * item.qty : 0;
+      }
+    }
     const advance = order.advanceAmount || 0;
     const collected = collectionsPerOrder[order.id] || 0;
     if (order.status === "pending") {
@@ -400,8 +389,8 @@ export function OrderList() {
 
   // Calculate total sales (sum of all order totals)
   const totalSales = orders.reduce((sum, o) => {
-    const product = products.find((p) => p.id === o.productId);
-    return sum + (product ? product.price * o.qty : 0);
+    const product = products.find((p) => p.id === o.products[0].productId);
+    return sum + (product ? product.price * o.products[0].qty : 0);
   }, 0);
 
   // Loading/error UI
@@ -494,122 +483,131 @@ export function OrderList() {
 
   // Helper to render a single order card (moved from map inline)
   function renderOrderCard(o: Order) {
-          const { total, pending, udhaar, collected } = orderTotals(o);
-          const missingCustomer = !customers.find((c) => c.id === o.customerId);
-          const missingProduct = !products.find((p) => p.id === o.productId);
-          const cardError =
-            missingCustomer || missingProduct
-              ? "bg-yellow-50 border-yellow-300"
-              : "bg-white";
-          const isExpanded = expandedOrderId === o.id;
-          return (
-            <li
-              key={o.id}
-              className={`mb-6 ${cardError} rounded-xl px-0 py-0 shadow-lg border hover:shadow-xl transition-all duration-200 relative cursor-pointer`}
-              onClick={() => setExpandedOrderId(isExpanded ? null : o.id)}
-            >
-              {/* Card container */}
-              <div className={`rounded-xl bg-white transition-all duration-200 ${isExpanded ? "shadow-2xl border-2 border-blue-200" : "border border-gray-100"} relative`}>
-                {/* Collapsed view */}
-                {!isExpanded && (
-                  <div className="px-4 py-3 flex flex-col gap-1 relative">
-                    <div className="font-bold text-blue-900 text-base truncate">
-                      {customerName(o.customerId)}
-                      {missingCustomer && (
-                        <span className="ml-2 text-xs text-yellow-700">(not found)</span>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm text-gray-700 truncate">
-                        {productName(o.productId)}
-                        {missingProduct && (
-                          <span className="ml-2 text-xs text-yellow-700">(not found)</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="bg-blue-50 text-blue-800 font-bold text-sm rounded-lg px-2 py-0.5">
-                          ₹{total}
+    const { total, pending, udhaar, collected } = orderTotals(o);
+    const missingCustomer = !customers.find((c) => c.id === o.customerId);
+    const isExpanded = expandedOrderId === o.id;
+    return (
+      <li
+        key={o.id}
+        className={`mb-6 rounded-xl px-0 py-0 shadow-lg border hover:shadow-xl transition-all duration-200 relative cursor-pointer`}
+        onClick={() => setExpandedOrderId(isExpanded ? null : o.id)}
+      >
+        <div className={`rounded-xl bg-white transition-all duration-200 ${isExpanded ? "shadow-2xl border-2 border-blue-200" : "border border-gray-100"} relative`}>
+          {/* Collapsed view */}
+          {!isExpanded && (
+            <div className="px-4 py-3 flex flex-col gap-1 relative">
+              <div className="font-bold text-blue-900 text-base truncate">
+                {customerName(o.customerId)}
+                {missingCustomer && (
+                  <span className="ml-2 text-xs text-yellow-700">(not found)</span>
+                )}
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-700 truncate">
+                  {Array.isArray(o.products) && o.products.length > 0 ? (
+                    o.products.map((item, idx) => {
+                      const prod = products.find(p => p.id === item.productId);
+                      return (
+                        <span key={item.productId}>
+                          {prod ? prod.name : 'Product'} (Qty: {item.qty}){idx < o.products.length - 1 ? ', ' : ''}
                         </span>
+                      );
+                    })
+                  ) : (
+                    <span>No products</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="bg-blue-50 text-blue-800 font-bold text-sm rounded-lg px-2 py-0.5">
+                    ₹{total}
+                  </span>
                   {pending === 0 && udhaar === 0 && (
                     <span className="inline-flex items-center bg-green-100 text-green-700 rounded-full px-2 py-0.5 text-xs font-semibold">
                       Paid
                     </span>
                   )}
-                        {o.status === "pending" && pending > 0 && (
-                          <span className="inline-flex items-center bg-yellow-100 text-yellow-800 rounded-full px-2 py-0.5 text-xs font-semibold">
-                            Pending: ₹{pending}
-                          </span>
-                        )}
-                        {o.status === "delivered" && udhaar > 0 && (
-                          <span className="inline-flex items-center bg-red-100 text-red-700 rounded-full px-2 py-0.5 text-xs font-semibold">
-                            Udhaar: ₹{udhaar}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                  {o.status === "pending" && pending > 0 && (
+                    <span className="inline-flex items-center bg-yellow-100 text-yellow-800 rounded-full px-2 py-0.5 text-xs font-semibold">
+                      Pending: ₹{pending}
+                    </span>
+                  )}
+                  {o.status === "delivered" && udhaar > 0 && (
+                    <span className="inline-flex items-center bg-red-100 text-red-700 rounded-full px-2 py-0.5 text-xs font-semibold">
+                      Udhaar: ₹{udhaar}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          {/* Expanded view */}
+          {isExpanded && (
+            <div className="px-6 py-6 relative">
+              <div className="absolute top-3 right-3 z-10">
+                <OrderActionsMenu
+                  onEdit={() => openEditModal(o)}
+                  onDelete={() => handleDeleteOrder(o.id)}
+                  canMarkDelivered={o.status === "pending"}
+                  onMarkDelivered={o.status === "pending" ? () => handleMarkDelivered(o) : undefined}
+                />
+              </div>
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <div className="font-bold text-blue-900 text-xl">
+                    {customerName(o.customerId)}
+                    {missingCustomer && (
+                      <span className="ml-2 text-xs text-yellow-700">(not found)</span>
+                    )}
                   </div>
-                )}
-                {/* Expanded view */}
-                {isExpanded && (
-                  <div className="px-6 py-6 relative">
-                    {/* Three dot menu positioned absolutely in top right */}
-                    <div className="absolute top-3 right-3 z-10">
-                      <OrderActionsMenu
-                        onEdit={() => openEditModal(o)}
-                        onDelete={() => handleDeleteOrder(o.id)}
-                        canMarkDelivered={o.status === "pending"}
-                        onMarkDelivered={o.status === "pending" ? () => handleMarkDelivered(o) : undefined}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between mb-2">
-                      <div>
-                        <div className="font-bold text-blue-900 text-xl">
-                          {customerName(o.customerId)}
-                          {missingCustomer && (
-                            <span className="ml-2 text-xs text-yellow-700">(not found)</span>
-                          )}
-                        </div>
-                        <div className="text-base text-gray-700 mt-1">
-                          {productName(o.productId)}
-                          {missingProduct && (
-                            <span className="ml-2 text-xs text-yellow-700">(not found)</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex gap-2 mb-4 mt-2">
-                      <span className={`text-xs px-3 py-1 rounded-full font-semibold ${o.status === "pending" ? "bg-yellow-200 text-yellow-900" : "bg-green-200 text-green-900"}`}>
-                        {o.status === "pending" ? "Pending" : "Delivered"}
-                      </span>
+                  <div className="text-base text-gray-700 mt-1">
+                    {Array.isArray(o.products) && o.products.length > 0 ? (
+                      o.products.map((item, idx) => {
+                        const prod = products.find(p => p.id === item.productId);
+                        return (
+                          <span key={item.productId}>
+                            {prod ? prod.name : 'Product'} (Qty: {item.qty}){idx < o.products.length - 1 ? ', ' : ''}
+                          </span>
+                        );
+                      })
+                    ) : (
+                      <span>No products</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2 mb-4 mt-2">
+                <span className={`text-xs px-3 py-1 rounded-full font-semibold ${o.status === "pending" ? "bg-yellow-200 text-yellow-900" : "bg-green-200 text-green-900"}`}>
+                  {o.status === "pending" ? "Pending" : "Delivered"}
+                </span>
                 {pending === 0 && udhaar === 0 && (
                   <span className="inline-flex items-center bg-green-100 text-green-700 rounded-full px-3 py-1 text-xs font-semibold shadow-sm">
                     Paid
                   </span>
                 )}
-                      {o.status === "pending" && pending > 0 && (
-                        <span className="inline-flex items-center bg-yellow-100 text-yellow-800 rounded-full px-3 py-1 text-xs font-semibold shadow-sm">
-                          Pending: ₹{pending}
-                        </span>
-                      )}
-                      {o.status === "delivered" && udhaar > 0 && (
-                        <span className="inline-flex items-center bg-red-100 text-red-700 rounded-full px-3 py-1 text-xs font-semibold shadow-sm">
-                          Udhaar: ₹{udhaar}
-                        </span>
-                      )}
+                {o.status === "pending" && pending > 0 && (
+                  <span className="inline-flex items-center bg-yellow-100 text-yellow-800 rounded-full px-3 py-1 text-xs font-semibold shadow-sm">
+                    Pending: ₹{pending}
+                  </span>
+                )}
+                {o.status === "delivered" && udhaar > 0 && (
+                  <span className="inline-flex items-center bg-red-100 text-red-700 rounded-full px-3 py-1 text-xs font-semibold shadow-sm">
+                    Udhaar: ₹{udhaar}
+                  </span>
+                )}
+              </div>
+              {/* Pending: Only show total and advance, and a message */}
+              {o.status === "pending" ? (
+                <>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="flex flex-col gap-2 bg-blue-50 rounded-lg p-4">
+                      <span className="text-xs text-gray-500">Total</span>
+                      <span className="text-blue-900 font-bold text-lg">₹{total}</span>
                     </div>
-                    {/* Pending: Only show total and advance, and a message */}
-                    {o.status === "pending" ? (
-                      <>
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                          <div className="flex flex-col gap-2 bg-blue-50 rounded-lg p-4">
-                            <span className="text-xs text-gray-500">Total</span>
-                            <span className="text-blue-900 font-bold text-lg">₹{total}</span>
-                          </div>
-                          <div className="flex flex-col gap-2 bg-green-50 rounded-lg p-4">
-                            <span className="text-xs text-gray-500">Advance</span>
-                            <span className="text-green-700 font-bold text-lg">₹{o.advanceAmount || 0}</span>
-                          </div>
-                        </div>
+                    <div className="flex flex-col gap-2 bg-green-50 rounded-lg p-4">
+                      <span className="text-xs text-gray-500">Advance</span>
+                      <span className="text-green-700 font-bold text-lg">₹{o.advanceAmount || 0}</span>
+                    </div>
+                  </div>
                   <div className="w-full mb-2">
                     <button
                       className="w-full flex items-center justify-center gap-2 px-0 py-3 rounded-lg border border-green-200 bg-green-50 hover:bg-green-100 text-green-700 font-semibold text-base transition-all focus:outline-none focus:ring-2 focus:ring-green-400"
@@ -619,67 +617,63 @@ export function OrderList() {
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24"><path stroke="#22c55e" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
                       Mark as Delivered
                     </button>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                          <div className="flex flex-col gap-2 bg-blue-50 rounded-lg p-4">
-                            <span className="text-xs text-gray-500">Total</span>
-                            <span className="text-blue-900 font-bold text-lg">₹{total}</span>
-                          </div>
-                          <div className="flex flex-col gap-2 bg-green-50 rounded-lg p-4">
-                            <span className="text-xs text-gray-500">Advance</span>
-                            <span className="text-green-700 font-bold text-lg">₹{o.advanceAmount || 0}</span>
-                          </div>
-                          <div className="flex flex-col gap-2 bg-gray-50 rounded-lg p-4">
-                            <span className="text-xs text-gray-500">Collected</span>
-                            <span className="text-emerald-700 font-bold text-lg">₹{collected}</span>
-                          </div>
-                          <div className="flex flex-col gap-2 bg-yellow-50 rounded-lg p-4">
-                            <span className="text-xs text-gray-500">Pending</span>
-                            <span className="text-yellow-700 font-bold text-lg">₹{pending}</span>
-                          </div>
-                          <div className="flex flex-col gap-2 bg-red-50 rounded-lg p-4 col-span-2">
-                            <span className="text-xs text-gray-500">Udhaar</span>
-                            <span className="text-red-700 font-bold text-lg">₹{udhaar}</span>
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-3 mb-4">
-                          <span className="text-sm bg-gray-100 px-3 py-1.5 rounded-lg font-medium">
-                            Qty: {o.qty}
-                          </span>
-                          {o.assignedTo && (
-                            <span className="text-sm text-gray-700 font-medium">
-                              Assigned to: {o.assignedTo}
-                            </span>
-                          )}
-                          <span className="text-gray-500 text-sm">{o.jobDate}</span>
-                        </div>
-                        {o.status === "delivered" && (
-                          <button
-                            className="border border-green-200 text-green-700 hover:bg-green-50 px-4 py-2 rounded-lg text-sm flex items-center gap-2 font-medium transition-all shadow-sm hover:shadow"
-                            onClick={e => { e.stopPropagation(); openBillModalFromOrder(o); }}
-                            title="Generate Bill"
-                          >
-                            <Receipt size={16} /> Generate Bill
-                          </button>
-                        )}
-                      </>
-                    )}
-                    {cardError !== "bg-white" && (
-                      <div className="mt-3 text-sm text-yellow-800 italic bg-yellow-50 px-4 py-2 rounded-lg">
-                        Warning: This order references a deleted/missing{" "}
-                        {missingCustomer && "customer"}
-                        {missingCustomer && missingProduct && " and "}
-                        {missingProduct && !missingCustomer && "product"}
-                        . You may need to edit or delete this order.
-                      </div>
-                    )}
                   </div>
-                )}
-              </div>
-            </li>
-          );
+                </>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="flex flex-col gap-2 bg-blue-50 rounded-lg p-4">
+                      <span className="text-xs text-gray-500">Total</span>
+                      <span className="text-blue-900 font-bold text-lg">₹{total}</span>
+                    </div>
+                    <div className="flex flex-col gap-2 bg-green-50 rounded-lg p-4">
+                      <span className="text-xs text-gray-500">Advance</span>
+                      <span className="text-green-700 font-bold text-lg">₹{o.advanceAmount || 0}</span>
+                    </div>
+                    <div className="flex flex-col gap-2 bg-gray-50 rounded-lg p-4">
+                      <span className="text-xs text-gray-500">Collected</span>
+                      <span className="text-emerald-700 font-bold text-lg">₹{collected}</span>
+                    </div>
+                    <div className="flex flex-col gap-2 bg-yellow-50 rounded-lg p-4">
+                      <span className="text-xs text-gray-500">Pending</span>
+                      <span className="text-yellow-700 font-bold text-lg">₹{pending}</span>
+                    </div>
+                    <div className="flex flex-col gap-2 bg-red-50 rounded-lg p-4 col-span-2">
+                      <span className="text-xs text-gray-500">Udhaar</span>
+                      <span className="text-red-700 font-bold text-lg">₹{udhaar}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 mb-4">
+                    <span className="text-sm bg-gray-100 px-3 py-1.5 rounded-lg font-medium">
+                      Qty: {o.products.reduce((sum, item) => sum + item.qty, 0)}
+                    </span>
+                    {o.assignedTo && (
+                      <span className="text-sm text-gray-700 font-medium">
+                        Assigned to: {o.assignedTo}
+                      </span>
+                    )}
+                    <span className="text-gray-500 text-sm">{o.jobDate}</span>
+                  </div>
+                  {o.status === "delivered" && (
+                    <button
+                      className="border border-green-200 text-green-700 hover:bg-green-50 px-4 py-2 rounded-lg text-sm flex items-center gap-2 font-medium transition-all shadow-sm hover:shadow"
+                      onClick={e => { e.stopPropagation(); openBillModalFromOrder(o); }}
+                      title="Generate Bill"
+                    >
+                      <Receipt size={16} /> Generate Bill
+                    </button>
+                  )}
+                </>
+              )}
+              {missingCustomer && (
+                <div className="mt-3 text-sm text-yellow-800 italic bg-yellow-50 px-4 py-2 rounded-lg">
+                  Warning: This order references a deleted/missing customer. You may need to edit or delete this order.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </li>
+    );
   }
 }

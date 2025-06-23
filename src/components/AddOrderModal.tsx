@@ -45,8 +45,7 @@ export function AddOrderModal({
 }: AddOrderModalProps) {
   const { user } = useSession();
   const [customerId, setCustomerId] = useState("");
-  const [productId, setProductId] = useState("");
-  const [qty, setQty] = useState("");
+  const [productsList, setProductsList] = useState<{ productId: string; qty: string }[]>([]);
   const [jobDate, setJobDate] = useState(new Date().toISOString().split('T')[0]);
   const [assignedTo, setAssignedTo] = useState("");
   const [siteAddress, setSiteAddress] = useState("");
@@ -62,6 +61,7 @@ export function AddOrderModal({
   const [pendingQty, setPendingQty] = useState("");
   const [addCustomerDialogOpen, setAddCustomerDialogOpen] = useState(false);
   const productSearchInputRef = useRef<HTMLInputElement>(null);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   // Update assignedTo when customer changes
   useEffect(() => {
@@ -92,15 +92,11 @@ export function AddOrderModal({
 
       if (error) throw error;
 
-      // Refresh the customers list by calling the parent component's refresh function
-      // We'll need to add this to the props
       toast({
         title: "Success",
         description: "Customer added successfully",
       });
       setAddCustomerDialogOpen(false);
-      
-      // Auto-select the newly added customer
       setCustomerId(data.id);
       setAssignedTo(data.name);
       if (refreshCustomers) {
@@ -119,8 +115,7 @@ export function AddOrderModal({
 
   const resetForm = () => {
     setCustomerId("");
-    setProductId("");
-    setQty("");
+    setProductsList([]);
     setJobDate(new Date().toISOString().split('T')[0]);
     setAssignedTo("");
     setSiteAddress("");
@@ -130,10 +125,12 @@ export function AddOrderModal({
   };
 
   // Helper to get product price for preview
-  const selectedProduct = products.find((p) => p.id === productId);
-  const qtyNum = qty ? parseInt(qty) : 0;
+  const getProduct = (id: string) => products.find((p) => p.id === id);
   const advanceNum = advanceAmount ? parseFloat(advanceAmount) : 0;
-  const total = selectedProduct ? selectedProduct.price * qtyNum : 0;
+  const total = productsList.reduce((sum, item) => {
+    const prod = getProduct(item.productId);
+    return sum + (prod ? prod.price * (parseInt(item.qty) || 0) : 0);
+  }, 0);
   const pending = Math.max(0, total - advanceNum);
 
   const filteredContacts = customers.filter((c) =>
@@ -142,6 +139,33 @@ export function AddOrderModal({
   const filteredProducts = products.filter((p) =>
     p.name.toLowerCase().includes(productSearch.toLowerCase())
   );
+
+  const handleAddProduct = () => {
+    if (!pendingProductId || !pendingQty || parseInt(pendingQty) <= 0) return;
+    if (editingIndex !== null) {
+      // Edit existing
+      setProductsList((prev) => prev.map((item, idx) => idx === editingIndex ? { productId: pendingProductId, qty: pendingQty } : item));
+      setEditingIndex(null);
+    } else {
+      // Add new
+      setProductsList((prev) => [...prev, { productId: pendingProductId, qty: pendingQty }]);
+    }
+    setPendingProductId("");
+    setPendingQty("");
+    setProductDropdownOpen(false);
+    setProductSearch("");
+  };
+
+  const handleEditProduct = (idx: number) => {
+    setPendingProductId(productsList[idx].productId);
+    setPendingQty(productsList[idx].qty);
+    setEditingIndex(idx);
+    setProductDropdownOpen(true);
+  };
+
+  const handleRemoveProduct = (idx: number) => {
+    setProductsList((prev) => prev.filter((_, i) => i !== idx));
+  };
 
   const handleAdd = async () => {
     if (!customerId) {
@@ -152,18 +176,18 @@ export function AddOrderModal({
       });
       return;
     }
-    if (!productId) {
+    if (productsList.length === 0) {
       toast({
         title: "Required",
-        description: "Please select a product.",
+        description: "Please add at least one product.",
         variant: "destructive",
       });
       return;
     }
-    if (!qty || parseInt(qty) <= 0) {
+    if (productsList.some((item) => !item.productId || !item.qty || parseInt(item.qty) <= 0)) {
       toast({
         title: "Required",
-        description: "Please enter a valid quantity.",
+        description: "Please enter valid quantities for all products.",
         variant: "destructive",
       });
       return;
@@ -203,11 +227,10 @@ export function AddOrderModal({
 
     setSubmitting(true);
 
-    const newOrder: Omit<Order, "id"> = {
+    const newOrder = {
       customerId,
-      productId,
-      qty: parseInt(qty),
-      status: "pending",
+      products: productsList.map((item) => ({ productId: item.productId, qty: parseInt(item.qty) })),
+      status: "pending" as const,
       jobDate,
       assignedTo: assignedTo.trim(),
       siteAddress: siteAddress.trim(),
@@ -223,9 +246,8 @@ export function AddOrderModal({
 
   const isFormValid =
     customerId &&
-    productId &&
-    qty &&
-    parseInt(qty) > 0 &&
+    productsList.length > 0 &&
+    productsList.every((item) => item.productId && item.qty && parseInt(item.qty) > 0) &&
     jobDate &&
     assignedTo.trim() &&
     advanceNum >= 0 &&
@@ -333,27 +355,44 @@ export function AddOrderModal({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium mb-2 text-blue-900">Product</label>
-              <button
-                type="button"
-                className="w-full bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 flex items-center justify-between h-14 min-h-[56px]"
-                onClick={() => setProductDropdownOpen(true)}
-              >
-                {productId ? products.find((p) => p.id === productId)?.name : "Select product"}
-                <ChevronDown className="ml-2 w-6 h-6 text-gray-400" />
-              </button>
+              <label className="block text-sm font-medium mb-2 text-blue-900">Products</label>
+              <div className="space-y-2">
+                {productsList.map((item, idx) => (
+                  <div key={idx} className="flex items-center gap-2 bg-white rounded-xl border border-gray-200 px-4 py-2">
+                    <span className="flex-1">
+                      {getProduct(item.productId)?.name || 'Unknown'} (Qty: {item.qty})
+                    </span>
+                    <Button size="sm" variant="secondary" onClick={() => handleEditProduct(idx)}>Edit</Button>
+                    <Button size="sm" variant="destructive" onClick={() => handleRemoveProduct(idx)}>Remove</Button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full mt-2"
+                  onClick={() => {
+                    setPendingProductId("");
+                    setPendingQty("");
+                    setEditingIndex(null);
+                    setProductDropdownOpen(true);
+                  }}
+                >
+                  + Add Product
+                </Button>
+              </div>
               <Sheet open={productDropdownOpen} onOpenChange={(open) => {
                 if (!open) {
                   setPendingProductId("");
                   setPendingQty("");
                   setProductSearch("");
+                  setEditingIndex(null);
                 }
                 setProductDropdownOpen(open);
               }}>
                 <SheetContent side="bottom" className="w-full max-h-[80vh] min-h-[80vh] rounded-t-3xl p-0 bg-blue-50 border-0 shadow-2xl">
                   <div className="p-6">
                     <div className="flex items-center justify-between mb-4">
-                      <div className="text-xl font-bold text-blue-900">Select Product</div>
+                      <div className="text-xl font-bold text-blue-900">{editingIndex !== null ? 'Edit Product' : 'Add Product'}</div>
                       <button
                         type="button"
                         className="ml-4 p-2 rounded-full hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
@@ -363,97 +402,71 @@ export function AddOrderModal({
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="#1e293b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" d="M18 6 6 18M6 6l12 12"/></svg>
                       </button>
                     </div>
-                    {!pendingProductId ? (
-                      <>
-                        <div className="flex items-center bg-white rounded-xl px-4 py-3 mb-4 border border-gray-200">
-                          <Search className="w-6 h-6 text-gray-400 mr-2" />
-                          <input
-                            type="text"
-                            className="flex-1 bg-transparent outline-none text-base placeholder:text-gray-400 cursor-pointer focus:cursor-text"
-                            placeholder="Search"
-                            value={productSearch}
-                            onChange={e => setProductSearch(e.target.value)}
-                            tabIndex={1}
-                            autoFocus={false}
-                            onFocus={e => e.target.select()}
-                            ref={productSearchInputRef}
-                          />
-                        </div>
-                        <div className="max-h-80 overflow-y-auto rounded-xl bg-white">
-                          {filteredProducts.length === 0 ? (
-                            <div className="text-gray-400 text-lg text-center py-8">No products found.</div>
-                          ) : (
-                            filteredProducts.map((p) => (
-                              <button
-                                key={p.id}
-                                className={`w-full text-left px-5 py-3 text-base font-medium rounded-xl hover:bg-blue-100 transition mb-1 h-14 min-h-[56px] ${productId === p.id ? "bg-blue-50 text-blue-700" : "text-gray-900"}`}
-                                onClick={() => {
-                                  setPendingProductId(p.id);
-                                  setPendingQty("");
-                                }}
-                              >
-                                {p.name}
-                              </button>
-                            ))
-                          )}
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="mb-4">
-                          <div className="text-base font-semibold text-blue-900 mb-2">{products.find(p => p.id === pendingProductId)?.name}</div>
-                          <Input
-                            type="number"
-                            placeholder="Enter quantity"
-                            value={pendingQty}
-                            onChange={e => setPendingQty(e.target.value)}
-                            min="1"
-                            className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 h-14 min-h-[56px]"
-                          />
-                        </div>
-                        <div className="flex gap-3">
-                          <Button
-                            className="flex-1 rounded-2xl px-5 py-3 bg-blue-700 hover:bg-blue-800 text-white font-semibold text-base"
-                            disabled={!pendingQty || parseInt(pendingQty) <= 0}
-                            onClick={() => {
-                              setProductId(pendingProductId);
-                              setQty(pendingQty);
-                              setProductDropdownOpen(false);
-                              setPendingProductId("");
-                              setPendingQty("");
-                              setProductSearch("");
-                            }}
+                    <div className="flex items-center bg-white rounded-xl px-4 py-3 mb-4 border border-gray-200">
+                      <Search className="w-6 h-6 text-gray-400 mr-2" />
+                      <input
+                        type="text"
+                        className="flex-1 bg-transparent outline-none text-base placeholder:text-gray-400 cursor-pointer focus:cursor-text"
+                        placeholder="Search"
+                        value={productSearch}
+                        onChange={e => setProductSearch(e.target.value)}
+                        tabIndex={1}
+                        autoFocus={false}
+                        onFocus={e => e.target.select()}
+                        ref={productSearchInputRef}
+                      />
+                    </div>
+                    <div className="max-h-80 overflow-y-auto rounded-xl bg-white mb-4">
+                      {filteredProducts.length === 0 ? (
+                        <div className="text-gray-400 text-lg text-center py-8">No products found.</div>
+                      ) : (
+                        filteredProducts.map((p) => (
+                          <button
+                            key={p.id}
+                            className={`w-full text-left px-5 py-3 text-base font-medium rounded-xl hover:bg-blue-100 transition mb-1 h-14 min-h-[56px] ${pendingProductId === p.id ? "bg-blue-50 text-blue-700" : "text-gray-900"}`}
+                            onClick={() => setPendingProductId(p.id)}
                           >
-                            Confirm
-                          </Button>
-                          <Button
-                            className="flex-1 rounded-2xl px-5 py-3 bg-gray-100 text-gray-700 font-semibold text-base"
-                            variant="outline"
-                            onClick={() => {
-                              setPendingProductId("");
-                              setPendingQty("");
-                            }}
-                          >
-                            Back
-                          </Button>
-                        </div>
-                      </>
+                            {p.name}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                    {pendingProductId && (
+                      <div className="mb-4">
+                        <div className="text-base font-semibold text-blue-900 mb-2">{getProduct(pendingProductId)?.name}</div>
+                        <Input
+                          type="number"
+                          placeholder="Enter quantity"
+                          value={pendingQty}
+                          onChange={e => setPendingQty(e.target.value)}
+                          min="1"
+                          className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 h-14 min-h-[56px]"
+                        />
+                      </div>
                     )}
+                    <div className="flex gap-3">
+                      <Button
+                        className="flex-1 rounded-2xl px-5 py-3 bg-blue-700 hover:bg-blue-800 text-white font-semibold text-base"
+                        disabled={!pendingProductId || !pendingQty || parseInt(pendingQty) <= 0}
+                        onClick={handleAddProduct}
+                      >
+                        {editingIndex !== null ? 'Update' : 'Add'}
+                      </Button>
+                      <Button
+                        className="flex-1 rounded-2xl px-5 py-3 bg-gray-100 text-gray-700 font-semibold text-base"
+                        variant="outline"
+                        onClick={() => {
+                          setPendingProductId("");
+                          setPendingQty("");
+                          setEditingIndex(null);
+                        }}
+                      >
+                        Clear
+                      </Button>
+                    </div>
                   </div>
                 </SheetContent>
               </Sheet>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2 text-blue-900">Quantity</label>
-              <Input
-                type="number"
-                placeholder="Enter quantity"
-                value={qty}
-                onChange={(e) => setQty(e.target.value)}
-                min="1"
-                className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 h-14 min-h-[56px]"
-                disabled
-              />
             </div>
           </div>
 
@@ -533,19 +546,26 @@ export function AddOrderModal({
 
           <div className="bg-white p-6 rounded-2xl border border-gray-100">
             <div className="font-semibold text-base text-gray-700 mb-3">Order Summary</div>
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-gray-500 text-base">Sub Total ({qtyNum})</div>
-              <div className="text-gray-700 font-medium text-base">₹{total}</div>
+            {productsList.map((item, idx) => {
+              const prod = getProduct(item.productId);
+              return (
+                <div key={idx} className="flex items-center justify-between mb-2">
+                  <div className="text-gray-500 text-base">{prod?.name || 'Product'} (Qty: {item.qty})</div>
+                  <div className="text-gray-700 font-medium text-base">₹{prod ? prod.price * (parseInt(item.qty) || 0) : 0}</div>
+                </div>
+              );
+            })}
+            <div className="flex items-center justify-between mt-2 border-t pt-2">
+              <div className="text-gray-700 font-semibold text-base">Total</div>
+              <div className="text-blue-900 font-bold text-lg">₹{total}</div>
             </div>
-            {advanceNum > 0 && (
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-green-700 text-base">Advance Paid</div>
-                <div className="text-green-700 font-medium text-base">₹{advanceNum}</div>
-              </div>
-            )}
-            <div className="flex items-center justify-between">
-              <div className="font-bold text-base text-gray-900">Pending Amount</div>
-              <div className={pending > 0 ? "text-red-600 font-bold text-base" : "text-green-700 font-bold text-base"}>₹{pending}</div>
+            <div className="flex items-center justify-between mt-2">
+              <div className="text-gray-700 text-base">Advance</div>
+              <div className="text-blue-700 font-semibold text-base">₹{advanceNum}</div>
+            </div>
+            <div className="flex items-center justify-between mt-2">
+              <div className="text-gray-700 text-base">Pending</div>
+              <div className="text-orange-700 font-semibold text-base">₹{pending}</div>
             </div>
           </div>
 
@@ -559,7 +579,7 @@ export function AddOrderModal({
               disabled={submitting || !isFormValid}
               className="rounded-2xl px-10 py-4 bg-blue-700 hover:bg-blue-800 text-white shadow-lg font-semibold tracking-wide transition-all duration-150 focus:ring-2 focus:ring-blue-400 focus:outline-none disabled:opacity-60 text-base"
             >
-              {submitting ? "Adding..." : "Create Order"}
+              {submitting ? "Creating..." : "Create Order"}
             </Button>
           </DialogFooter>
         </div>

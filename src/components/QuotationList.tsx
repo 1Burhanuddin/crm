@@ -2,10 +2,11 @@ import { useSession } from "@/hooks/useSession";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Quotation, Product, Customer } from "@/constants/types";
-import { Plus, FileText, CheckCircle, XCircle } from "lucide-react";
-import { useState } from "react";
+import { Plus, FileText, CheckCircle, XCircle, Share2 } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 import { toast } from "@/hooks/use-toast";
 import { AddQuotationModal } from "./AddQuotationModal";
+import { QuotationHtmlPreview } from "./QuotationHtmlPreview";
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -18,6 +19,7 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
+import html2pdf from "html2pdf.js";
 
 // Helper: fetch customers for current user
 const fetchCustomers = async (user_id: string): Promise<Customer[]> => {
@@ -76,11 +78,34 @@ export function QuotationList() {
   // Modal state
   const [showAdd, setShowAdd] = useState(false);
   const [showAdvanceModal, setShowAdvanceModal] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
   const [advanceAmount, setAdvanceAmount] = useState("");
 
   // Expanded quotation state
   const [expandedQuotationId, setExpandedQuotationId] = useState<string | null>(null);
+
+  // PDF state
+  const [pdfQuotation, setPdfQuotation] = useState<Quotation | null>(null);
+  const [pdfCustomer, setPdfCustomer] = useState<Customer | null>(null);
+  const [pdfProduct, setPdfProduct] = useState<Product | null>(null);
+  const pdfRef = useRef<HTMLDivElement>(null);
+
+  // Profile state for real shop name
+  const [profile, setProfile] = useState<{ shop_name: string | null } | null>(null);
+
+  useEffect(() => {
+    if (user?.id) {
+      supabase
+        .from("profiles")
+        .select("shop_name")
+        .eq("id", user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) setProfile(data);
+        });
+    }
+  }, [user?.id]);
 
   // Fetch all required data (quotations, customers, products)
   const {
@@ -368,7 +393,7 @@ export function QuotationList() {
           {/* Expanded view */}
           {isExpanded && (
             <div className="px-6 py-6 relative">
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-start justify-between mb-2">
                 <div>
                   <div className="font-bold text-blue-900 text-xl">
                     {customerName(q.customerId)}
@@ -382,6 +407,52 @@ export function QuotationList() {
                       <span className="ml-2 text-xs text-yellow-700">(not found)</span>
                     )}
                   </div>
+                </div>
+                {/* Top right icon buttons */}
+                <div className="flex gap-2">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={e => {
+                      e.stopPropagation();
+                      setSelectedQuotation(q);
+                      setShowPreviewModal(true);
+                    }}
+                    className="rounded-full bg-blue-100 hover:bg-blue-200 text-blue-700"
+                    aria-label="Preview"
+                  >
+                    <FileText size={20} />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={async e => {
+                      e.stopPropagation();
+                      // Prepare data for PDF
+                      const customer = customers.find(c => c.id === q.customerId);
+                      const product = products.find(p => p.id === q.productId);
+                      setPdfQuotation(q);
+                      setPdfCustomer(customer || null);
+                      setPdfProduct(product || null);
+                      setTimeout(() => {
+                        if (pdfRef.current) {
+                          html2pdf()
+                            .set({
+                              margin: 0.5,
+                              filename: `Quotation_${q.id.slice(0,8)}.pdf`,
+                              html2canvas: { scale: 2 },
+                              jsPDF: { unit: "in", format: "a4", orientation: "portrait" }
+                            })
+                            .from(pdfRef.current)
+                            .save();
+                        }
+                      }, 100);
+                    }}
+                    className="rounded-full bg-green-100 hover:bg-green-200 text-green-700"
+                    aria-label="Share PDF"
+                  >
+                    <Share2 size={20} />
+                  </Button>
                 </div>
               </div>
 
@@ -437,71 +508,45 @@ export function QuotationList() {
                 </div>
               )}
 
-              {/* Action buttons */}
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    // Preview quotation in HTML
-                    toast({ title: "Preview", description: "HTML preview functionality to be implemented" });
-                  }}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
-                >
-                  <FileText size={16} />
-                  Preview
-                </Button>
-
-                <Button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    // Generate PDF and share via WhatsApp
-                    toast({ title: "Share PDF", description: "PDF generation and WhatsApp sharing to be implemented" });
-                  }}
-                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
-                >
-                  <FileText size={16} />
-                  Share PDF
-                </Button>
-
-                {q.status === "pending" && (
-                  <>
-                    <Button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        updateQuotationStatus(q.id, "approved");
-                      }}
-                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
-                    >
-                      <CheckCircle size={16} />
-                      Approve
-                    </Button>
-
-                    <Button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        updateQuotationStatus(q.id, "rejected");
-                      }}
-                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
-                    >
-                      <XCircle size={16} />
-                      Reject
-                    </Button>
-                  </>
-                )}
-
-                {q.status === "approved" && !q.convertedToOrder && (
+              {/* Action buttons (bottom) */}
+              {q.status === "pending" && (
+                <div className="flex flex-col sm:flex-row gap-2 mt-6 w-full">
                   <Button
-                    onClick={(e) => {
+                    onClick={e => {
+                      e.stopPropagation();
+                      updateQuotationStatus(q.id, "approved");
+                    }}
+                    className="w-full sm:w-auto sm:flex-1 h-12 text-center bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center justify-center gap-2 text-base font-semibold"
+                  >
+                    <CheckCircle size={18} />
+                    Approve
+                  </Button>
+                  <Button
+                    onClick={e => {
+                      e.stopPropagation();
+                      updateQuotationStatus(q.id, "rejected");
+                    }}
+                    className="w-full sm:w-auto sm:flex-1 h-12 text-center bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center justify-center gap-2 text-base font-semibold"
+                  >
+                    <XCircle size={18} />
+                    Reject
+                  </Button>
+                </div>
+              )}
+              {q.status === "approved" && !q.convertedToOrder && (
+                <div className="flex mt-6">
+                  <Button
+                    onClick={e => {
                       e.stopPropagation();
                       handleConvertToOrder(q);
                     }}
-                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+                    className="w-full sm:w-auto sm:flex-1 h-12 text-center bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center justify-center gap-2 text-base font-semibold"
                   >
-                    <Plus size={16} />
+                    <Plus size={18} />
                     Convert to Order
                   </Button>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -642,6 +687,63 @@ export function QuotationList() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Preview Modal */}
+      <Dialog open={showPreviewModal} onOpenChange={setShowPreviewModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Quotation Preview</DialogTitle>
+          </DialogHeader>
+          <div className="pt-4" id="printable-quotation">
+            {selectedQuotation && (
+              <QuotationHtmlPreview
+                quotation={selectedQuotation}
+                customer={customers.find(c => c.id === selectedQuotation.customerId) || { id: '', name: 'Unknown Customer', phone: '' }}
+                product={products.find(p => p.id === selectedQuotation.productId) || { id: '', name: 'Unknown Product', price: 0, unit: '' }}
+                userName={user?.user_metadata?.full_name || 'User'}
+                shopName={profile?.shop_name || 'Company Name'}
+              />
+            )}
+          </div>
+          <DialogFooter className="pt-4 sm:justify-between">
+            <Button 
+              type="button" 
+              onClick={() => {
+                const printContents = document.getElementById('printable-quotation')?.innerHTML;
+                const originalContents = document.body.innerHTML;
+                if (printContents) {
+                  document.body.innerHTML = printContents;
+                  window.print();
+                  document.body.innerHTML = originalContents;
+                  window.location.reload(); // Reload to restore event listeners
+                }
+              }}
+            >
+              Print
+            </Button>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">
+                Close Preview
+              </Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Hidden PDF preview for html2pdf */}
+      <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+        {pdfQuotation && pdfCustomer && pdfProduct && (
+          <div ref={pdfRef}>
+            <QuotationHtmlPreview
+              quotation={pdfQuotation}
+              customer={pdfCustomer}
+              product={pdfProduct}
+              userName={user?.user_metadata?.full_name || 'User'}
+              shopName={profile?.shop_name || 'Company Name'}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

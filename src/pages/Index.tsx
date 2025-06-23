@@ -12,6 +12,7 @@ import { PendingOrdersNotification } from "@/components/ui/PendingOrdersNotifica
 import { ChartContainer } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
+import { FloatingActionButton } from "@/components/FloatingActionButton";
 
 const KPICard = ({ value, label }: { value: string | number; label: string }) => (
   <div className="bg-gray-50 rounded-2xl shadow p-4 flex flex-col items-center min-w-[120px] min-h-[80px] border border-gray-200 cursor-default select-none">
@@ -103,6 +104,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
+      <FloatingActionButton />
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-6 pb-3">
         {/* Mobile View */}
