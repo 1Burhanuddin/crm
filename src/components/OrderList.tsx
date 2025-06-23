@@ -1,3 +1,4 @@
+
 import { useSession } from "@/hooks/useSession";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,23 +41,6 @@ const fetchProducts = async (user_id?: string): Promise<Product[]> => {
   return (data || []) as Product[];
 };
 
-// Add this type for correct typing of the fetched Supabase order rows
-type SupabaseOrderRow = {
-  assigned_to: string | null;
-  created_at: string;
-  customer_id: string;
-  id: string;
-  job_date: string;
-  photo_url: string | null;
-  product_id: string;
-  qty: number;
-  site_address: string | null;
-  status: string;
-  updated_at: string;
-  user_id: string;
-  advance_amount?: number; // <-- allow this as optional (if null or missing)
-};
-
 // Helper: fetch orders for current user
 const fetchOrders = async (user_id: string): Promise<Order[]> => {
   const { data, error } = await supabase
@@ -66,7 +50,6 @@ const fetchOrders = async (user_id: string): Promise<Order[]> => {
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data || []).map((o) => {
-    // Use the Supabase field directly; fallback to zero if missing or null
     const row = o as any;
     return {
       id: row.id,
@@ -335,15 +318,22 @@ export function OrderList() {
 
   // === BILL GENERATION ===
   function openBillModalFromOrder(order: Order) {
-    const prodInfo = productUnitAndPrice(order.products[0].productId);
+    if (!order.products || order.products.length === 0) {
+      toast({ title: "No Products", description: "This order has no products to generate a bill.", variant: "destructive" });
+      return;
+    }
+    
     setBillInitialData({
       customerName: customerName(order.customerId),
       customerPhone: customerPhone(order.customerId),
-      items: order.products.map((item) => ({
-        name: productName(item.productId),
-        qty: item.qty,
-        price: prodInfo.price,
-      }))
+      items: order.products.map((item) => {
+        const prodInfo = productUnitAndPrice(item.productId);
+        return {
+          name: productName(item.productId),
+          qty: item.qty,
+          price: prodInfo.price,
+        };
+      })
     });
     setShowBillModal(true);
   }
@@ -351,7 +341,7 @@ export function OrderList() {
   // Always pass {} not null/undefined
   const safeInitialData = billInitialData && typeof billInitialData === "object" ? billInitialData : {};
 
-  // Helper for calculating order total & pending/udhaar (CHANGED)
+  // Helper for calculating order total & pending/udhaar
   function orderTotals(order: Order) {
     let total = 0;
     if (Array.isArray(order.products)) {
@@ -386,12 +376,6 @@ export function OrderList() {
     const { udhaar } = orderTotals(o);
     return udhaar === 0;
   });
-
-  // Calculate total sales (sum of all order totals)
-  const totalSales = orders.reduce((sum, o) => {
-    const product = products.find((p) => p.id === o.products[0].productId);
-    return sum + (product ? product.price * o.products[0].qty : 0);
-  }, 0);
 
   // Loading/error UI
   if (loadingCustomers || loadingProducts || loadingOrders) {

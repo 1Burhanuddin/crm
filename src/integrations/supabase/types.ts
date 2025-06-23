@@ -120,11 +120,11 @@ export type Database = {
           job_date: string
           photo_url: string | null
           products: Json
+          remarks: string | null
           site_address: string | null
           status: string
           updated_at: string
           user_id: string
-          remarks?: string | null
         }
         Insert: {
           advance_amount?: number
@@ -134,12 +134,12 @@ export type Database = {
           id?: string
           job_date?: string
           photo_url?: string | null
-          products: Json
+          products?: Json
+          remarks?: string | null
           site_address?: string | null
           status?: string
           updated_at?: string
           user_id: string
-          remarks?: string | null
         }
         Update: {
           advance_amount?: number
@@ -150,11 +150,11 @@ export type Database = {
           job_date?: string
           photo_url?: string | null
           products?: Json
+          remarks?: string | null
           site_address?: string | null
           status?: string
           updated_at?: string
           user_id?: string
-          remarks?: string | null
         }
         Relationships: []
       }
