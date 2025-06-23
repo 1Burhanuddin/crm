@@ -13,6 +13,12 @@ export interface ReportsData {
   ordersPending: number;
 }
 
+// Interface for individual products in an order
+interface OrderProduct {
+  productId: string;
+  qty: number;
+}
+
 export function useReportsData() {
   const { user } = useSession();
 
@@ -74,7 +80,7 @@ export function useReportsData() {
         for (const o of deliveredOrders) {
           // Calculate order total from products array
           let orderTotal = 0;
-          const orderProducts = Array.isArray(o.products) ? o.products : [];
+          const orderProducts = Array.isArray(o.products) ? o.products as OrderProduct[] : [];
           for (const item of orderProducts) {
             const price = priceMap.get(item.productId) || 0;
             const qty = Number(item.qty) || 0;
@@ -110,7 +116,7 @@ export function useReportsData() {
         ? deliveredOrders.reduce((sum: number, o: any) => {
             // Calculate order total from products array
             let orderTotal = 0;
-            const orderProducts = Array.isArray(o.products) ? o.products : [];
+            const orderProducts = Array.isArray(o.products) ? o.products as OrderProduct[] : [];
             for (const item of orderProducts) {
               const price = priceMap.get(item.productId) || 0;
               const qty = Number(item.qty) || 0;

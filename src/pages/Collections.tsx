@@ -24,6 +24,12 @@ interface CustomerWithPending {
   pending: number;
   phone?: string;
 }
+
+interface OrderProduct {
+  productId: string;
+  qty: number;
+}
+
 type DeliveredOrder = {
   id: string;
   amount: number;
@@ -102,7 +108,7 @@ export default function Collections() {
     for (const o of orders) {
       // Calculate order total from products array
       let orderTotal = 0;
-      const orderProducts = Array.isArray(o.products) ? o.products : [];
+      const orderProducts = Array.isArray(o.products) ? o.products as OrderProduct[] : [];
       for (const item of orderProducts) {
         const price = priceMap.get(item.productId) || 0;
         const qty = Number(item.qty) || 0;
