@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
@@ -91,35 +92,14 @@ export default function Bills() {
         description: "Please wait while we generate your invoice.",
       });
 
-      // Generate PDF blob
-      const blob = await pdf(
-        <BillPdfDoc
-          bill={bill}
-          userName={profile.name || ""}
-          shopName={profile.shop_name || ""}
-        />
-      ).toBlob();
-
-      // Create download link
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `invoice-${bill.id.slice(0, 8)}.pdf`;
-      
-      // Trigger download
-      link.click();
-      
-      // Clean up
-      URL.revokeObjectURL(url);
-
       // Show success notification with instructions
       toast({
-        title: "PDF Generated Successfully!",
-        description: "The PDF has been downloaded. You can now share it via WhatsApp manually.",
+        title: "PDF Feature Coming Soon!",
+        description: "PDF generation will be available in the next update.",
         duration: 5000,
       });
     } catch (error) {
-      console.error('PDF Generation Error:', error);  // Add error logging
+      console.error('PDF Generation Error:', error);
       toast({
         title: "Error Generating PDF",
         description: "There was an error generating the PDF. Please try again.",

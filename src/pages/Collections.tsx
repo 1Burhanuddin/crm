@@ -83,7 +83,7 @@ export default function Collections() {
     if (!user) return;
     const { data: orders } = await supabase
       .from("orders")
-      .select("id, customer_id, qty, product_id, advance_amount, status")
+      .select("id, customer_id, products, advance_amount, status")
       .eq("user_id", user.id)
       .eq("status", "delivered");
     if (!orders) {
@@ -100,8 +100,16 @@ export default function Collections() {
     );
     const deliveredOrderUdhaar: { [orderId: string]: { customer_id: string; amount: number } } = {};
     for (const o of orders) {
-      const price = priceMap.get(o.product_id) || 0;
-      const amt = price * (Number(o.qty) || 0) - (Number(o.advance_amount) || 0);
+      // Calculate order total from products array
+      let orderTotal = 0;
+      const orderProducts = Array.isArray(o.products) ? o.products : [];
+      for (const item of orderProducts) {
+        const price = priceMap.get(item.productId) || 0;
+        const qty = Number(item.qty) || 0;
+        orderTotal += price * qty;
+      }
+      
+      const amt = orderTotal - (Number(o.advance_amount) || 0);
       deliveredOrderUdhaar[o.id] = {
         customer_id: o.customer_id,
         amount: amt > 0 ? amt : 0

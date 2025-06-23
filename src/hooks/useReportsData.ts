@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
@@ -29,10 +30,10 @@ export function useReportsData() {
       const dayOfWeek = today.getDay() === 0 ? 6 : today.getDay() - 1;
       const startOfWeek = new Date(today.getFullYear(), today.getMonth(), today.getDate() - dayOfWeek);
 
-      // Fetch all delivered orders
+      // Fetch all delivered orders with new structure
       let { data: deliveredOrders, error: orderErr } = await supabase
         .from("orders")
-        .select("id, product_id, qty, advance_amount, status, job_date")
+        .select("id, products, advance_amount, status, job_date")
         .eq("user_id", user.id)
         .eq("status", "delivered");
       if (orderErr) throw orderErr;
@@ -71,12 +72,19 @@ export function useReportsData() {
       let totalSales = 0, daySales = 0, weekSales = 0, monthSales = 0;
       if (Array.isArray(deliveredOrders)) {
         for (const o of deliveredOrders) {
-          const price = priceMap.get(o.product_id) || 0;
-          const qty = Number(o.qty) || 0;
-          const orderTotal = price * qty;
+          // Calculate order total from products array
+          let orderTotal = 0;
+          const orderProducts = Array.isArray(o.products) ? o.products : [];
+          for (const item of orderProducts) {
+            const price = priceMap.get(item.productId) || 0;
+            const qty = Number(item.qty) || 0;
+            orderTotal += price * qty;
+          }
+          
           const advance = Number(o.advance_amount) || 0;
           const collected = collectionsMap[o.id] || 0;
           const udhaar = Math.max(0, orderTotal - advance - collected);
+          
           if (udhaar === 0) {
             // Use job_date for date filtering
             if (!o.job_date) continue;
@@ -100,9 +108,15 @@ export function useReportsData() {
       const orderUdhaarMap: Record<string, number> = {};
       const totalOrderUdhaar = Array.isArray(deliveredOrders)
         ? deliveredOrders.reduce((sum: number, o: any) => {
-            const price = priceMap.get(o.product_id) || 0;
-            const qty = Number(o.qty) || 0;
-            const orderTotal = price * qty;
+            // Calculate order total from products array
+            let orderTotal = 0;
+            const orderProducts = Array.isArray(o.products) ? o.products : [];
+            for (const item of orderProducts) {
+              const price = priceMap.get(item.productId) || 0;
+              const qty = Number(item.qty) || 0;
+              orderTotal += price * qty;
+            }
+            
             const advance = Number(o.advance_amount) || 0;
             const collected = collectionsMap[o.id] || 0;
             const pending = orderTotal - advance - collected;
