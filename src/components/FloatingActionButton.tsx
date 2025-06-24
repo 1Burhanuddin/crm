@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, FileText, Users } from 'lucide-react';
+import { Plus, FileText, Users, ClipboardList } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AddQuotationModal } from '@/components/AddQuotationModal';
 import { useSession } from '@/hooks/useSession';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Quotation, Customer, Product } from '@/constants/types';
+import { AddOrderModal } from '@/components/AddOrderModal';
 
 const fetchCustomers = async (user_id: string): Promise<Customer[]> => {
   const { data, error } = await supabase
@@ -34,6 +35,7 @@ const fetchProducts = async (user_id?: string): Promise<Product[]> => {
 export function FloatingActionButton() {
   const [isOpen, setIsOpen] = useState(false);
   const [showQuotationModal, setShowQuotationModal] = useState(false);
+  const [showOrderModal, setShowOrderModal] = useState(false);
   const navigate = useNavigate();
   const { user } = useSession();
   const queryClient = useQueryClient();
@@ -53,68 +55,72 @@ export function FloatingActionButton() {
     queryClient.invalidateQueries({ queryKey: ['customers', user?.id] });
   };
 
-  const handleNewQuotation = () => {
-    setShowQuotationModal(true);
-    setIsOpen(false);
+  // Add Order
+  const handleAddOrder = (order) => {
+    setShowOrderModal(false);
+    navigate('/orders');
   };
 
-  const handleAddQuotation = () => {
+  // Add Quotation
+  const handleAddQuotation = (quotation) => {
     setShowQuotationModal(false);
     navigate('/quotations');
   };
 
-  const handleAddLead = () => {
-    // TODO: Implement add lead functionality
-    console.log('Add lead clicked');
-    setIsOpen(false);
-  };
-
   return (
-    <>
-      <div className="fixed bottom-24 right-5 z-50 md:hidden">
-        <div className="relative flex flex-col items-center gap-2">
-          {isOpen && (
-            <>
-              <div className="flex flex-col items-center">
-                <Button
-                  variant="secondary"
-                  className="rounded-full w-40 justify-start pl-5 shadow-lg"
-                  onClick={handleAddLead}
-                >
-                  <Users className="h-5 w-5 mr-3" />
-                  New Lead
-                </Button>
-              </div>
-              <div className="flex flex-col items-center">
-                <Button
-                  variant="secondary"
-                  className="rounded-full w-40 justify-start pl-5 shadow-lg"
-                  onClick={handleNewQuotation}
-                >
-                  <FileText className="h-5 w-5 mr-3" />
-                  New Quotation
-                </Button>
-              </div>
-            </>
-          )}
-          <Button
-            className="rounded-full h-16 w-16 shadow-lg mt-2"
-            onClick={() => setIsOpen(!isOpen)}
-            aria-expanded={isOpen}
-            aria-controls="fab-menu"
-          >
-            <Plus className={`h-8 w-8 transition-transform ${isOpen ? 'rotate-45' : ''}`} />
-          </Button>
-        </div>
+    <div className="fixed bottom-24 right-5 z-50 md:hidden">
+      <div className="relative flex flex-col items-center gap-2">
+        {isOpen && (
+          <>
+            <div className="flex flex-col items-center">
+              <Button
+                variant="secondary"
+                className="rounded-full w-40 justify-start pl-5 shadow-lg"
+                onClick={() => { setShowOrderModal(true); setIsOpen(false); }}
+              >
+                <Plus className="h-5 w-5 mr-3" />
+                Add Order
+              </Button>
+            </div>
+            <div className="flex flex-col items-center">
+              <Button
+                variant="secondary"
+                className="rounded-full w-40 justify-start pl-5 shadow-lg"
+                onClick={() => { setShowQuotationModal(true); setIsOpen(false); }}
+              >
+                <FileText className="h-5 w-5 mr-3" />
+                Add Quotation
+              </Button>
+            </div>
+          </>
+        )}
+        <Button
+          className="rounded-full h-16 w-16 shadow-lg mt-2"
+          onClick={() => setIsOpen(!isOpen)}
+          aria-expanded={isOpen}
+          aria-controls="fab-menu"
+        >
+          <Plus className={`h-8 w-8 transition-transform ${isOpen ? 'rotate-45' : ''}`} />
+        </Button>
+        {/* AddOrderModal */}
+        <AddOrderModal
+          open={showOrderModal}
+          onOpenChange={setShowOrderModal}
+          onAdd={handleAddOrder}
+          customers={customers}
+          products={products}
+          refreshCustomers={refreshCustomers}
+        />
+        {/* AddQuotationModal */}
+        <AddQuotationModal
+          open={showQuotationModal}
+          onOpenChange={setShowQuotationModal}
+          onAdd={handleAddQuotation}
+          customers={customers}
+          products={products}
+          refreshCustomers={refreshCustomers}
+        />
       </div>
-      <AddQuotationModal
-        open={showQuotationModal}
-        onOpenChange={setShowQuotationModal}
-        onAdd={handleAddQuotation}
-        customers={customers}
-        products={products}
-        refreshCustomers={refreshCustomers}
-      />
-    </>
+    </div>
   );
 } 

@@ -1,10 +1,9 @@
-
 import { useSession } from "@/hooks/useSession";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Order, Product, Customer } from "@/constants/types";
+import { Order, Product, Customer, OrderProduct } from "@/constants/types";
 import { Plus, Edit, Receipt, Trash2, ChevronDown, ChevronUp } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "@/hooks/use-toast";
 import { AddOrderModal } from "./AddOrderModal";
 import { EditOrderModal } from "./EditOrderModal";
@@ -28,6 +27,7 @@ const fetchCustomers = async (user_id: string): Promise<Customer[]> => {
 
 // Helper: fetch products for current user
 const fetchProducts = async (user_id?: string): Promise<Product[]> => {
+  console.log('fetchProducts called with user_id:', user_id);
   let query = supabase
     .from("products")
     .select("*")
@@ -37,6 +37,7 @@ const fetchProducts = async (user_id?: string): Promise<Product[]> => {
     query = query.eq("user_id", user_id);
   }
   const { data, error } = await query;
+  console.log('fetchProducts result:', { data, error, count: data?.length });
   if (error) throw error;
   return (data || []) as Product[];
 };
@@ -86,9 +87,78 @@ const fetchCollectionsPerOrder = async (user_id: string) => {
   return orderMap;
 };
 
+interface ProductListProps {
+  products: OrderProduct[];
+  allProducts: Product[];
+}
+
+const ProductList = ({ products, allProducts }: ProductListProps) => {
+  if (!products || products.length === 0) {
+    return <div className="text-gray-500 italic">No products</div>;
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      {products.map((product, idx) => {
+        const productDetails = allProducts.find(p => p.id === product.productId);
+        const itemTotal = (productDetails?.price || 0) * product.qty;
+        return (
+          <div key={idx} className="grid grid-cols-3 items-center text-sm py-0.5">
+            <span className="font-medium text-gray-900 truncate">{productDetails?.name}</span>
+            <span className="text-gray-500 text-center">x{product.qty} {productDetails?.unit}</span>
+            <span className="text-gray-500 text-right">₹{itemTotal.toFixed(2)}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const OrderCard = ({ order, products, onMarkDelivered }: { order: Order; products: Product[]; onMarkDelivered: (id: string) => void }) => {
+  const total = order.products.reduce((sum, item) => {
+    const prod = products.find(p => p.id === item.productId);
+    return sum + (prod ? prod.price * item.qty : 0);
+  }, 0);
+  const pending = Math.max(0, total - (order.advanceAmount || 0));
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-700">Total:</span>
+            <span className="text-sm font-semibold text-blue-700">₹{total.toFixed(2)}</span>
+          </div>
+          {order.advanceAmount > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">Advance:</span>
+              <span className="text-sm font-semibold text-green-600">₹{order.advanceAmount.toFixed(2)}</span>
+            </div>
+          )}
+          {pending > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">Pending:</span>
+              <span className="text-sm font-semibold text-amber-600">₹{pending.toFixed(2)}</span>
+            </div>
+          )}
+        </div>
+        <div className="border-t border-gray-100 pt-2">
+          <ProductList 
+            products={order.products}
+            allProducts={products}
+          />
+        </div>
+      </div>
+      {/* ... rest of the card content ... */}
+    </div>
+  );
+};
+
 export function OrderList() {
   const { user } = useSession();
   const queryClient = useQueryClient();
+
+  console.log('OrderList render:', { user: user?.id, userEmail: user?.email });
 
   // Modal state
   const [showAdd, setShowAdd] = useState(false);
@@ -121,6 +191,13 @@ export function OrderList() {
     queryKey: ["products", user?.id],
     queryFn: () => fetchProducts(user?.id ?? ""), // pass user id for user-specific fetch
     enabled: !!user?.id,
+  });
+
+  console.log('Products query state:', { 
+    products: products.length, 
+    loadingProducts, 
+    productError, 
+    userExists: !!user?.id 
   });
 
   const {
@@ -450,6 +527,8 @@ export function OrderList() {
         onOpenChange={setShowEdit}
         onEdit={handleEditOrder}
         order={editingOrder}
+        customers={customers}
+        products={products}
       />
       <BillCreateModal
         open={showBillModal}
@@ -486,22 +565,31 @@ export function OrderList() {
               </div>
               <div className="flex items-center justify-between">
                 <div className="text-sm text-gray-700 truncate">
-                  {Array.isArray(o.products) && o.products.length > 0 ? (
-                    o.products.map((item, idx) => {
-                      const prod = products.find(p => p.id === item.productId);
-                      return (
-                        <span key={item.productId}>
-                          {prod ? prod.name : 'Product'} (Qty: {item.qty}){idx < o.products.length - 1 ? ', ' : ''}
-                        </span>
-                      );
-                    })
-                  ) : (
-                    <span>No products</span>
-                  )}
+                  <div className="flex flex-col gap-1">
+                    {o.products && o.products.length > 0 ? (
+                      <>
+                        <div className="flex flex-col gap-1">
+                          {o.products.map((product, idx) => {
+                            const productDetails = products.find(p => p.id === product.productId);
+                            const itemTotal = (productDetails?.price || 0) * product.qty;
+                            return (
+                              <div key={idx} className="grid grid-cols-3 items-center text-sm py-0.5">
+                                <span className="font-medium text-gray-900 truncate">{productDetails?.name}</span>
+                                <span className="text-gray-500 text-center">x{product.qty} {productDetails?.unit}</span>
+                                <span className="text-gray-500 text-right">₹{itemTotal.toFixed(2)}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-gray-500 italic">No products</div>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="bg-blue-50 text-blue-800 font-bold text-sm rounded-lg px-2 py-0.5">
-                    ₹{total}
+                    ₹{total.toFixed(2)}
                   </span>
                   {pending === 0 && udhaar === 0 && (
                     <span className="inline-flex items-center bg-green-100 text-green-700 rounded-full px-2 py-0.5 text-xs font-semibold">
@@ -510,12 +598,12 @@ export function OrderList() {
                   )}
                   {o.status === "pending" && pending > 0 && (
                     <span className="inline-flex items-center bg-yellow-100 text-yellow-800 rounded-full px-2 py-0.5 text-xs font-semibold">
-                      Pending: ₹{pending}
+                      Pending: ₹{pending.toFixed(2)}
                     </span>
                   )}
                   {o.status === "delivered" && udhaar > 0 && (
                     <span className="inline-flex items-center bg-red-100 text-red-700 rounded-full px-2 py-0.5 text-xs font-semibold">
-                      Udhaar: ₹{udhaar}
+                      Udhaar: ₹{udhaar.toFixed(2)}
                     </span>
                   )}
                 </div>
@@ -542,18 +630,27 @@ export function OrderList() {
                     )}
                   </div>
                   <div className="text-base text-gray-700 mt-1">
-                    {Array.isArray(o.products) && o.products.length > 0 ? (
-                      o.products.map((item, idx) => {
-                        const prod = products.find(p => p.id === item.productId);
-                        return (
-                          <span key={item.productId}>
-                            {prod ? prod.name : 'Product'} (Qty: {item.qty}){idx < o.products.length - 1 ? ', ' : ''}
-                          </span>
-                        );
-                      })
-                    ) : (
-                      <span>No products</span>
-                    )}
+                    <div className="flex flex-col gap-1">
+                      {o.products && o.products.length > 0 ? (
+                        <>
+                          <div className="flex flex-col gap-1">
+                            {o.products.map((product, idx) => {
+                              const productDetails = products.find(p => p.id === product.productId);
+                              const itemTotal = (productDetails?.price || 0) * product.qty;
+                              return (
+                                <div key={idx} className="grid grid-cols-3 items-center text-sm py-0.5">
+                                  <span className="font-medium text-gray-900 truncate">{productDetails?.name}</span>
+                                  <span className="text-gray-500 text-center">x{product.qty} {productDetails?.unit}</span>
+                                  <span className="text-gray-500 text-right">₹{itemTotal.toFixed(2)}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-gray-500 italic">No products</div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -568,12 +665,12 @@ export function OrderList() {
                 )}
                 {o.status === "pending" && pending > 0 && (
                   <span className="inline-flex items-center bg-yellow-100 text-yellow-800 rounded-full px-3 py-1 text-xs font-semibold shadow-sm">
-                    Pending: ₹{pending}
+                    Pending: ₹{pending.toFixed(2)}
                   </span>
                 )}
                 {o.status === "delivered" && udhaar > 0 && (
                   <span className="inline-flex items-center bg-red-100 text-red-700 rounded-full px-3 py-1 text-xs font-semibold shadow-sm">
-                    Udhaar: ₹{udhaar}
+                    Udhaar: ₹{udhaar.toFixed(2)}
                   </span>
                 )}
               </div>
@@ -583,11 +680,11 @@ export function OrderList() {
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div className="flex flex-col gap-2 bg-blue-50 rounded-lg p-4">
                       <span className="text-xs text-gray-500">Total</span>
-                      <span className="text-blue-900 font-bold text-lg">₹{total}</span>
+                      <span className="text-blue-900 font-bold text-lg">₹{total.toFixed(2)}</span>
                     </div>
                     <div className="flex flex-col gap-2 bg-green-50 rounded-lg p-4">
                       <span className="text-xs text-gray-500">Advance</span>
-                      <span className="text-green-700 font-bold text-lg">₹{o.advanceAmount || 0}</span>
+                      <span className="text-green-700 font-bold text-lg">₹{o.advanceAmount.toFixed(2)}</span>
                     </div>
                   </div>
                   <div className="w-full mb-2">
@@ -606,23 +703,23 @@ export function OrderList() {
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div className="flex flex-col gap-2 bg-blue-50 rounded-lg p-4">
                       <span className="text-xs text-gray-500">Total</span>
-                      <span className="text-blue-900 font-bold text-lg">₹{total}</span>
+                      <span className="text-blue-900 font-bold text-lg">₹{total.toFixed(2)}</span>
                     </div>
                     <div className="flex flex-col gap-2 bg-green-50 rounded-lg p-4">
                       <span className="text-xs text-gray-500">Advance</span>
-                      <span className="text-green-700 font-bold text-lg">₹{o.advanceAmount || 0}</span>
+                      <span className="text-green-700 font-bold text-lg">₹{o.advanceAmount.toFixed(2)}</span>
                     </div>
                     <div className="flex flex-col gap-2 bg-gray-50 rounded-lg p-4">
                       <span className="text-xs text-gray-500">Collected</span>
-                      <span className="text-emerald-700 font-bold text-lg">₹{collected}</span>
+                      <span className="text-emerald-700 font-bold text-lg">₹{collected.toFixed(2)}</span>
                     </div>
                     <div className="flex flex-col gap-2 bg-yellow-50 rounded-lg p-4">
                       <span className="text-xs text-gray-500">Pending</span>
-                      <span className="text-yellow-700 font-bold text-lg">₹{pending}</span>
+                      <span className="text-yellow-700 font-bold text-lg">₹{pending.toFixed(2)}</span>
                     </div>
                     <div className="flex flex-col gap-2 bg-red-50 rounded-lg p-4 col-span-2">
                       <span className="text-xs text-gray-500">Udhaar</span>
-                      <span className="text-red-700 font-bold text-lg">₹{udhaar}</span>
+                      <span className="text-red-700 font-bold text-lg">₹{udhaar.toFixed(2)}</span>
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-3 mb-4">

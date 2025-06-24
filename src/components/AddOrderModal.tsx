@@ -18,13 +18,15 @@ import {
 } from "./ui/select";
 import { toast } from "@/hooks/use-toast";
 import { Order, Customer, Product } from "@/constants/types";
-import { ChevronDown, ChevronUp, Search, Plus, UserPlus } from "lucide-react";
+import { ChevronDown, ChevronUp, Search, Plus, UserPlus, Edit, Trash2 } from "lucide-react";
 import { Dialog as Modal, DialogContent as ModalContent } from "./ui/dialog";
 import { Sheet, SheetContent } from "./ui/sheet";
 import { AddCustomerDialog } from "./AddCustomerDialog";
 import { useAddCustomerFromContacts } from "./hooks/useAddCustomerFromContacts";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
+import { AddProductModal } from "./AddProductModal";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface AddOrderModalProps {
   open: boolean;
@@ -44,6 +46,7 @@ export function AddOrderModal({
   refreshCustomers,
 }: AddOrderModalProps) {
   const { user } = useSession();
+  const queryClient = useQueryClient();
   const [customerId, setCustomerId] = useState("");
   const [productsList, setProductsList] = useState<{ productId: string; qty: string }[]>([]);
   const [jobDate, setJobDate] = useState(new Date().toISOString().split('T')[0]);
@@ -60,8 +63,11 @@ export function AddOrderModal({
   const [pendingProductId, setPendingProductId] = useState("");
   const [pendingQty, setPendingQty] = useState("");
   const [addCustomerDialogOpen, setAddCustomerDialogOpen] = useState(false);
+  const [showQuantitySheet, setShowQuantitySheet] = useState(false);
   const productSearchInputRef = useRef<HTMLInputElement>(null);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [addProductDialogOpen, setAddProductDialogOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
   // Update assignedTo when customer changes
   useEffect(() => {
@@ -76,8 +82,8 @@ export function AddOrderModal({
   useEffect(() => {
     if (productDropdownOpen && productSearchInputRef.current) {
       setTimeout(() => {
-        productSearchInputRef.current && productSearchInputRef.current.blur();
-      }, 50);
+        productSearchInputRef.current && productSearchInputRef.current.focus();
+      }, 100);
     }
   }, [productDropdownOpen]);
 
@@ -140,8 +146,20 @@ export function AddOrderModal({
     p.name.toLowerCase().includes(productSearch.toLowerCase())
   );
 
+  console.log('AddOrderModal state:', { 
+    products: products.length, 
+    filteredProducts: filteredProducts.length, 
+    pendingProductId, 
+    pendingQty,
+    productsList: productsList.length 
+  });
+
   const handleAddProduct = () => {
-    if (!pendingProductId || !pendingQty || parseInt(pendingQty) <= 0) return;
+    console.log('handleAddProduct called', { pendingProductId, pendingQty, editingIndex });
+    if (!pendingProductId || !pendingQty || parseInt(pendingQty) <= 0) {
+      console.log('Validation failed', { pendingProductId, pendingQty });
+      return;
+    }
     if (editingIndex !== null) {
       // Edit existing
       setProductsList((prev) => prev.map((item, idx) => idx === editingIndex ? { productId: pendingProductId, qty: pendingQty } : item));
@@ -152,15 +170,21 @@ export function AddOrderModal({
     }
     setPendingProductId("");
     setPendingQty("");
-    setProductDropdownOpen(false);
+    setShowQuantitySheet(false);
     setProductSearch("");
+  };
+
+  const handleProductSelect = (productId: string) => {
+    setPendingProductId(productId);
+    setProductDropdownOpen(false);
+    setShowQuantitySheet(true);
   };
 
   const handleEditProduct = (idx: number) => {
     setPendingProductId(productsList[idx].productId);
     setPendingQty(productsList[idx].qty);
     setEditingIndex(idx);
-    setProductDropdownOpen(true);
+    setShowQuantitySheet(true);
   };
 
   const handleRemoveProduct = (idx: number) => {
@@ -253,6 +277,11 @@ export function AddOrderModal({
     advanceNum >= 0 &&
     advanceNum <= total;
 
+  // Add this function to refresh products after adding a new one
+  const refreshProducts = () => {
+    queryClient.invalidateQueries({ queryKey: ["products", user?.id] });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-full h-full max-w-4xl sm:max-w-5xl md:max-w-6xl lg:max-w-[90vw] xl:max-w-[1200px] max-h-[90vh] min-h-[90vh] overflow-y-auto bg-blue-50 p-0 rounded-2xl shadow-xl border-0">
@@ -307,10 +336,9 @@ export function AddOrderModal({
                       onChange={e => setContactSearch(e.target.value)}
                       tabIndex={0}
                       autoFocus={false}
-                      
                     />
                   </div>
-                  <div className="max-h-80 overflow-y-auto rounded-xl bg-white">
+                  <div className="max-h-[calc(80vh-280px)] overflow-y-auto rounded-xl bg-white">
                     {filteredContacts.length === 0 ? (
                       <div className="text-gray-400 text-lg text-center py-8">No contacts found.</div>
                     ) : (
@@ -328,32 +356,31 @@ export function AddOrderModal({
                       ))
                     )}
                   </div>
+                  <div className="flex gap-3 mt-4">
+                    <Button
+                      onClick={() => setAddCustomerDialogOpen(true)}
+                      className="flex-1 bg-blue-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 text-sm font-semibold hover:bg-blue-700 justify-center transition-all shadow-sm"
+                    >
+                      <Plus size={16} />
+                      Add Contact
+                    </Button>
+                    <Button
+                      onClick={addFromContacts}
+                      className="flex-1 bg-blue-100 text-blue-700 px-4 py-2.5 rounded-xl flex items-center gap-2 text-sm font-semibold hover:bg-blue-200 justify-center transition-all"
+                      variant="secondary"
+                      type="button"
+                    >
+                      <UserPlus size={16} />
+                      Add From Contacts
+                    </Button>
+                  </div>
                 </div>
               </SheetContent>
             </Sheet>
           </div>
 
-          {/* Customer Management Buttons */}
-          <div className="flex gap-3">
-            <Button
-              onClick={() => setAddCustomerDialogOpen(true)}
-              className="flex-1 bg-blue-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 text-sm font-semibold hover:bg-blue-700 justify-center transition-all shadow-sm"
-            >
-              <Plus size={16} />
-              Add Contact
-            </Button>
-            <Button
-              onClick={addFromContacts}
-              className="flex-1 bg-blue-100 text-blue-700 px-4 py-2.5 rounded-xl flex items-center gap-2 text-sm font-semibold hover:bg-blue-200 justify-center transition-all"
-              variant="secondary"
-              type="button"
-            >
-              <UserPlus size={16} />
-              Add From Contacts
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            {/* Products List */}
             <div>
               <label className="block text-sm font-medium mb-2 text-blue-900">Products</label>
               <div className="space-y-2">
@@ -362,24 +389,39 @@ export function AddOrderModal({
                     <span className="flex-1">
                       {getProduct(item.productId)?.name || 'Unknown'} (Qty: {item.qty})
                     </span>
-                    <Button size="sm" variant="secondary" onClick={() => handleEditProduct(idx)}>Edit</Button>
-                    <Button size="sm" variant="destructive" onClick={() => handleRemoveProduct(idx)}>Remove</Button>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={() => handleEditProduct(idx)}
+                      className="h-8 w-8 p-0 rounded-full hover:bg-blue-100"
+                    >
+                      <Edit className="h-4 w-4 text-blue-600" />
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={() => handleRemoveProduct(idx)}
+                      className="h-8 w-8 p-0 rounded-full hover:bg-red-100"
+                    >
+                      <Trash2 className="h-4 w-4 text-red-600" />
+                    </Button>
                   </div>
                 ))}
-                <Button
+                <button
                   type="button"
-                  variant="secondary"
-                  className="w-full mt-2"
                   onClick={() => {
                     setPendingProductId("");
                     setPendingQty("");
                     setEditingIndex(null);
                     setProductDropdownOpen(true);
                   }}
+                  className="w-full bg-white border border-gray-200 rounded-xl px-5 py-3 text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all h-14 min-h-[56px] flex items-center justify-center gap-2"
                 >
-                  + Add Product
-                </Button>
+                  <Plus className="w-5 h-5 text-gray-400" />
+                  Add Product
+                </button>
               </div>
+
               <Sheet open={productDropdownOpen} onOpenChange={(open) => {
                 if (!open) {
                   setPendingProductId("");
@@ -392,7 +434,7 @@ export function AddOrderModal({
                 <SheetContent side="bottom" className="w-full max-h-[80vh] min-h-[80vh] rounded-t-3xl p-0 bg-blue-50 border-0 shadow-2xl">
                   <div className="p-6">
                     <div className="flex items-center justify-between mb-4">
-                      <div className="text-xl font-bold text-blue-900">{editingIndex !== null ? 'Edit Product' : 'Add Product'}</div>
+                      <div className="text-xl font-bold text-blue-900">Select Product</div>
                       <button
                         type="button"
                         className="ml-4 p-2 rounded-full hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
@@ -406,17 +448,15 @@ export function AddOrderModal({
                       <Search className="w-6 h-6 text-gray-400 mr-2" />
                       <input
                         type="text"
-                        className="flex-1 bg-transparent outline-none text-base placeholder:text-gray-400 cursor-pointer focus:cursor-text"
-                        placeholder="Search"
+                        className="flex-1 bg-transparent outline-none text-base placeholder:text-gray-400 cursor-text"
+                        placeholder="Search products..."
                         value={productSearch}
                         onChange={e => setProductSearch(e.target.value)}
-                        tabIndex={1}
-                        autoFocus={false}
-                        onFocus={e => e.target.select()}
+                        autoFocus={true}
                         ref={productSearchInputRef}
                       />
                     </div>
-                    <div className="max-h-80 overflow-y-auto rounded-xl bg-white mb-4">
+                    <div className="max-h-[calc(80vh-280px)] overflow-y-auto rounded-xl bg-white mb-4">
                       {filteredProducts.length === 0 ? (
                         <div className="text-gray-400 text-lg text-center py-8">No products found.</div>
                       ) : (
@@ -424,33 +464,83 @@ export function AddOrderModal({
                           <button
                             key={p.id}
                             className={`w-full text-left px-5 py-3 text-base font-medium rounded-xl hover:bg-blue-100 transition mb-1 h-14 min-h-[56px] ${pendingProductId === p.id ? "bg-blue-50 text-blue-700" : "text-gray-900"}`}
-                            onClick={() => setPendingProductId(p.id)}
+                            onClick={() => {
+                              console.log('Product selected:', p);
+                              handleProductSelect(p.id);
+                            }}
                           >
                             {p.name}
                           </button>
                         ))
                       )}
                     </div>
-                    {pendingProductId && (
-                      <div className="mb-4">
-                        <div className="text-base font-semibold text-blue-900 mb-2">{getProduct(pendingProductId)?.name}</div>
-                        <Input
-                          type="number"
-                          placeholder="Enter quantity"
-                          value={pendingQty}
-                          onChange={e => setPendingQty(e.target.value)}
-                          min="1"
-                          className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 h-14 min-h-[56px]"
-                        />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAddProductDialogOpen(true);
+                      }}
+                      className="w-full bg-white flex items-center justify-center gap-2 px-5 py-3 text-base font-medium text-blue-700 hover:bg-gray-50 rounded-xl transition h-14 min-h-[56px] border border-gray-200"
+                    >
+                      <Plus className="w-5 h-5" />
+                      Add New Product
+                    </button>
+                  </div>
+                </SheetContent>
+              </Sheet>
+
+              <AddProductModal 
+                open={addProductDialogOpen} 
+                onOpenChange={setAddProductDialogOpen}
+                onSuccess={refreshProducts}
+              />
+
+              <Sheet open={showQuantitySheet} onOpenChange={(open) => {
+                if (!open) {
+                  setPendingProductId("");
+                  setPendingQty("");
+                  setEditingIndex(null);
+                }
+                setShowQuantitySheet(open);
+              }}>
+                <SheetContent side="bottom" className="w-full max-h-[80vh] min-h-[80vh] rounded-t-3xl p-0 bg-blue-50 border-0 shadow-2xl">
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="text-xl font-bold text-blue-900">Enter Quantity</div>
+                      <button
+                        type="button"
+                        className="ml-4 p-2 rounded-full hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        aria-label="Close"
+                        onClick={() => setShowQuantitySheet(false)}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="#1e293b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" d="M18 6 6 18M6 6l12 12"/></svg>
+                      </button>
+                    </div>
+                    <div className="mb-6">
+                      <div className="text-base font-semibold text-blue-900 mb-2">Selected Product</div>
+                      <div className="bg-white rounded-xl p-4 border border-gray-200">
+                        <div className="text-lg font-medium text-gray-900">{getProduct(pendingProductId)?.name}</div>
+                        <div className="text-sm text-gray-500">₹{getProduct(pendingProductId)?.price} per {getProduct(pendingProductId)?.unit}</div>
                       </div>
-                    )}
+                    </div>
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium mb-2 text-blue-900">Quantity</label>
+                      <Input
+                        type="number"
+                        placeholder="Enter quantity"
+                        value={pendingQty}
+                        onChange={e => setPendingQty(e.target.value)}
+                        min="1"
+                        autoFocus={true}
+                        className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 h-14 min-h-[56px]"
+                      />
+                    </div>
                     <div className="flex gap-3">
                       <Button
                         className="flex-1 rounded-2xl px-5 py-3 bg-blue-700 hover:bg-blue-800 text-white font-semibold text-base"
-                        disabled={!pendingProductId || !pendingQty || parseInt(pendingQty) <= 0}
+                        disabled={!pendingQty || parseInt(pendingQty) <= 0}
                         onClick={handleAddProduct}
                       >
-                        {editingIndex !== null ? 'Update' : 'Add'}
+                        {editingIndex !== null ? 'Update' : 'Add Product'}
                       </Button>
                       <Button
                         className="flex-1 rounded-2xl px-5 py-3 bg-gray-100 text-gray-700 font-semibold text-base"
@@ -459,9 +549,10 @@ export function AddOrderModal({
                           setPendingProductId("");
                           setPendingQty("");
                           setEditingIndex(null);
+                          setShowQuantitySheet(false);
                         }}
                       >
-                        Clear
+                        Cancel
                       </Button>
                     </div>
                   </div>

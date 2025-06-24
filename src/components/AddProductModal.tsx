@@ -1,106 +1,149 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import React, { useState } from "react";
-import { IndianRupee } from "lucide-react";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "./ui/dialog";
+import { Input } from "./ui/input";
+import { Button } from "./ui/button";
+import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useSession } from "@/hooks/useSession";
 
-type AddProductModalProps = {
+interface AddProductModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit?: (product: { name: string; price: number; unit: string }) => void;
-};
+  onSuccess?: () => void;
+}
 
-export function AddProductModal({ open, onOpenChange, onSubmit }: AddProductModalProps) {
+export function AddProductModal({ open, onOpenChange, onSuccess }: AddProductModalProps) {
+  const { user } = useSession();
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [unit, setUnit] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  // Optionally, you can reset form fields when the dialog closes
-  React.useEffect(() => {
-    if (!open) {
+  const handleAdd = async () => {
+    if (!name.trim()) {
+      toast({
+        title: "Required",
+        description: "Please enter product name.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!price || parseFloat(price) <= 0) {
+      toast({
+        title: "Required",
+        description: "Please enter a valid price.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!unit.trim()) {
+      toast({
+        title: "Required",
+        description: "Please enter unit (e.g. pcs, kg, etc).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from("products").insert({
+        name: name.trim(),
+        price: parseFloat(price),
+        unit: unit.trim(),
+        user_id: user?.id,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Product added successfully.",
+      });
+      
       setName("");
       setPrice("");
       setUnit("");
+      onOpenChange(false);
+      if (onSuccess) onSuccess();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
     }
-  }, [open]);
-
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim() || !price.trim() || !unit.trim()) return;
-    onSubmit?.({
-      name: name.trim(),
-      price: +price,
-      unit: unit.trim(),
-    });
-    onOpenChange(false); // close modal
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-semibold text-blue-900">Add Product</DialogTitle>
-          <DialogDescription className="text-gray-500">Enter product details below.</DialogDescription>
+      <DialogContent className="w-full max-w-lg bg-blue-50 p-0 rounded-2xl shadow-xl border-0">
+        <DialogHeader className="px-6 pt-6 pb-2">
+          <div className="flex items-center justify-between w-full">
+            <DialogTitle className="text-2xl font-bold text-blue-900">Add New Product</DialogTitle>
+            <button
+              type="button"
+              className="ml-4 p-2 rounded-full hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              onClick={() => onOpenChange(false)}
+              aria-label="Close"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="#1e293b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
         </DialogHeader>
-        <form className="space-y-4 mt-4" onSubmit={handleFormSubmit}>
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Product Name</label>
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2 text-blue-900">Product Name</label>
             <Input
+              placeholder="Enter product name"
               value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="e.g. Apple"
-              className="bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-              required
+              onChange={(e) => setName(e.target.value)}
+              maxLength={100}
+              className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 h-14 min-h-[56px]"
             />
           </div>
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Rate per Unit</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <IndianRupee className="h-4 w-4 text-gray-500" />
-              </div>
+          <div>
+            <label className="block text-sm font-medium mb-2 text-blue-900">Price (₹)</label>
             <Input
               type="number"
-              min={0}
-                step="0.01"
+              placeholder="Enter price"
               value={price}
-              onChange={e => setPrice(e.target.value)}
-                placeholder="0.00"
-                className="bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500 pl-8"
-              required
-                inputMode="decimal"
-                pattern="[0-9]*"
+              onChange={(e) => setPrice(e.target.value)}
+              min="0"
+              className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 h-14 min-h-[56px]"
             />
-            </div>
           </div>
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Unit</label>
+          <div>
+            <label className="block text-sm font-medium mb-2 text-blue-900">Unit</label>
             <Input
+              placeholder="Enter unit (e.g. pcs, kg, etc)"
               value={unit}
-              onChange={e => setUnit(e.target.value)}
-              placeholder="e.g. kg, pc, box"
-              className="bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-              required
+              onChange={(e) => setUnit(e.target.value)}
+              maxLength={20}
+              className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 h-14 min-h-[56px]"
             />
           </div>
-          <DialogFooter className="gap-2 mt-6">
-            <DialogClose asChild>
-              <Button 
-                type="button" 
-                variant="outline"
-                className="border-gray-200 hover:bg-gray-50"
-              >
-                Cancel
-              </Button>
-            </DialogClose>
-            <Button 
-              type="submit"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6"
+          <DialogFooter className="gap-2 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="flex-1 px-8 py-4 rounded-2xl bg-gray-100 text-gray-700 font-semibold text-base"
             >
-              Add Product
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleAdd}
+              disabled={submitting}
+              className="flex-1 rounded-2xl px-10 py-4 bg-blue-700 hover:bg-blue-800 text-white shadow-lg font-semibold tracking-wide transition-all duration-150 focus:ring-2 focus:ring-blue-400 focus:outline-none disabled:opacity-60 text-base"
+            >
+              {submitting ? "Adding..." : "Add Product"}
             </Button>
           </DialogFooter>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

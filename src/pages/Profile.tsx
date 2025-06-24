@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { AppLayout } from "@/components/AppLayout";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ProfileTabs } from "@/components/ProfileTabs";
-import { LogOut, User, Store, AtSign, Edit2 } from "lucide-react";
+import { LogOut, User, Store, AtSign, Edit2, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function ProfilePage() {
@@ -180,7 +180,7 @@ export default function ProfilePage() {
         </div>
       ) : (
         <div className="max-w-3xl mx-auto p-4 pb-24 relative">
-          <Card className="p-0 shadow-xl border-0 relative overflow-visible bg-white min-h-[95vh]">
+          <Card className="p-0 shadow-xl border-0 relative overflow-visible bg-white min-h-[40vh]">
             {/* Profile header with navy/light gradient */}
             <div className="flex flex-col items-center justify-center rounded-t-lg bg-white pb-2 pt-7 px-4 relative">
               {/* Edit icon button (left) */}
@@ -337,6 +337,41 @@ export default function ProfilePage() {
               </div>
             )}
           </Card>
+          {/* Quick Access Section for Bills, Customers, and Products */}
+          <div className="mt-8 w-full flex flex-col items-center">
+            <div className="w-full max-w-2xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <button
+                onClick={() => navigate('/bills')}
+                className="rounded-2xl bg-white shadow-md border border-blue-100 hover:shadow-lg transition flex flex-col items-center p-6 group hover:scale-[1.03] focus:outline-none"
+              >
+                <div className="bg-blue-600 text-white rounded-full p-3 mb-3 shadow group-hover:bg-blue-700 transition">
+                  <FileText className="w-7 h-7" />
+                </div>
+                <div className="font-bold text-blue-900 text-lg mb-1">Bills</div>
+                <div className="text-gray-500 text-sm text-center">View and manage your bills</div>
+              </button>
+              <button
+                onClick={() => navigate('/customers')}
+                className="rounded-2xl bg-white shadow-md border border-blue-100 hover:shadow-lg transition flex flex-col items-center p-6 group hover:scale-[1.03] focus:outline-none"
+              >
+                <div className="bg-blue-600 text-white rounded-full p-3 mb-3 shadow group-hover:bg-blue-700 transition">
+                  <User className="w-7 h-7" />
+                </div>
+                <div className="font-bold text-blue-900 text-lg mb-1">Customers</div>
+                <div className="text-gray-500 text-sm text-center">View and manage your customers</div>
+              </button>
+              <button
+                onClick={() => navigate('/products')}
+                className="rounded-2xl bg-white shadow-md border border-indigo-100 hover:shadow-lg transition flex flex-col items-center p-6 group hover:scale-[1.03] focus:outline-none"
+              >
+                <div className="bg-indigo-600 text-white rounded-full p-3 mb-3 shadow group-hover:bg-indigo-700 transition">
+                  <Store className="w-7 h-7" />
+                </div>
+                <div className="font-bold text-indigo-900 text-lg mb-1">Products</div>
+                <div className="text-gray-500 text-sm text-center">Browse and manage your products</div>
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </AppLayout>

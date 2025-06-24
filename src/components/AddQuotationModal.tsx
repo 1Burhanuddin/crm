@@ -256,7 +256,7 @@ export function AddQuotationModal({
                       autoFocus={false}
                     />
                   </div>
-                  <div className="max-h-80 overflow-y-auto rounded-xl bg-white">
+                  <div className="max-h-[calc(80vh-280px)] overflow-y-auto rounded-xl bg-white">
                     {filteredContacts.length === 0 ? (
                       <div className="text-gray-400 text-lg text-center py-8">No contacts found.</div>
                     ) : (
@@ -274,29 +274,27 @@ export function AddQuotationModal({
                       ))
                     )}
                   </div>
+                  <div className="flex gap-3 mt-4">
+                    <Button
+                      onClick={() => setAddCustomerDialogOpen(true)}
+                      className="flex-1 bg-blue-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 text-sm font-semibold hover:bg-blue-700 justify-center transition-all shadow-sm"
+                    >
+                      <Plus size={16} />
+                      Add Contact
+                    </Button>
+                    <Button
+                      onClick={addFromContacts}
+                      className="flex-1 bg-blue-100 text-blue-700 px-4 py-2.5 rounded-xl flex items-center gap-2 text-sm font-semibold hover:bg-blue-200 justify-center transition-all"
+                      variant="secondary"
+                      type="button"
+                    >
+                      <UserPlus size={16} />
+                      Add From Contacts
+                    </Button>
+                  </div>
                 </div>
               </SheetContent>
             </Sheet>
-          </div>
-
-          {/* Customer Management Buttons */}
-          <div className="flex gap-3">
-            <Button
-              onClick={() => setAddCustomerDialogOpen(true)}
-              className="flex-1 bg-blue-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 text-sm font-semibold hover:bg-blue-700 justify-center transition-all shadow-sm"
-            >
-              <Plus size={16} />
-              Add Contact
-            </Button>
-            <Button
-              onClick={addFromContacts}
-              className="flex-1 bg-blue-100 text-blue-700 px-4 py-2.5 rounded-xl flex items-center gap-2 text-sm font-semibold hover:bg-blue-200 justify-center transition-all"
-              variant="secondary"
-              type="button"
-            >
-              <UserPlus size={16} />
-              Add From Contacts
-            </Button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">

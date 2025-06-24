@@ -30,6 +30,11 @@ const navItems = [
     path: "/bills",
   },
   {
+    title: "Quotations",
+    icon: FileText,
+    path: "/quotations",
+  },
+  {
     title: "Profile",
     icon: UserCircle,
     path: "/profile",

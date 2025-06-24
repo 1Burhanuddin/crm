@@ -1,8 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useSession } from "@/hooks/useSession";
 import { useReportsData } from "@/hooks/useReportsData";
-import { Home, ClipboardList, FileText, UserCircle, Box, BookOpen, ShoppingBag, Package, TrendingUp, Wallet2, Clock, Bell } from "lucide-react";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { TrendingUp, Wallet2, Clock, Plus, FileText, ClipboardList, Users } from "lucide-react";
 import { useEffect, useState, useRef, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { BottomNav } from "@/components/ui/BottomNav";
@@ -10,27 +9,61 @@ import { ChevronDown } from "lucide-react";
 import { format } from 'date-fns';
 import { PendingOrdersNotification } from "@/components/ui/PendingOrdersNotification";
 import { ChartContainer } from "@/components/ui/chart";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
-import { FloatingActionButton } from "@/components/FloatingActionButton";
+import { ResponsiveLine } from '@nivo/line';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Grid from '@mui/material/Grid';
+import Typography from '@mui/material/Typography';
+import Avatar from '@mui/material/Avatar';
+import Button from '@mui/material/Button';
+import Box from '@mui/material/Box';
+import { deepPurple, blue, green, pink, yellow, red } from '@mui/material/colors';
+import { FloatingActionButton } from '@/components/FloatingActionButton';
+import { AppLayout } from '@/components/AppLayout';
 
-const KPICard = ({ value, label }: { value: string | number; label: string }) => (
-  <div className="bg-gray-50 rounded-2xl shadow p-4 flex flex-col items-center min-w-[120px] min-h-[80px] border border-gray-200 cursor-default select-none">
-    <div className="text-xl font-bold text-blue-900">{value}</div>
+function AnimatedNumber({ value }: { value: number }) {
+  const [display, setDisplay] = useState(0);
+  useEffect(() => {
+    let start = display;
+    let end = value;
+    if (start === end) return;
+    let frame: number;
+    const step = () => {
+      start += (end - start) / 8;
+      if (Math.abs(end - start) < 1) {
+        setDisplay(end);
+        return;
+      }
+      setDisplay(start);
+      frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [value]);
+  return <span>{Math.round(display)}</span>;
+}
+
+const KPICard = ({ value, label, icon, color }: { value: string | number; label: string; icon: React.ReactNode; color: string }) => (
+  <div className="bg-white rounded-2xl shadow p-4 flex flex-col items-center min-w-[120px] min-h-[80px] border border-gray-100 cursor-default select-none">
+    <div className={`mb-2 ${color}`}>{icon}</div>
+    <div className="text-2xl font-bold text-blue-900">{value}</div>
     <div className="text-gray-500 text-xs text-center mt-1">{label}</div>
   </div>
 );
 
-const Index = () => {
+export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useSession();
   const [salesFilter, setSalesFilter] = useState<'all' | 'day' | 'week' | 'month'>('all');
   const [filterOpen, setFilterOpen] = useState(false);
   const filterRef = useRef<HTMLButtonElement>(null);
-  const { data: reportData, isLoading: reportLoading } = useReportsData();
+  const { data: reportData, isLoading } = useReportsData();
   const [filteredSales, setFilteredSales] = useState<number>(0);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [filterCollapsed, setFilterCollapsed] = useState(true);
+  const [salesHistory, setSalesHistory] = useState<{ x: string; y: number }[]>([]);
+  const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  const [recentQuotations, setRecentQuotations] = useState<any[]>([]);
 
   const filterOptions = [
     { key: 'day', label: 'Today' },
@@ -102,216 +135,199 @@ const Index = () => {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [filterOpen]);
 
+  // Fetch sales history for chart
+  useEffect(() => {
+    async function fetchSalesHistory() {
+      const { data: orders } = await supabase
+        .from("orders")
+        .select("job_date, products, advance_amount, status")
+        .eq("status", "delivered");
+      if (!orders) return;
+      const salesByDate: Record<string, number> = {};
+      orders.forEach((o: any) => {
+        let total = 0;
+        if (Array.isArray(o.products)) {
+          o.products.forEach((item: any) => {
+            total += (item.qty || 0) * (item.price || 0);
+          });
+        }
+        if (o.job_date) {
+          // Format date as yyyy-MM-dd to group by day
+          const day = new Date(o.job_date);
+          const dayStr = day.toISOString().slice(0, 10); // yyyy-MM-dd
+          salesByDate[dayStr] = (salesByDate[dayStr] || 0) + total;
+        }
+      });
+      const sorted = Object.entries(salesByDate)
+        .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
+        .map(([date, sales]) => ({ x: date, y: sales }));
+      setSalesHistory(sorted);
+    }
+    fetchSalesHistory();
+  }, []);
+
+  // Fetch recent orders and quotations
+  useEffect(() => {
+    async function fetchRecent() {
+      const { data: orders } = await supabase
+        .from("orders")
+        .select("id, customer_id, job_date, status, products")
+        .order("created_at", { ascending: false })
+        .limit(5);
+      setRecentOrders(orders || []);
+      const { data: quotations } = await supabase
+        .from("quotations")
+        .select("id, customer_id, job_date, status, products")
+        .order("created_at", { ascending: false })
+        .limit(5);
+      setRecentQuotations(quotations || []);
+    }
+    fetchRecent();
+  }, []);
+
+  // Modern Unified KPI Panel
+  const kpis = [
+    {
+      value: reportData?.totalSales ?? 0,
+      label: "Total Sales",
+      icon: <TrendingUp size={28} />,
+      color: "text-blue-500",
+    },
+    {
+      value: reportData?.daySales ?? 0,
+      label: "Today",
+      icon: <TrendingUp size={28} />,
+      color: "text-green-500",
+    },
+    {
+      value: reportData?.weekSales ?? 0,
+      label: "This Week",
+      icon: <TrendingUp size={28} />,
+      color: "text-indigo-500",
+    },
+    {
+      value: reportData?.monthSales ?? 0,
+      label: "This Month",
+      icon: <TrendingUp size={28} />,
+      color: "text-pink-500",
+    },
+    {
+      value: reportData?.totalCredit ?? 0,
+      label: "Credit (Udhaar)",
+      icon: <Wallet2 size={28} />,
+      color: "text-red-500",
+    },
+    {
+      value: reportData?.ordersPending ?? 0,
+      label: "Pending Orders",
+      icon: <Clock size={28} />,
+      color: "text-yellow-500",
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
-      <FloatingActionButton />
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-6 pb-3">
-        {/* Mobile View */}
-        <div className="flex items-center gap-2 md:hidden">
-          <span className="font-bold text-xl text-blue-900">Khata Book</span>
-        </div>
-        {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-8 flex-1">
-          <span className="font-bold text-xl text-blue-900">Khata Book</span>
-          <nav className="flex items-center gap-6">
-            <button onClick={() => navigate("/orders")} className="text-gray-600 hover:text-blue-700 font-medium">Orders</button>
-            <button onClick={() => navigate("/bills")} className="text-gray-600 hover:text-blue-700 font-medium">Bills</button>
-            <button onClick={() => navigate("/collections")} className="text-gray-600 hover:text-blue-700 font-medium">Collections</button>
-            <button onClick={() => navigate("/products")} className="text-gray-600 hover:text-blue-700 font-medium">Products</button>
-            <button onClick={() => navigate("/customers")} className="text-gray-600 hover:text-blue-700 font-medium">Customers</button>
-          </nav>
-        </div>
-        {/* Profile Section */}
-        <div className="flex items-center gap-3">
-          <button className="rounded-full p-2 hover:bg-blue-100 transition relative" aria-label="Notifications" onClick={() => setNotificationOpen(true)}>
-            <Bell className="h-6 w-6 text-blue-700" />
-          </button>
-          <div className="hidden md:block text-right">
-            <div className="font-medium text-gray-900">{profile?.name || profile?.email}</div>
-            <div className="text-sm text-gray-500">My Account</div>
-          </div>
-          <button 
-            onClick={() => navigate("/profile")} 
-            className="rounded-full hover:ring-2 hover:ring-blue-300 transition-all"
-          >
-            <Avatar className="h-10 w-10 border-2 border-blue-200 shadow">
-              <AvatarImage src={profile?.profile_image_url || undefined} alt={profile?.name || profile?.email || "U"} />
-              <AvatarFallback>{(profile?.name || profile?.email || "U")[0]}</AvatarFallback>
-            </Avatar>
-          </button>
-        </div>
-      </div>
-      <PendingOrdersNotification open={notificationOpen} onOpenChange={setNotificationOpen} />
-
-      {/* Main Stats Card */}
-      <div className="px-4 mt-2">
-        <div className="w-full bg-white rounded-2xl shadow-lg border border-gray-100 flex flex-col items-stretch mb-6 p-4 gap-4">
-          <div className="bg-gray-50 border border-gray-200 rounded-xl shadow p-4 w-full flex flex-col lg:flex-row items-stretch gap-6">
-            {/* Left: Total Sales info, vertically centered */}
-            <div className="flex-1 flex flex-col justify-center lg:justify-center lg:pl-2 mb-4 lg:mb-0 w-full">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 w-full">
-                <div className="flex items-center gap-3 w-full flex-wrap">
-                  <TrendingUp className="w-5 h-5 text-blue-500" />
-                  <span className="text-base font-semibold text-blue-900">Total Sales</span>
-                  <span className="text-2xl font-extrabold text-blue-800 tracking-tight">{reportLoading ? '...' : `₹${filteredSales}`}</span>
-                  {/* Collapsible Filter for Mobile */}
-                  <div className="block sm:hidden ml-auto">
-                    <button
-                      className="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-blue-800 font-semibold text-sm"
-                      onClick={() => setFilterCollapsed((v) => !v)}
-                    >
-                      <span>Filter</span>
-                      <ChevronDown className={`w-4 h-4 transition-transform ${filterCollapsed ? '' : 'rotate-180'}`} />
-                    </button>
-                  </div>
-                  {/* Modern Segmented Control Filter for Desktop */}
-                  <div className="hidden sm:flex gap-1 bg-gray-100 rounded-full p-1 ml-4">
-                    {filterOptions.map(opt => (
-                      <button
-                        key={opt.key}
-                        onClick={() => setSalesFilter(opt.key as typeof salesFilter)}
-                        className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-150
-                          ${salesFilter === opt.key
-                            ? 'bg-blue-600 text-white shadow'
-                            : 'bg-transparent text-blue-800 hover:bg-blue-100'}
-                        `}
-                        style={{ minWidth: 64 }}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {/* Mobile filter options row below, when expanded */}
-                {(!filterCollapsed && window.innerWidth < 640) && (
-                  <div className="flex flex-row gap-1 bg-gray-50 rounded-xl p-2 mt-1 shadow w-full justify-between">
-                    {filterOptions.map(opt => (
-                      <button
-                        key={opt.key}
-                        onClick={() => { setSalesFilter(opt.key as typeof salesFilter); setFilterCollapsed(true); }}
-                        className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-150
-                          ${salesFilter === opt.key
-                            ? 'bg-blue-600 text-white shadow'
-                            : 'bg-transparent text-blue-800 hover:bg-blue-100'}
-                        `}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
+    <AppLayout title="Dashboard">
+      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', pb: 6 }}>
+        <Box sx={{ maxWidth: 1200, mx: 'auto', px: { xs: 1, sm: 3 } }}>
+          {/* Welcome Section */}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 5, flexWrap: 'wrap', gap: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Avatar src={profile?.profile_image_url || undefined} sx={{ width: 44, height: 44, bgcolor: deepPurple[500], fontSize: 20 }}>
+                {profile?.name?.[0] || profile?.email?.[0] || 'U'}
+              </Avatar>
+              <Box>
+                <Typography variant="h6" fontWeight={700} color="primary.main" sx={{ fontSize: { xs: '1.1rem', sm: '1.3rem' } }}>
+                  Welcome{profile?.name ? `, ${profile.name}` : ''}!
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.85rem', sm: '1rem' } }}>
+                  Here's your business at a glance.
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+          {/* Sales Trend Chart - Modern, responsive, and with formatted dates */}
+          <Card elevation={3} sx={{ borderRadius: 4, mb: 4, p: { xs: 1, md: 3 } }}>
+            <Typography variant="h6" fontWeight={700} color="primary.main" sx={{ mb: 2 }}>Sales Trend</Typography>
+            <Box sx={{ height: { xs: 220, md: 300 }, px: { xs: 0, md: 2 } }}>
+              <ResponsiveLine
+                data={[{ id: 'Sales', color: blue[500], data: salesHistory }]}
+                margin={{ top: 30, right: 30, bottom: 50, left: 50 }}
+                xScale={{ type: 'point' }}
+                yScale={{ type: 'linear', min: 0, max: 'auto', stacked: false, reverse: false }}
+                axisTop={null}
+                axisRight={null}
+                axisBottom={{
+                  tickSize: 8,
+                  tickPadding: 8,
+                  tickRotation: 0,
+                  legend: 'Day',
+                  legendOffset: 36,
+                  legendPosition: 'middle',
+                  format: (value: string) => {
+                    const d = new Date(value);
+                    return d.toLocaleDateString('en-US', { weekday: 'short' });
+                  },
+                }}
+                axisLeft={{ tickSize: 8, tickPadding: 8, tickRotation: 0, legend: 'Sales', legendOffset: -40, legendPosition: 'middle' }}
+                colors={[blue[500]]}
+                pointSize={8}
+                pointColor={{ theme: 'background' }}
+                pointBorderWidth={2}
+                pointBorderColor={{ from: 'serieColor' }}
+                pointLabelYOffset={-12}
+                useMesh={true}
+                enableArea={true}
+                areaOpacity={0.15}
+                enableGridX={false}
+                enableGridY={true}
+                tooltip={({ point }) => (
+                  <Box sx={{ bgcolor: 'white', p: 1, borderRadius: 1, boxShadow: 2 }}>
+                    <Typography variant="body2" color="primary.main">{point.data.xFormatted}</Typography>
+                    <Typography variant="body2" color="text.secondary">₹{point.data.yFormatted}</Typography>
+                  </Box>
                 )}
-              </div>
-              <div className="text-xs text-gray-500 mt-2">{salesStartDate ? `Since ${format(salesStartDate, 'dd MMM yyyy')}` : 'All completed orders'}</div>
-              <div className="text-xs text-gray-600 min-h-[16px]">{dateDisplay}</div>
+              />
+            </Box>
+          </Card>
+          {/* Recent Activity */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div className="bg-white rounded-2xl shadow p-6 border border-gray-100">
+              <div className="text-lg font-semibold text-blue-900 mb-4">Recent Orders</div>
+              <ul className="divide-y divide-gray-100">
+                {recentOrders.length === 0 && <li className="text-gray-400 text-sm">No recent orders.</li>}
+                {recentOrders.map((o) => (
+                  <li key={o.id} className="py-2 flex flex-col gap-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-gray-800">Order #{o.id.slice(-5)}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${o.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-700'}`}>{o.status}</span>
+                    </div>
+                    <div className="text-xs text-gray-500">{o.job_date}</div>
+                  </li>
+                ))}
+              </ul>
             </div>
-            {/* Right: Chart and stats, vertically centered */}
-            <div className="flex flex-col justify-center w-full lg:w-[420px] max-w-xl mx-auto gap-3">
-              {/* Mini Sales Trend Chart */}
-              <div className="bg-white border border-gray-100 rounded-xl shadow flex flex-col items-center justify-center p-2 w-full">
-                <div className="w-full text-xs font-semibold text-blue-900 mb-1 pl-2">Sales Trend (7 days)</div>
-                <div className="w-full h-24">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={[
-                      { day: 'Mon', sales: 1200 },
-                      { day: 'Tue', sales: 2100 },
-                      { day: 'Wed', sales: 800 },
-                      { day: 'Thu', sales: 1600 },
-                      { day: 'Fri', sales: 900 },
-                      { day: 'Sat', sales: 1700 },
-                      { day: 'Sun', sales: 1400 },
-                    ]}>
-                      <XAxis dataKey="day" axisLine={false} tickLine={false} fontSize={10} />
-                      <YAxis hide domain={[0, 'dataMax + 500']} />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="sales" stroke="#2563eb" strokeWidth={2} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-              {/* Unified Credit/Pending container */}
-              <div className="flex flex-row w-full gap-2 bg-gray-50 rounded-xl p-2 border border-gray-100 shadow-sm">
-                <div className="flex-1 flex flex-col items-center justify-center p-2">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Wallet2 className="w-5 h-5 text-red-400" />
-                    <span className="text-sm font-semibold text-red-700">Credit [Udhaar]</span>
-                  </div>
-                  <span className="text-lg font-extrabold text-red-600 tracking-tight mb-1 block">{reportLoading ? '...' : `₹${reportData?.totalCredit ?? 0}`}</span>
-                </div>
-                <div className="w-px bg-gray-200 mx-2 my-2" />
-                <div className="flex-1 flex flex-col items-center justify-center p-2">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Clock className="w-5 h-5 text-yellow-500" />
-                    <span className="text-sm font-semibold text-yellow-700">Pending Orders</span>
-                  </div>
-                  <span className="text-lg font-extrabold text-yellow-600 tracking-tight block">{reportLoading ? '...' : reportData?.ordersPending ?? 0}</span>
-                </div>
-              </div>
+            <div className="bg-white rounded-2xl shadow p-6 border border-gray-100">
+              <div className="text-lg font-semibold text-blue-900 mb-4">Recent Quotations</div>
+              <ul className="divide-y divide-gray-100">
+                {recentQuotations.length === 0 && <li className="text-gray-400 text-sm">No recent quotations.</li>}
+                {recentQuotations.map((q) => (
+                  <li key={q.id} className="py-2 flex flex-col gap-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-gray-800">Quotation #{q.id.slice(-5)}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${q.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : q.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{q.status}</span>
+                    </div>
+                    <div className="text-xs text-gray-500">{q.job_date}</div>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Main Action Cards */}
-      <div className="flex flex-col gap-5 px-4 mt-7">
-        <div className="w-full rounded-2xl bg-white p-4 flex flex-col gap-3 shadow">
-            <button
-              onClick={() => navigate("/orders")}
-            className="w-full bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg shadow-black/10 border border-gray-100 border-l-4 border-l-black flex flex-col items-center justify-center min-h-[90px] p-4 hover:shadow-xl transition-all mb-2"
-            >
-            <div className="w-full bg-gray-100/80 rounded-xl px-3 py-2">
-              <div className="font-bold text-black text-base mb-0.5">Orders</div>
-              <div className="text-gray-500 text-xs">Manage job orders</div>
-            </div>
-            </button>
-            <button
-              onClick={() => navigate("/bills")}
-            className="w-full bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg shadow-black/10 border border-gray-100 border-l-4 border-l-black flex flex-col items-center justify-center min-h-[90px] p-4 hover:shadow-xl transition-all mb-2"
-            >
-            <div className="w-full bg-gray-100/80 rounded-xl px-3 py-2">
-              <div className="font-bold text-black text-base mb-0.5">Bills</div>
-              <div className="text-gray-500 text-xs">Customer bills</div>
-            </div>
-            </button>
-          <button
-            onClick={() => navigate("/customers")}
-            className="w-full bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg shadow-black/10 border border-gray-100 border-l-4 border-l-black flex items-center gap-3 min-h-[80px] p-4 hover:shadow-xl transition-all mb-2"
-          >
-            <div className="w-full bg-gray-100/80 rounded-xl px-3 py-2">
-              <div className="font-bold text-black text-base">Customer Ledger</div>
-              <div className="text-gray-500 text-xs mt-0.5">Add/View udhaar or paid transactions</div>
-            </div>
-          </button>
-          <button
-            onClick={() => navigate("/collections")}
-            className="w-full bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg shadow-black/10 border border-gray-100 border-l-4 border-l-black flex items-center gap-3 min-h-[80px] p-4 hover:shadow-xl transition-all mb-2"
-          >
-            <div className="w-full bg-gray-100/80 rounded-xl px-3 py-2">
-              <div className="font-bold text-black text-base">Collection</div>
-              <div className="text-gray-500 text-xs mt-0.5">Record customer payments</div>
-            </div>
-          </button>
-          <button
-            onClick={() => navigate("/products")}
-            className="w-full bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg shadow-black/10 border border-gray-100 border-l-4 border-l-black flex items-center gap-3 min-h-[80px] p-4 hover:shadow-xl transition-all"
-          >
-            <div className="w-full bg-gray-100/80 rounded-xl px-3 py-2">
-              <div className="font-bold text-black text-base">Product Catalog</div>
-              <div className="text-gray-500 text-xs mt-0.5">Add your products</div>
-            </div>
-          </button>
-        </div>
-      </div>
-
-      {/* Bottom Navigation for mobile */}
+        </Box>
+      </Box>
+      {/* Floating action button for mobile only, always visible and outside main container */}
       <div className="md:hidden">
-        <BottomNav />
+        <FloatingActionButton />
       </div>
-
-      {/* PWA Install Prompt */}
-      <PWAInstallPrompt />
-    </div>
+    </AppLayout>
   );
-};
-
-export default Index;
+}
