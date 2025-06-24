@@ -101,12 +101,10 @@ const ProductList = ({ products, allProducts }: ProductListProps) => {
     <div className="flex flex-col gap-1">
       {products.map((product, idx) => {
         const productDetails = allProducts.find(p => p.id === product.productId);
-        const itemTotal = (productDetails?.price || 0) * product.qty;
         return (
-          <div key={idx} className="grid grid-cols-3 items-center text-sm py-0.5">
+          <div key={idx} className="grid grid-cols-2 items-center text-sm py-0.5">
             <span className="font-medium text-gray-900 truncate">{productDetails?.name}</span>
-            <span className="text-gray-500 text-center">x{product.qty} {productDetails?.unit}</span>
-            <span className="text-gray-500 text-right">₹{itemTotal.toFixed(2)}</span>
+            <span className="text-gray-500">x{product.qty} {productDetails?.unit}</span>
           </div>
         );
       })}
@@ -573,10 +571,9 @@ export function OrderList() {
                             const productDetails = products.find(p => p.id === product.productId);
                             const itemTotal = (productDetails?.price || 0) * product.qty;
                             return (
-                              <div key={idx} className="grid grid-cols-3 items-center text-sm py-0.5">
+                              <div key={idx} className="grid grid-cols-2 items-center text-sm py-0.5">
                                 <span className="font-medium text-gray-900 truncate">{productDetails?.name}</span>
-                                <span className="text-gray-500 text-center">x{product.qty} {productDetails?.unit}</span>
-                                <span className="text-gray-500 text-right">₹{itemTotal.toFixed(2)}</span>
+                                <span className="text-gray-500">x{product.qty} {productDetails?.unit}</span>
                               </div>
                             );
                           })}
@@ -638,10 +635,9 @@ export function OrderList() {
                               const productDetails = products.find(p => p.id === product.productId);
                               const itemTotal = (productDetails?.price || 0) * product.qty;
                               return (
-                                <div key={idx} className="grid grid-cols-3 items-center text-sm py-0.5">
+                                <div key={idx} className="grid grid-cols-2 items-center text-sm py-0.5">
                                   <span className="font-medium text-gray-900 truncate">{productDetails?.name}</span>
-                                  <span className="text-gray-500 text-center">x{product.qty} {productDetails?.unit}</span>
-                                  <span className="text-gray-500 text-right">₹{itemTotal.toFixed(2)}</span>
+                                  <span className="text-gray-500">x{product.qty} {productDetails?.unit}</span>
                                 </div>
                               );
                             })}

@@ -126,15 +126,15 @@ export function AddProductModal({ open, onOpenChange, onSuccess }: AddProductMod
             />
           </div>
           <DialogFooter className="gap-2 pt-4">
-            <Button
-              type="button"
-              variant="outline"
+              <Button 
+                type="button" 
+                variant="outline"
               onClick={() => onOpenChange(false)}
               className="flex-1 px-8 py-4 rounded-2xl bg-gray-100 text-gray-700 font-semibold text-base"
-            >
-              Cancel
-            </Button>
-            <Button
+              >
+                Cancel
+              </Button>
+            <Button 
               type="button"
               onClick={handleAdd}
               disabled={submitting}

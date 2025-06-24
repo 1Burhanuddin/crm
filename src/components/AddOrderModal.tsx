@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "./ui/select";
 import { toast } from "@/hooks/use-toast";
-import { Order, Customer, Product } from "@/constants/types";
+import { Order, Customer, Product, OrderStatus } from "@/constants/types";
 import { ChevronDown, ChevronUp, Search, Plus, UserPlus, Edit, Trash2 } from "lucide-react";
 import { Dialog as Modal, DialogContent as ModalContent } from "./ui/dialog";
 import { Sheet, SheetContent } from "./ui/sheet";
@@ -48,7 +48,7 @@ export function AddOrderModal({
   const { user } = useSession();
   const queryClient = useQueryClient();
   const [customerId, setCustomerId] = useState("");
-  const [productsList, setProductsList] = useState<{ productId: string; qty: string }[]>([]);
+  const [productsList, setProductsList] = useState<{ productId: string; qty: string; price: number }[]>([]);
   const [jobDate, setJobDate] = useState(new Date().toISOString().split('T')[0]);
   const [assignedTo, setAssignedTo] = useState("");
   const [siteAddress, setSiteAddress] = useState("");
@@ -134,8 +134,8 @@ export function AddOrderModal({
   const getProduct = (id: string) => products.find((p) => p.id === id);
   const advanceNum = advanceAmount ? parseFloat(advanceAmount) : 0;
   const total = productsList.reduce((sum, item) => {
-    const prod = getProduct(item.productId);
-    return sum + (prod ? prod.price * (parseInt(item.qty) || 0) : 0);
+    // Use the stored price from the product list
+    return sum + (item.price * (parseInt(item.qty) || 0));
   }, 0);
   const pending = Math.max(0, total - advanceNum);
 
@@ -160,13 +160,26 @@ export function AddOrderModal({
       console.log('Validation failed', { pendingProductId, pendingQty });
       return;
     }
+
+    const selectedProduct = getProduct(pendingProductId);
+    if (!selectedProduct) {
+      console.log('Product not found', { pendingProductId });
+      return;
+    }
+
+    const newProduct = {
+      productId: pendingProductId,
+      qty: pendingQty,
+      price: selectedProduct.price // Store the price when adding the product
+    };
+
     if (editingIndex !== null) {
       // Edit existing
-      setProductsList((prev) => prev.map((item, idx) => idx === editingIndex ? { productId: pendingProductId, qty: pendingQty } : item));
+      setProductsList((prev) => prev.map((item, idx) => idx === editingIndex ? newProduct : item));
       setEditingIndex(null);
     } else {
       // Add new
-      setProductsList((prev) => [...prev, { productId: pendingProductId, qty: pendingQty }]);
+      setProductsList((prev) => [...prev, newProduct]);
     }
     setPendingProductId("");
     setPendingQty("");
@@ -249,23 +262,70 @@ export function AddOrderModal({
       return;
     }
 
-    setSubmitting(true);
+    try {
+      setSubmitting(true);
 
-    const newOrder = {
-      customerId,
-      products: productsList.map((item) => ({ productId: item.productId, qty: parseInt(item.qty) })),
-      status: "pending" as const,
-      jobDate,
-      assignedTo: assignedTo.trim(),
-      siteAddress: siteAddress.trim(),
-      remarks: remarks.trim(),
-      advanceAmount: advanceNum,
-    };
+      // Prepare the order data with snake_case for Supabase
+      const orderData = {
+        customer_id: customerId,
+        products: productsList.map(item => ({
+          product_id: item.productId,
+          qty: parseInt(item.qty),
+          price: item.price // Use the stored price
+        })),
+        status: "pending" as const,
+        job_date: jobDate,
+        assigned_to: assignedTo,
+        site_address: siteAddress || null,
+        remarks: remarks || null,
+        advance_amount: advanceNum || 0,
+        user_id: user?.id
+      };
 
-    onAdd(newOrder);
-    resetForm();
-    setSubmitting(false);
-    onOpenChange(false);
+      // Insert into Supabase
+      const { data, error } = await supabase
+        .from("orders")
+        .insert(orderData)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Convert the snake_case response to camelCase for the UI
+      const uiOrder = {
+        customerId: data.customer_id,
+        products: (data.products as any[]).map(p => ({
+          productId: p.product_id,
+          qty: p.qty,
+          price: p.price
+        })),
+        status: data.status as OrderStatus,
+        jobDate: data.job_date,
+        assignedTo: data.assigned_to,
+        siteAddress: data.site_address,
+        remarks: data.remarks,
+        advanceAmount: data.advance_amount
+      };
+
+      onAdd(uiOrder);
+      toast({
+        title: "Success",
+        description: "Order added successfully",
+      });
+      resetForm();
+      onOpenChange(false);
+
+      // Invalidate orders query to trigger a refresh
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+    } catch (error: any) {
+      toast({
+        title: "Error adding order",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const isFormValid =

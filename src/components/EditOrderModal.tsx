@@ -132,7 +132,7 @@ export function EditOrderModal({ open, onOpenChange, onEdit, order, customers, p
     }
     if (productsList.some((item) => !item.productId || !item.qty || parseInt(item.qty) <= 0)) {
       toast({ title: "Required", description: "Please enter valid quantities for all products.", variant: "destructive" });
-      return;
+        return;
     }
     if (!jobDate) {
       toast({ title: "Required", description: "Please enter a job date.", variant: "destructive" });
@@ -224,7 +224,7 @@ export function EditOrderModal({ open, onOpenChange, onEdit, order, customers, p
               </SelectContent>
             </Select>
           </div>
-
+          
           <div>
             <label className="block text-sm font-medium mb-2 text-blue-900">Products</label>
             <div className="space-y-2">
@@ -361,27 +361,27 @@ export function EditOrderModal({ open, onOpenChange, onEdit, order, customers, p
                   </div>
                   <div className="mb-6">
                     <label className="block text-sm font-medium mb-2 text-blue-900">Quantity</label>
-                    <Input
-                      type="number"
+                  <Input
+                    type="number"
                       placeholder="Enter quantity"
                       value={pendingQty}
                       onChange={e => setPendingQty(e.target.value)}
-                      min="1"
+                    min="1"
                       autoFocus={true}
                       className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 h-14 min-h-[56px]"
-                    />
-                  </div>
+                  />
+                </div>
                   <div className="flex gap-3">
-                    <Button
+                  <Button
                       className="flex-1 rounded-2xl px-5 py-3 bg-blue-700 hover:bg-blue-800 text-white font-semibold text-base"
                       disabled={!pendingQty || parseInt(pendingQty) <= 0}
                       onClick={handleAddProduct}
                     >
                       {editingIndex !== null ? 'Update' : 'Add Product'}
-                    </Button>
-                    <Button
+                  </Button>
+                <Button
                       className="flex-1 rounded-2xl px-5 py-3 bg-gray-100 text-gray-700 font-semibold text-base"
-                      variant="outline"
+                  variant="outline"
                       onClick={() => {
                         setPendingProductId("");
                         setPendingQty("");
@@ -390,32 +390,32 @@ export function EditOrderModal({ open, onOpenChange, onEdit, order, customers, p
                       }}
                     >
                       Cancel
-                    </Button>
-                  </div>
+                </Button>
+              </div>
                 </div>
               </SheetContent>
             </Sheet>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div>
+          <div>
               <label className="block text-sm font-medium mb-2 text-blue-900">Job Date</label>
-              <Input
-                type="date"
-                value={jobDate}
+            <Input
+              type="date"
+              value={jobDate}
                 onChange={(e) => setJobDate(e.target.value)}
                 className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 h-14 min-h-[56px]"
-              />
-            </div>
-            <div>
+            />
+          </div>
+          <div>
               <label className="block text-sm font-medium mb-2 text-blue-900">Assigned To</label>
-              <Input
-                placeholder="Enter assigned person"
-                value={assignedTo}
+            <Input
+              placeholder="Enter assigned person"
+              value={assignedTo}
                 onChange={(e) => setAssignedTo(e.target.value)}
-                maxLength={50}
+              maxLength={50}
                 className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 h-14 min-h-[56px]"
-              />
+            />
             </div>
           </div>
 
@@ -434,25 +434,25 @@ export function EditOrderModal({ open, onOpenChange, onEdit, order, customers, p
             </button>
             {showAdditionalFields && (
               <div className="p-6 space-y-6 bg-white">
-                <div>
+          <div>
                   <label className="block text-sm font-medium mb-2 text-blue-900">Site Address</label>
-                  <Input
-                    placeholder="Enter site address"
-                    value={siteAddress}
+            <Input
+              placeholder="Enter site address"
+              value={siteAddress}
                     onChange={(e) => setSiteAddress(e.target.value)}
-                    maxLength={200}
+              maxLength={200}
                     className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 h-14 min-h-[56px]"
-                  />
-                </div>
-                <div>
+            />
+          </div>
+          <div>
                   <label className="block text-sm font-medium mb-2 text-blue-900">Remarks</label>
-                  <Input
+            <Input
                     placeholder="Enter any additional remarks"
-                    value={remarks}
+              value={remarks}
                     onChange={(e) => setRemarks(e.target.value)}
-                    maxLength={200}
+              maxLength={200}
                     className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 h-14 min-h-[56px]"
-                  />
+            />
                 </div>
               </div>
             )}
@@ -497,18 +497,18 @@ export function EditOrderModal({ open, onOpenChange, onEdit, order, customers, p
           </div>
 
           <DialogFooter className="gap-2 pt-6">
-            <DialogClose asChild>
+          <DialogClose asChild>
               <Button type="button" variant="outline" className="px-8 py-4 rounded-2xl bg-gray-100 text-gray-700 font-semibold text-base">Cancel</Button>
-            </DialogClose>
-            <Button
-              type="button"
-              onClick={handleEdit}
-              disabled={submitting || !isFormValid}
+          </DialogClose>
+          <Button
+            type="button"
+            onClick={handleEdit}
+            disabled={submitting || !isFormValid}
               className="rounded-2xl px-10 py-4 bg-blue-700 hover:bg-blue-800 text-white shadow-lg font-semibold tracking-wide transition-all duration-150 focus:ring-2 focus:ring-blue-400 focus:outline-none disabled:opacity-60 text-base"
-            >
+          >
               {submitting ? "Saving..." : "Save Changes"}
-            </Button>
-          </DialogFooter>
+          </Button>
+        </DialogFooter>
         </div>
       </DialogContent>
 

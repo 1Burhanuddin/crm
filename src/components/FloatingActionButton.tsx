@@ -4,10 +4,11 @@ import { Plus, FileText, Users, ClipboardList } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AddQuotationModal } from '@/components/AddQuotationModal';
 import { useSession } from '@/hooks/useSession';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Quotation, Customer, Product } from '@/constants/types';
+import { Quotation, Customer, Product, Order } from '@/constants/types';
 import { AddOrderModal } from '@/components/AddOrderModal';
+import { toast } from '@/hooks/use-toast';
 
 const fetchCustomers = async (user_id: string): Promise<Customer[]> => {
   const { data, error } = await supabase
@@ -55,14 +56,46 @@ export function FloatingActionButton() {
     queryClient.invalidateQueries({ queryKey: ['customers', user?.id] });
   };
 
+  // Add Order mutation
+  const addOrderMutation = useMutation({
+    mutationFn: async (orderData: Omit<Order, 'id'>) => {
+      if (!user) throw new Error('User not authenticated');
+      const { error } = await supabase.from("orders").insert({
+        user_id: user.id,
+        customer_id: orderData.customerId,
+        products: orderData.products,
+        status: orderData.status,
+        job_date: orderData.jobDate,
+        assigned_to: orderData.assignedTo,
+        site_address: orderData.siteAddress,
+        photo_url: orderData.photoUrl || "",
+        advance_amount: orderData.advanceAmount || 0,
+        remarks: orderData.remarks || "",
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders", user?.id] });
+      toast({ title: "Order Added", description: "New order has been added successfully." });
+      setShowOrderModal(false);
+      navigate('/orders');
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to add order", 
+        variant: "destructive" 
+      });
+    }
+  });
+
   // Add Order
-  const handleAddOrder = (order) => {
-    setShowOrderModal(false);
-    navigate('/orders');
+  const handleAddOrder = (orderData: Omit<Order, 'id'>) => {
+    addOrderMutation.mutate(orderData);
   };
 
   // Add Quotation
-  const handleAddQuotation = (quotation) => {
+  const handleAddQuotation = (quotation: Omit<Quotation, 'id'>) => {
     setShowQuotationModal(false);
     navigate('/quotations');
   };
