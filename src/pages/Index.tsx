@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useSession } from "@/hooks/useSession";
 import { useReportsData } from "@/hooks/useReportsData";
-import { TrendingUp, Wallet2, Clock, Plus, FileText, ClipboardList, Users } from "lucide-react";
+import { TrendingUp, Wallet2, Clock, Plus, FileText, ClipboardList, Users, Filter } from "lucide-react";
 import { useEffect, useState, useRef, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { BottomNav } from "@/components/ui/BottomNav";
@@ -20,6 +20,8 @@ import Box from '@mui/material/Box';
 import { deepPurple, blue, green, pink, yellow, red } from '@mui/material/colors';
 import { FloatingActionButton } from '@/components/FloatingActionButton';
 import { AppLayout } from '@/components/AppLayout';
+import { PendingCollectionsPanel } from "@/components/collections/PendingCollectionsPanel";
+import { useQuery } from "@tanstack/react-query";
 
 function AnimatedNumber({ value }: { value: number }) {
   const [display, setDisplay] = useState(0);
@@ -64,6 +66,8 @@ export default function Dashboard() {
   const [salesHistory, setSalesHistory] = useState<{ x: string; y: number }[]>([]);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [recentQuotations, setRecentQuotations] = useState<any[]>([]);
+  const [totalDeliveredSales, setTotalDeliveredSales] = useState<number>(0);
+  const [pendingCollections, setPendingCollections] = useState([]);
 
   const filterOptions = [
     { key: 'day', label: 'Today' },
@@ -138,33 +142,52 @@ export default function Dashboard() {
   // Fetch sales history for chart
   useEffect(() => {
     async function fetchSalesHistory() {
+      // Fetch all delivered orders
       const { data: orders } = await supabase
         .from("orders")
-        .select("job_date, products, advance_amount, status")
+        .select("job_date, products, advance_amount, status, user_id")
         .eq("status", "delivered");
       if (!orders) return;
-      const salesByDate: Record<string, number> = {};
-      orders.forEach((o: any) => {
+      // Fetch all products for the user
+      let userId = user?.id;
+      let products = [];
+      if (userId) {
+        const { data: productsData } = await supabase
+          .from("products")
+          .select("id, price, user_id");
+        products = productsData || [];
+      }
+      // Build price map
+      const priceMap = new Map();
+      products.forEach((p) => {
+        priceMap.set(p.id, Number(p.price) || 0);
+      });
+      // Calculate sales by date
+      const salesByDate = {};
+      orders.forEach((o) => {
         let total = 0;
         if (Array.isArray(o.products)) {
-          o.products.forEach((item: any) => {
-            total += (item.qty || 0) * (item.price || 0);
+          (o.products as any[]).forEach((item) => {
+            if (item && typeof item === 'object' && 'productId' in item && 'qty' in item) {
+              const price = priceMap.get(item.productId) || 0;
+              const qty = Number(item.qty) || 0;
+              total += price * qty;
+            }
           });
         }
         if (o.job_date) {
-          // Format date as yyyy-MM-dd to group by day
           const day = new Date(o.job_date);
-          const dayStr = day.toISOString().slice(0, 10); // yyyy-MM-dd
+          const dayStr = day.toISOString().slice(0, 10);
           salesByDate[dayStr] = (salesByDate[dayStr] || 0) + total;
         }
       });
       const sorted = Object.entries(salesByDate)
-        .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
-        .map(([date, sales]) => ({ x: date, y: sales }));
+        .sort(([a,], [b,]) => new Date(a).getTime() - new Date(b).getTime())
+        .map(([date, sales]) => ({ x: date, y: typeof sales === 'number' ? sales : Number(sales) }));
       setSalesHistory(sorted);
     }
     fetchSalesHistory();
-  }, []);
+  }, [user]);
 
   // Fetch recent orders and quotations
   useEffect(() => {
@@ -184,6 +207,109 @@ export default function Dashboard() {
     }
     fetchRecent();
   }, []);
+
+  // Calculate total delivered sales for display
+  useEffect(() => {
+    async function fetchTotalDeliveredSales() {
+      const { data: orders } = await supabase
+        .from("orders")
+        .select("products, status, user_id")
+        .eq("status", "delivered");
+      if (!orders) return setTotalDeliveredSales(0);
+      let userId = user?.id;
+      let products = [];
+      if (userId) {
+        const { data: productsData } = await supabase
+          .from("products")
+          .select("id, price, user_id");
+        products = productsData || [];
+      }
+      const priceMap = new Map();
+      products.forEach((p) => {
+        priceMap.set(p.id, Number(p.price) || 0);
+      });
+      let total = 0;
+      orders.forEach((o) => {
+        if (Array.isArray(o.products)) {
+          (o.products as any[]).forEach((item) => {
+            if (item && typeof item === 'object' && 'productId' in item && 'qty' in item) {
+              const price = priceMap.get(item.productId) || 0;
+              const qty = Number(item.qty) || 0;
+              total += price * qty;
+            }
+          });
+        }
+      });
+      setTotalDeliveredSales(total);
+    }
+    fetchTotalDeliveredSales();
+  }, [user]);
+
+  // Fetch pending collections (udhaar) customers
+  useEffect(() => {
+    async function fetchPendingCollections() {
+      if (!user) return setPendingCollections([]);
+      // Fetch delivered orders
+      const { data: orders } = await supabase
+        .from("orders")
+        .select("id, customer_id, products, advance_amount, status")
+        .eq("user_id", user.id)
+        .eq("status", "delivered");
+      if (!orders) return setPendingCollections([]);
+      // Fetch all products
+      const { data: products } = await supabase
+        .from("products")
+        .select("id, price")
+        .eq("user_id", user.id);
+      const priceMap = new Map();
+      (products || []).forEach((p) => priceMap.set(p.id, Number(p.price) || 0));
+      // Fetch collections
+      const { data: collections } = await supabase
+        .from("collections")
+        .select("order_id, amount")
+        .eq("user_id", user.id);
+      const collectionsMap = {};
+      (collections || []).forEach((c) => {
+        if (c.order_id) {
+          collectionsMap[c.order_id] = (collectionsMap[c.order_id] || 0) + (Number(c.amount) || 0);
+        }
+      });
+      // Group by customer
+      const customerPending: Record<string, { id: string; pending: number }> = {};
+      (orders || []).forEach((o) => {
+        let total = 0;
+        if (Array.isArray(o.products)) {
+          (o.products as any[]).forEach((item) => {
+            if (item && typeof item === 'object' && 'productId' in item && 'qty' in item) {
+              const price = priceMap.get(item.productId) || 0;
+              const qty = Number(item.qty) || 0;
+              total += price * qty;
+            }
+          });
+        }
+        const advance = Number(o.advance_amount) || 0;
+        const collected = collectionsMap[o.id] || 0;
+        const udhaar = Math.max(0, total - advance - collected);
+        if (udhaar > 0) {
+          if (!customerPending[o.customer_id]) {
+            customerPending[o.customer_id] = { id: o.customer_id, pending: 0 };
+          }
+          customerPending[o.customer_id].pending += udhaar;
+        }
+      });
+      // Fetch customer names
+      const { data: customers } = await supabase
+        .from("customers")
+        .select("id, name, phone")
+        .eq("user_id", user.id);
+      const pendingCustomers: { id: string; name: string; phone?: string; pending: number }[] = Object.values(customerPending).map((c) => {
+        const cust = (customers || []).find((cu: any) => cu.id === c.id);
+        return { ...c, name: cust?.name || "Unknown", phone: cust?.phone };
+      });
+      setPendingCollections(pendingCustomers);
+    }
+    fetchPendingCollections();
+  }, [user]);
 
   // Modern Unified KPI Panel
   const kpis = [
@@ -231,64 +357,90 @@ export default function Dashboard() {
         <Box sx={{ maxWidth: 1200, mx: 'auto', px: { xs: 1, sm: 3 } }}>
           {/* Welcome Section */}
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 5, flexWrap: 'wrap', gap: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Avatar src={profile?.profile_image_url || undefined} sx={{ width: 44, height: 44, bgcolor: deepPurple[500], fontSize: 20 }}>
-                {profile?.name?.[0] || profile?.email?.[0] || 'U'}
-              </Avatar>
-              <Box>
-                <Typography variant="h6" fontWeight={700} color="primary.main" sx={{ fontSize: { xs: '1.1rem', sm: '1.3rem' } }}>
-                  Welcome{profile?.name ? `, ${profile.name}` : ''}!
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.85rem', sm: '1rem' } }}>
-                  Here's your business at a glance.
-                </Typography>
-              </Box>
+            <Box sx={{ ml: { xs: 2, md: 4 } }}>
+              <Typography variant="h6" fontWeight={700} color="primary.main" sx={{ fontSize: { xs: '1.1rem', sm: '1.3rem' }, ml: { xs: 2, md: 4 } }}>
+                Welcome{profile?.name ? `, ${profile.name}` : ''}!
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.85rem', sm: '1rem' }, ml: { xs: 2, md: 4 } }}>
+                Here's your business at a glance.
+              </Typography>
             </Box>
           </Box>
-          {/* Sales Trend Chart - Modern, responsive, and with formatted dates */}
-          <Card elevation={3} sx={{ borderRadius: 4, mb: 4, p: { xs: 1, md: 3 } }}>
-            <Typography variant="h6" fontWeight={700} color="primary.main" sx={{ mb: 2 }}>Sales Trend</Typography>
-            <Box sx={{ height: { xs: 220, md: 300 }, px: { xs: 0, md: 2 } }}>
-              <ResponsiveLine
-                data={[{ id: 'Sales', color: blue[500], data: salesHistory }]}
-                margin={{ top: 30, right: 30, bottom: 50, left: 50 }}
-                xScale={{ type: 'point' }}
-                yScale={{ type: 'linear', min: 0, max: 'auto', stacked: false, reverse: false }}
-                axisTop={null}
-                axisRight={null}
-                axisBottom={{
-                  tickSize: 8,
-                  tickPadding: 8,
-                  tickRotation: 0,
-                  legend: 'Day',
-                  legendOffset: 36,
-                  legendPosition: 'middle',
-                  format: (value: string) => {
-                    const d = new Date(value);
-                    return d.toLocaleDateString('en-US', { weekday: 'short' });
-                  },
-                }}
-                axisLeft={{ tickSize: 8, tickPadding: 8, tickRotation: 0, legend: 'Sales', legendOffset: -40, legendPosition: 'middle' }}
-                colors={[blue[500]]}
-                pointSize={8}
-                pointColor={{ theme: 'background' }}
-                pointBorderWidth={2}
-                pointBorderColor={{ from: 'serieColor' }}
-                pointLabelYOffset={-12}
-                useMesh={true}
-                enableArea={true}
-                areaOpacity={0.15}
-                enableGridX={false}
-                enableGridY={true}
-                tooltip={({ point }) => (
-                  <Box sx={{ bgcolor: 'white', p: 1, borderRadius: 1, boxShadow: 2 }}>
-                    <Typography variant="body2" color="primary.main">{point.data.xFormatted}</Typography>
-                    <Typography variant="body2" color="text.secondary">₹{point.data.yFormatted}</Typography>
+          {/* Sales Trend + Total Sales Card Row */}
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3, alignItems: 'stretch', mb: 4 }}>
+            <Card elevation={3} sx={{ flex: 1, borderRadius: 4, p: { xs: 1, md: 3 }, minWidth: 0 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, gap: 1, flexWrap: 'nowrap' }}>
+                <Typography variant="subtitle1" fontWeight={700} color="primary.main" sx={{ fontSize: { xs: '1rem', md: '1.1rem' }, whiteSpace: 'nowrap' }}>Sales Trend</Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 1, ml: 2, flexShrink: 0, whiteSpace: 'nowrap' }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 0.5 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, fontSize: { xs: '0.85rem', md: '1rem' }, mb: 0, whiteSpace: 'nowrap', mr: 0.5 }}>Total Sales</Typography>
+                    <Typography variant="h6" fontWeight={700} color="primary.main" sx={{ fontSize: { xs: '1.1rem', md: '1.3rem' }, lineHeight: 1, whiteSpace: 'nowrap' }}>
+                      <AnimatedNumber value={totalDeliveredSales} />
+                    </Typography>
                   </Box>
-                )}
-              />
-            </Box>
-          </Card>
+                </Box>
+              </Box>
+              <Box sx={{ height: { xs: 220, md: 300 }, px: { xs: 0, md: 2 } }}>
+                <ResponsiveLine
+                  data={[{ id: 'Sales', color: blue[500], data: salesHistory }]}
+                  margin={{ top: 30, right: 30, bottom: 50, left: 50 }}
+                  xScale={{ type: 'point' }}
+                  yScale={{ type: 'linear', min: 0, max: 'auto', stacked: false, reverse: false }}
+                  axisTop={null}
+                  axisRight={null}
+                  axisBottom={{
+                    tickSize: 8,
+                    tickPadding: 8,
+                    tickRotation: 0,
+                    legend: 'Day',
+                    legendOffset: 36,
+                    legendPosition: 'middle',
+                    format: (value: string) => {
+                      const d = new Date(value);
+                      return d.toLocaleDateString('en-US', { weekday: 'short' });
+                    },
+                  }}
+                  axisLeft={{ tickSize: 8, tickPadding: 8, tickRotation: 0, legend: 'Sales', legendOffset: -55, legendPosition: 'middle', tickValues: 4 }}
+                  colors={[blue[500]]}
+                  pointSize={8}
+                  pointColor={{ theme: 'background' }}
+                  pointBorderWidth={2}
+                  pointBorderColor={{ from: 'serieColor' }}
+                  pointLabelYOffset={-12}
+                  useMesh={true}
+                  enableArea={true}
+                  areaOpacity={0.15}
+                  enableGridX={false}
+                  enableGridY={false}
+                  tooltip={({ point }) => (
+                    <Box sx={{ bgcolor: 'white', p: 1, borderRadius: 1, boxShadow: 2 }}>
+                      <Typography variant="body2" color="primary.main">{point.data.xFormatted}</Typography>
+                      <Typography variant="body2" color="text.secondary">₹{point.data.yFormatted}</Typography>
+                    </Box>
+                  )}
+                />
+              </Box>
+            </Card>
+          </Box>
+          {/* Pending Collections Panel */}
+          {reportData?.totalCredit > 0 && pendingCollections.length > 0 && (
+            <div className="mb-8 cursor-pointer" onClick={() => navigate('/collections')}>
+              <div className="text-lg font-semibold text-red-800 mb-2 flex items-center gap-2">
+                <Wallet2 className="w-5 h-5" /> Pending Collections
+              </div>
+              <div className="bg-white rounded-2xl shadow p-4 border border-red-100">
+                <ul>
+                  {pendingCollections.map((c) => (
+                    <li key={c.id} className="flex items-center justify-between py-2 border-b last:border-b-0">
+                      <span className="font-medium text-gray-800">{c.name}</span>
+                      <span className="text-red-600 font-bold">₹{c.pending}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="text-xs text-gray-500 mt-2">Tap to view and collect udhaar</div>
+              </div>
+            </div>
+          )}
           {/* Recent Activity */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div className="bg-white rounded-2xl shadow p-6 border border-gray-100">

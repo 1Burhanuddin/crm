@@ -8,11 +8,13 @@ import { Card } from "@/components/ui/card";
 import { AppLayout } from "@/components/AppLayout";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ProfileTabs } from "@/components/ProfileTabs";
-import { LogOut, User, Store, AtSign, Edit2, FileText } from "lucide-react";
+import { LogOut, User, Store, AtSign, Edit2, FileText, Wallet2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useReportsData } from "@/hooks/useReportsData";
 
 export default function ProfilePage() {
   const { user, status, refresh, signOut } = useSession();
+  const { data: reportData } = useReportsData();
   console.log("Current Auth User:", user);
 
   const [profile, setProfile] = useState<{
@@ -179,8 +181,8 @@ export default function ProfilePage() {
           <div className="text-blue-800 text-lg font-semibold">Loading...</div>
         </div>
       ) : (
-        <div className="max-w-3xl mx-auto p-4 pb-24 relative">
-          <Card className="p-0 shadow-xl border-0 relative overflow-visible bg-white min-h-[40vh]">
+        <div className="w-full p-4 pb-24 relative">
+          <Card className="p-0 shadow-xl border-0 relative overflow-visible bg-white min-h-[40vh] w-full">
             {/* Profile header with navy/light gradient */}
             <div className="flex flex-col items-center justify-center rounded-t-lg bg-white pb-2 pt-7 px-4 relative">
               {/* Edit icon button (left) */}
@@ -339,7 +341,20 @@ export default function ProfilePage() {
           </Card>
           {/* Quick Access Section for Bills, Customers, and Products */}
           <div className="mt-8 w-full flex flex-col items-center">
-            <div className="w-full max-w-2xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* Collection card, only if udhaar exists */}
+              {reportData?.totalCredit > 0 && (
+                <button
+                  onClick={() => navigate('/collections')}
+                  className="rounded-2xl bg-white shadow-md border border-red-100 hover:shadow-lg transition flex flex-col items-center p-6 group hover:scale-[1.03] focus:outline-none"
+                >
+                  <div className="bg-red-600 text-white rounded-full p-3 mb-3 shadow group-hover:bg-red-700 transition">
+                    <Wallet2 className="w-7 h-7" />
+                  </div>
+                  <div className="font-bold text-red-900 text-lg mb-1">Collections</div>
+                  <div className="text-gray-500 text-sm text-center">Collect pending udhaar</div>
+                </button>
+              )}
               <button
                 onClick={() => navigate('/bills')}
                 className="rounded-2xl bg-white shadow-md border border-blue-100 hover:shadow-lg transition flex flex-col items-center p-6 group hover:scale-[1.03] focus:outline-none"

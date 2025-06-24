@@ -70,37 +70,34 @@ export function FloatingActionButton() {
   return (
     <div className="fixed bottom-24 right-5 z-50 md:hidden">
       <div className="relative flex flex-col items-center gap-2">
+        {/* Floating menu, absolutely positioned above the main button */}
         {isOpen && (
-          <>
-            <div className="flex flex-col items-center">
-              <Button
-                variant="secondary"
-                className="rounded-full w-40 justify-start pl-5 shadow-lg"
-                onClick={() => { setShowOrderModal(true); setIsOpen(false); }}
-              >
-                <Plus className="h-5 w-5 mr-3" />
-                Add Order
-              </Button>
-            </div>
-            <div className="flex flex-col items-center">
-              <Button
-                variant="secondary"
-                className="rounded-full w-40 justify-start pl-5 shadow-lg"
-                onClick={() => { setShowQuotationModal(true); setIsOpen(false); }}
-              >
-                <FileText className="h-5 w-5 mr-3" />
-                Add Quotation
-              </Button>
-            </div>
-          </>
+          <div className="absolute bottom-16 right-0 flex flex-col items-center gap-2 z-50">
+            <Button
+              variant="secondary"
+              className="rounded-full w-40 justify-start pl-5 shadow-lg"
+              onClick={() => { setShowOrderModal(true); setIsOpen(false); }}
+            >
+              <Plus className="h-5 w-5 mr-3" />
+              Add Order
+            </Button>
+            <Button
+              variant="secondary"
+              className="rounded-full w-40 justify-start pl-5 shadow-lg"
+              onClick={() => { setShowQuotationModal(true); setIsOpen(false); }}
+            >
+              <FileText className="h-5 w-5 mr-3" />
+              Add Quotation
+            </Button>
+          </div>
         )}
         <Button
-          className="rounded-full h-16 w-16 shadow-lg mt-2"
+          className="rounded-full h-12 w-12 shadow-lg mt-2"
           onClick={() => setIsOpen(!isOpen)}
           aria-expanded={isOpen}
           aria-controls="fab-menu"
         >
-          <Plus className={`h-8 w-8 transition-transform ${isOpen ? 'rotate-45' : ''}`} />
+          <Plus className={`h-6 w-6 transition-transform ${isOpen ? 'rotate-45' : ''}`} />
         </Button>
         {/* AddOrderModal */}
         <AddOrderModal
