@@ -1,4 +1,3 @@
-
 import { useNavigate } from "react-router-dom";
 import { useSession } from "@/hooks/useSession";
 import { useReportsData } from "@/hooks/useReportsData";
@@ -11,9 +10,11 @@ import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
+import Avatar from '@mui/material/Avatar';
 import { FloatingActionButton } from '@/components/FloatingActionButton';
 import { AppLayout } from '@/components/AppLayout';
 import { useIsMobile } from "@/hooks/use-mobile";
+import { generateColorFromString } from "@/lib/utils";
 
 function AnimatedNumber({ value }: { value: number }) {
   const [display, setDisplay] = useState(0);
@@ -167,11 +168,16 @@ export default function Dashboard() {
   return (
     <AppLayout title="Dashboard">
       <div className="p-4 bg-gray-50 min-h-screen">
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 5, flexWrap: 'wrap', gap: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 2, flexWrap: 'wrap', gap: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', color: '#1e3a8a' }}>
-              Welcome, {profile?.name || 'User'}!
-            </Typography>
+            <div style={{ marginLeft: 12 }}>
+              <Typography variant="body1" sx={{ color: 'text.secondary', lineHeight: 1 }}>
+                Welcome,
+              </Typography>
+              <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', color: '#1e3a8a' }}>
+                {profile?.name || 'User'}!
+              </Typography>
+            </div>
           </Box>
         </Box>
         

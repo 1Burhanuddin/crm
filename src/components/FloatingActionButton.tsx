@@ -5,10 +5,11 @@ import { useNavigate } from 'react-router-dom';
 import { AddQuotationModal } from '@/components/AddQuotationModal';
 import { useSession } from '@/hooks/useSession';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, Json } from '@/integrations/supabase/client';
 import { Quotation, Customer, Product, Order } from '@/constants/types';
 import { AddOrderModal } from '@/components/AddOrderModal';
 import { toast } from '@/hooks/use-toast';
+import { OrderProduct } from "@/utils/orderUtils";
 
 const fetchCustomers = async (user_id: string): Promise<Customer[]> => {
   const { data, error } = await supabase
@@ -60,19 +61,20 @@ export function FloatingActionButton() {
   const addOrderMutation = useMutation({
     mutationFn: async (orderData: Omit<Order, 'id'>) => {
       if (!user) throw new Error('User not authenticated');
-      const { error } = await supabase.from("orders").insert({
-        user_id: user.id,
-        customer_id: orderData.customerId,
-        products: orderData.products,
-        status: orderData.status,
-        job_date: orderData.jobDate,
-        assigned_to: orderData.assignedTo,
-        site_address: orderData.siteAddress,
-        photo_url: orderData.photoUrl || "",
-        advance_amount: orderData.advanceAmount || 0,
-        remarks: orderData.remarks || "",
-      });
+      const { data, error } = await supabase
+        .from("orders")
+        .insert({
+          customer_id: orderData.customerId,
+          user_id: user.id,
+          products: orderData.products as unknown as Json,
+          status: "pending",
+          job_date: orderData.jobDate,
+          advance_amount: orderData.advanceAmount || 0,
+        })
+        .select()
+        .single();
       if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["orders", user?.id] });

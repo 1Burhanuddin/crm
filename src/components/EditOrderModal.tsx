@@ -189,6 +189,24 @@ export function EditOrderModal({ open, onOpenChange, onEdit, order, customers, p
 
   const { filteredContacts, addFromContacts } = useAddCustomerFromContacts(customerId, setCustomerId);
 
+  const handleAddCustomer = async (customer: { name: string; phone: string; address: string }) => {
+    // Logic to add customer to Supabase
+    const { data, error } = await supabase
+      .from('customers')
+      .insert({ ...customer, user_id: user.id })
+      .select('id, name')
+      .single();
+    if (error) {
+      toast({ title: "Error adding customer", description: error.message, variant: "destructive" });
+      return;
+    }
+    if (data) {
+      setCustomers(prev => [...prev, data]);
+      setFormData(prev => ({ ...prev, customer_id: data.id }));
+    }
+    setAddCustomerDialogOpen(false);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-full h-full max-w-4xl sm:max-w-5xl md:max-w-6xl lg:max-w-[90vw] xl:max-w-[1200px] max-h-[90vh] min-h-[90vh] overflow-y-auto bg-blue-50 p-0 rounded-2xl shadow-xl border-0">
@@ -521,6 +539,7 @@ export function EditOrderModal({ open, onOpenChange, onEdit, order, customers, p
       <AddCustomerDialog 
         open={addCustomerDialogOpen} 
         onOpenChange={setAddCustomerDialogOpen}
+        onAdd={handleAddCustomer}
       />
     </Dialog>
   );

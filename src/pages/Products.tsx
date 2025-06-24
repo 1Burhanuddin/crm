@@ -24,31 +24,24 @@ export default function Products() {
 
   // Ensure that the mutation includes the user_id when adding a product
   const addProductMutation = useMutation({
-    mutationFn: async (product: { name: string; price: number; unit: string }) => {
-      if (!user) throw new Error("Not signed in");
-      const { error } = await supabase.from("products").insert([
-        {
-          ...product,
-          user_id: user.id,
-        },
-      ]);
+    mutationFn: async (product: { name: string; price: number; unit: string; }) => {
+      if (!user) throw new Error("User not authenticated");
+      const { data, error } = await supabase
+        .from("products")
+        .insert({ ...product, user_id: user.id })
+        .select()
+        .single();
       if (error) throw error;
+      return data;
     },
     onSuccess: () => {
-      toast({ title: "Product added", description: "Product has been added successfully." });
-      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["products", user?.id] });
+      toast({ title: "Success", description: "Product added successfully." });
       setAddModalOpen(false);
     },
     onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Could not add product.",
-        variant: "destructive",
-      });
+      toast({ title: "Error adding product", description: error.message, variant: "destructive" });
     },
-    meta: {
-      onError: true,
-    }
   });
 
   // Update product mutation is fine as RLS and queries work based on id/user_id
@@ -149,7 +142,7 @@ export default function Products() {
         <AddProductModal
           open={addModalOpen}
           onOpenChange={setAddModalOpen}
-          onSubmit={handleProductSubmit}
+          onSuccess={() => addProductMutation.mutate(newProduct)}
         />
         <EditProductModal
           open={editModalOpen}

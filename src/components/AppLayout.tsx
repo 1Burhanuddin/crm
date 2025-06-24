@@ -91,14 +91,6 @@ export function AppLayout({ children, title, shopName, loadingTitle }: AppLayout
             }
           </span>
         </div>
-        {/* Profile button for mobile */}
-        <button
-          className="md:hidden ml-2 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-          onClick={() => navigate('/profile')}
-          aria-label="Profile"
-        >
-          <UserCircle size={28} className="text-white" />
-        </button>
         {/* Navigation items for large screens */}
         <div className="hidden md:flex items-center gap-1">
           {navItems.map((item) => {
