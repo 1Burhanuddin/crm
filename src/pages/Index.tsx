@@ -1,3 +1,4 @@
+
 import { useNavigate } from "react-router-dom";
 import { useSession } from "@/hooks/useSession";
 import { useReportsData } from "@/hooks/useReportsData";
@@ -43,6 +44,7 @@ export default function Dashboard() {
   const [salesHistory, setSalesHistory] = useState<{ x: string; y: number }[]>([]);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [recentQuotations, setRecentQuotations] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<{ id: string; name: string }[]>([]);
   const [profile, setProfile] = useState<{ name: string | null; profile_image_url: string | null; email: string } | null>(null);
   const isMobile = useIsMobile();
 
@@ -122,22 +124,45 @@ export default function Dashboard() {
   }, [user]);
 
   useEffect(() => {
+    async function fetchCustomers() {
+      if (!user) return;
+      const { data: customersData } = await supabase
+        .from("customers")
+        .select("id, name")
+        .eq("user_id", user.id);
+      if (customersData) {
+        setCustomers(customersData);
+      }
+    }
+    fetchCustomers();
+  }, [user]);
+
+  useEffect(() => {
     async function fetchRecent() {
+      if (!user) return;
       const { data: orders } = await supabase
         .from("orders")
         .select("id, customer_id, job_date, status, products")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(5);
       setRecentOrders(orders || []);
+      
       const { data: quotations } = await supabase
         .from("quotations")
         .select("id, customer_id, job_date, status, product_id, qty")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(5);
       setRecentQuotations(quotations || []);
     }
     fetchRecent();
-  }, []);
+  }, [user]);
+
+  const getCustomerName = (customerId: string) => {
+    const customer = customers.find(c => c.id === customerId);
+    return customer?.name || "Unknown Customer";
+  };
 
   return (
     <AppLayout title="Dashboard">
@@ -247,11 +272,11 @@ export default function Dashboard() {
           <div className="mb-8 cursor-pointer" onClick={() => navigate('/collections')}>
             <div className="text-lg font-semibold text-red-800 mb-2 flex items-center gap-2">
               Pending Collections
-        </div>
+            </div>
             <div className="bg-white rounded-2xl shadow p-4 border border-red-100">
               <div className="text-2xl font-bold text-red-600 mb-2">₹{reportData.totalCredit.toLocaleString()}</div>
               <div className="text-xs text-gray-500">Tap to view and collect udhaar</div>
-        </div>
+            </div>
           </div>
         )}
 
@@ -267,7 +292,7 @@ export default function Dashboard() {
                   <div key={order.id} className="p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100" onClick={() => navigate(`/orders/${order.id}`)}>
                     <div className="flex justify-between items-center">
                       <div>
-                        <div className="text-sm font-medium text-gray-900">Order #{order.id}</div>
+                        <div className="text-sm font-medium text-gray-900">{getCustomerName(order.customer_id)}</div>
                         <div className="text-xs text-gray-500">{format(new Date(order.job_date), 'MMM dd, yyyy')}</div>
                       </div>
                       <div className={`px-2 py-1 rounded text-xs ${
@@ -276,11 +301,11 @@ export default function Dashboard() {
                         'bg-gray-100 text-gray-800'
                       }`}>
                         {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-        </div>
-      </div>
-      </div>
+                      </div>
+                    </div>
+                  </div>
                 ))}
-          </div>
+              </div>
             ) : (
               <Typography variant="body2" color="text.secondary">No recent orders</Typography>
             )}
@@ -299,18 +324,18 @@ export default function Dashboard() {
                   <div key={quotation.id} className="p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100" onClick={() => navigate(`/quotations/${quotation.id}`)}>
                     <div className="flex justify-between items-center">
                       <div>
-                        <div className="text-sm font-medium text-gray-900">Quotation #{quotation.id}</div>
+                        <div className="text-sm font-medium text-gray-900">{getCustomerName(quotation.customer_id)}</div>
                         <div className="text-xs text-gray-500">{format(new Date(quotation.job_date), 'MMM dd, yyyy')}</div>
-            </div>
+                      </div>
                       <div className={`px-2 py-1 rounded text-xs ${
                         quotation.status === 'converted' ? 'bg-green-100 text-green-800' :
                         quotation.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
                         {quotation.status.charAt(0).toUpperCase() + quotation.status.slice(1)}
-            </div>
-        </div>
-      </div>
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : (
