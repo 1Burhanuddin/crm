@@ -206,14 +206,30 @@ export function QuotationList() {
   // Convert quotation to order mutation
   const convertToOrderMutation = useMutation({
     mutationFn: async ({ quotation, advanceAmount }: { quotation: Quotation; advanceAmount: number }) => {
+      const productDetails = products.find(p => p.id === quotation.productId);
+      const productPrice = productDetails ? productDetails.price : 0; // Default to 0 if product not found
+
+      if (!productDetails) {
+        // This case should ideally not happen if data is consistent
+        toast({
+          title: "Error",
+          description: "Product details not found for the quotation. Cannot convert to order.",
+          variant: "destructive",
+        });
+        throw new Error("Product details not found for the quotation.");
+      }
+
       // Create the order
       const { error: orderError } = await supabase
         .from("orders")
         .insert([{
           user_id: user?.id,
           customer_id: quotation.customerId,
-          product_id: quotation.productId,
-          qty: quotation.qty,
+          products: [{
+            product_id: quotation.productId,
+            qty: quotation.qty,
+            price: productPrice // Include the price
+          }],
           job_date: quotation.jobDate,
           assigned_to: quotation.assignedTo,
           site_address: quotation.siteAddress || null,
