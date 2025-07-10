@@ -192,15 +192,15 @@ export default function Products() {
       <EditProductModal
         open={!!editingProduct}
         onOpenChange={(open) => !open && setEditingProduct(null)}
-        product={editingProduct}
-        onUpdate={handleUpdate}
+        onSubmit={handleUpdate}
+        initialProduct={editingProduct}
       />
 
       <DeleteProductDialog
         open={!!deletingProduct}
         onOpenChange={(open) => !open && setDeletingProduct(null)}
         product={deletingProduct}
-        onConfirm={confirmDelete}
+        onDelete={confirmDelete}
       />
     </div>
   );
