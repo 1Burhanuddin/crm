@@ -26,3 +26,20 @@ export const calculateOrderTotal = (products: OrderProduct[], priceMap: Map<stri
   });
   return total;
 };
+
+// Helper to convert OrderProduct[] to Json for database storage
+export const orderProductsToJson = (products: OrderProduct[]): any => {
+  return products.map(p => ({
+    productId: p.productId,
+    qty: p.qty
+  }));
+};
+
+// Helper to convert Json to OrderProduct[]
+export const jsonToOrderProducts = (json: any): OrderProduct[] => {
+  if (!Array.isArray(json)) return [];
+  return json.map(item => ({
+    productId: item.productId || '',
+    qty: Number(item.qty) || 0
+  }));
+};

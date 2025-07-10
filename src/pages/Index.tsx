@@ -26,6 +26,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, AlertCircle } from 'lucide-react';
 import Avatar from '@mui/material/Avatar';
 import { generateColorFromString } from "@/lib/utils";
+import { PendingCollectionsTab } from '@/components/PendingCollectionsTab';
 
 function AnimatedNumber({ value }: { value: number }) {
   const [display, setDisplay] = useState(0);
@@ -72,6 +73,7 @@ export default function Dashboard() {
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [recentQuotations, setRecentQuotations] = useState<any[]>([]);
   const [customers, setCustomers] = useState<{ id: string; name: string }[]>([]);
+  const [pendingCollections, setPendingCollections] = useState<any[]>([]);
   const [profile, setProfile] = useState<{ name: string | null; profile_image_url: string | null; email: string } | null>(null);
   const [analytics, setAnalytics] = useState({
     totalRevenue: 0,
@@ -227,6 +229,76 @@ export default function Dashboard() {
       setRecentQuotations(quotations || []);
     }
     fetchRecent();
+  }, [user]);
+
+  useEffect(() => {
+    async function fetchPendingCollections() {
+      if (!user) return;
+      
+      // Get all delivered orders to calculate pending amounts
+      const { data: orders } = await supabase
+        .from("orders")
+        .select("id, customer_id, products, advance_amount")
+        .eq("user_id", user.id)
+        .eq("status", "delivered");
+
+      if (!orders) return;
+
+      // Get product prices
+      const { data: products } = await supabase
+        .from("products")
+        .select("id, price")
+        .eq("user_id", user.id);
+
+      const priceMap = new Map();
+      (products || []).forEach((p) => {
+        priceMap.set(p.id, Number(p.price) || 0);
+      });
+
+      // Get all collections
+      const { data: collections } = await supabase
+        .from("collections")
+        .select("customer_id, amount")
+        .eq("user_id", user.id);
+
+      const collectionsByCustomer = new Map();
+      (collections || []).forEach((c) => {
+        const existing = collectionsByCustomer.get(c.customer_id) || 0;
+        collectionsByCustomer.set(c.customer_id, existing + Number(c.amount));
+      });
+
+      // Calculate pending amounts
+      const pendingByCustomer = new Map();
+      orders.forEach((order) => {
+        let orderTotal = 0;
+        if (Array.isArray(order.products)) {
+          (order.products as any[]).forEach((item) => {
+            if (item && typeof item === 'object' && 'productId' in item && 'qty' in item) {
+              const price = priceMap.get(item.productId) || 0;
+              const qty = Number(item.qty) || 0;
+              orderTotal += price * qty;
+            }
+          });
+        }
+        
+        const totalDue = orderTotal - Number(order.advance_amount || 0);
+        const collected = collectionsByCustomer.get(order.customer_id) || 0;
+        const pending = totalDue - collected;
+        
+        if (pending > 0) {
+          const existing = pendingByCustomer.get(order.customer_id) || 0;
+          pendingByCustomer.set(order.customer_id, existing + pending);
+        }
+      });
+
+      const pendingArray = Array.from(pendingByCustomer.entries()).map(([customer_id, amount]) => ({
+        customer_id,
+        amount
+      }));
+
+      setPendingCollections(pendingArray);
+    }
+    fetchPendingCollections();
   }, [user]);
 
   const getCustomerName = (customerId: string) => {
@@ -389,6 +461,16 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        {/* Pending Collections */}
+        {pendingCollections.length > 0 && (
+          <div className="mb-6">
+            <PendingCollectionsTab 
+              pendingCollections={pendingCollections}
+              customers={customers}
+            />
+          </div>
+        )}
 
         {reportData?.totalCredit > 0 && (
           <div className="mb-8 cursor-pointer" onClick={() => navigate('/collections')}>
