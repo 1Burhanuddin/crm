@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "./ui/dialog";
 import { Input } from "./ui/input";
@@ -187,24 +188,49 @@ export function EditOrderModal({ open, onOpenChange, onEdit, order, customers, p
     queryClient.invalidateQueries({ queryKey: ["products", user?.id] });
   };
 
-  const { filteredContacts, addFromContacts } = useAddCustomerFromContacts(customerId, setCustomerId);
+  // Fix the useAddCustomerFromContacts hook usage
+  const handleAddCustomerFromModal = async (name: string, phone: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('customers')
+        .insert({ name, phone, user_id: user?.id })
+        .select('id, name')
+        .single();
+      
+      if (error) throw error;
+      
+      if (data) {
+        setCustomerId(data.id);
+        // Refresh customers list
+        queryClient.invalidateQueries({ queryKey: ['customers', user?.id] });
+      }
+      setAddCustomerDialogOpen(false);
+    } catch (error: any) {
+      toast({ title: "Error adding customer", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const addFromContacts = useAddCustomerFromContacts(handleAddCustomerFromModal);
 
   const handleAddCustomer = async (customer: { name: string; phone: string; address: string }) => {
-    // Logic to add customer to Supabase
-    const { data, error } = await supabase
-      .from('customers')
-      .insert({ ...customer, user_id: user.id })
-      .select('id, name')
-      .single();
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .from('customers')
+        .insert({ name: customer.name, phone: customer.phone, user_id: user?.id })
+        .select('id, name')
+        .single();
+      
+      if (error) throw error;
+      
+      if (data) {
+        setCustomerId(data.id);
+        // Refresh customers list
+        queryClient.invalidateQueries({ queryKey: ['customers', user?.id] });
+      }
+      setAddCustomerDialogOpen(false);
+    } catch (error: any) {
       toast({ title: "Error adding customer", description: error.message, variant: "destructive" });
-      return;
     }
-    if (data) {
-      setCustomers(prev => [...prev, data]);
-      setFormData(prev => ({ ...prev, customer_id: data.id }));
-    }
-    setAddCustomerDialogOpen(false);
   };
 
   return (

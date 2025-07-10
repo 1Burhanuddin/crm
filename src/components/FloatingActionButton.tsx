@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, FileText, Users, ClipboardList } from 'lucide-react';
@@ -5,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { AddQuotationModal } from '@/components/AddQuotationModal';
 import { useSession } from '@/hooks/useSession';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { supabase, Json } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { Quotation, Customer, Product, Order } from '@/constants/types';
 import { AddOrderModal } from '@/components/AddOrderModal';
 import { toast } from '@/hooks/use-toast';
@@ -66,7 +67,7 @@ export function FloatingActionButton() {
         .insert({
           customer_id: orderData.customerId,
           user_id: user.id,
-          products: orderData.products as unknown as Json,
+          products: orderData.products as unknown as any,
           status: "pending",
           job_date: orderData.jobDate,
           advance_amount: orderData.advanceAmount || 0,
