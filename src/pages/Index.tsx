@@ -5,15 +5,26 @@ import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { BottomNav } from "@/components/ui/BottomNav";
 import { format } from 'date-fns';
-import { ResponsiveBar } from '@nivo/bar';
+import { 
+  AreaChart, 
+  Area, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  BarChart,
+  Bar
+} from 'recharts';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
-import Avatar from '@mui/material/Avatar';
 import { FloatingActionButton } from '@/components/FloatingActionButton';
 import { AppLayout } from '@/components/AppLayout';
 import { useIsMobile } from "@/hooks/use-mobile";
+import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, AlertCircle } from 'lucide-react';
+import Avatar from '@mui/material/Avatar';
 import { generateColorFromString } from "@/lib/utils";
 
 function AnimatedNumber({ value }: { value: number }) {
@@ -38,15 +49,36 @@ function AnimatedNumber({ value }: { value: number }) {
   return <span>{Math.round(display)}</span>;
 }
 
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white/95 backdrop-blur-sm border border-gray-200 rounded-lg shadow-lg p-3 min-w-[120px]">
+        <p className="text-sm text-gray-600 mb-1">{format(new Date(label), 'MMM dd, yyyy')}</p>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-600 to-purple-600"></div>
+          <p className="font-semibold text-gray-800">₹{payload[0].value.toLocaleString()}</p>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useSession();
   const { data: reportData, isLoading } = useReportsData();
-  const [salesHistory, setSalesHistory] = useState<{ x: string; y: number }[]>([]);
+  const [salesHistory, setSalesHistory] = useState<{ date: string; sales: number; orders: number }[]>([]);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [recentQuotations, setRecentQuotations] = useState<any[]>([]);
   const [customers, setCustomers] = useState<{ id: string; name: string }[]>([]);
   const [profile, setProfile] = useState<{ name: string | null; profile_image_url: string | null; email: string } | null>(null);
+  const [analytics, setAnalytics] = useState({
+    totalRevenue: 0,
+    totalOrders: 0,
+    avgOrderValue: 0,
+    growthRate: 0
+  });
   const isMobile = useIsMobile();
 
   const mobileTickValues = useMemo(() => {
@@ -59,7 +91,7 @@ export default function Dashboard() {
     for (let i = 0; i < numTicks; i++) {
       const index = Math.round(i * step);
       if (salesHistory[index]) {
-        ticks.push(salesHistory[index].x);
+        ticks.push(salesHistory[index].date);
       }
     }
     return ticks;
@@ -81,11 +113,14 @@ export default function Dashboard() {
   useEffect(() => {
     async function fetchSalesHistory() {
       if (!user) return;
+      
       const { data: orders } = await supabase
         .from("orders")
         .select("job_date, products, advance_amount, status")
         .eq("user_id", user.id)
-        .eq("status", "delivered");
+        .eq("status", "delivered")
+        .order("job_date", { ascending: true });
+      
       if (!orders) return;
 
       const { data: products } = await supabase
@@ -98,7 +133,10 @@ export default function Dashboard() {
         priceMap.set(p.id, Number(p.price) || 0);
       });
 
-      const salesByDate: { [key: string]: number } = {};
+      const salesByDate: { [key: string]: { sales: number; orders: number } } = {};
+      let totalRevenue = 0;
+      let totalOrderCount = 0;
+      
       orders.forEach((o) => {
         let total = 0;
         if (Array.isArray(o.products)) {
@@ -110,16 +148,47 @@ export default function Dashboard() {
             }
           });
         }
+        
         if (o.job_date) {
-          const day = new Date(o.job_date);
-          const dayStr = day.toISOString().slice(0, 10);
-          salesByDate[dayStr] = (salesByDate[dayStr] || 0) + total;
+          const dayStr = o.job_date;
+          if (!salesByDate[dayStr]) {
+            salesByDate[dayStr] = { sales: 0, orders: 0 };
+          }
+          salesByDate[dayStr].sales += total;
+          salesByDate[dayStr].orders += 1;
+          totalRevenue += total;
+          totalOrderCount += 1;
         }
       });
-      const sorted = Object.entries(salesByDate)
-        .sort(([a,], [b,]) => new Date(a).getTime() - new Date(b).getTime())
-        .map(([date, sales]) => ({ x: date, y: typeof sales === 'number' ? sales : Number(sales) }));
-      setSalesHistory(sorted);
+
+      // Generate last 30 days of data for better visualization
+      const last30Days = [];
+      const today = new Date();
+      for (let i = 29; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().slice(0, 10);
+        last30Days.push({
+          date: dateStr,
+          sales: salesByDate[dateStr]?.sales || 0,
+          orders: salesByDate[dateStr]?.orders || 0
+        });
+      }
+
+      setSalesHistory(last30Days);
+      
+      // Calculate analytics
+      const avgOrderValue = totalOrderCount > 0 ? totalRevenue / totalOrderCount : 0;
+      const recentSales = last30Days.slice(-7).reduce((sum, day) => sum + day.sales, 0);
+      const previousWeekSales = last30Days.slice(-14, -7).reduce((sum, day) => sum + day.sales, 0);
+      const growthRate = previousWeekSales > 0 ? ((recentSales - previousWeekSales) / previousWeekSales) * 100 : 0;
+      
+      setAnalytics({
+        totalRevenue,
+        totalOrders: totalOrderCount,
+        avgOrderValue,
+        growthRate
+      });
     }
     fetchSalesHistory();
   }, [user]);
@@ -165,14 +234,21 @@ export default function Dashboard() {
     return customer?.name || "Unknown Customer";
   };
 
+  const formatCurrency = (value: number) => {
+    if (value >= 100000) return `₹${(value/100000).toFixed(1)}L`;
+    if (value >= 1000) return `₹${(value/1000).toFixed(0)}K`;
+    return `₹${value}`;
+  };
+
   return (
     <AppLayout title="Dashboard">
-      <div className="p-4 bg-gray-50 min-h-screen">
+      <div className="p-4 bg-gradient-to-br from-gray-50 to-blue-50/30 min-h-screen">
+        {/* Welcome Section */}
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 2, flexWrap: 'wrap', gap: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <div style={{ marginLeft: 12 }}>
               <Typography variant="body1" sx={{ color: 'text.secondary', lineHeight: 1 }}>
-                Welcome,
+                Welcome back,
               </Typography>
               <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', color: '#1e3a8a' }}>
                 {profile?.name || 'User'}!
@@ -180,175 +256,221 @@ export default function Dashboard() {
             </div>
           </Box>
         </Box>
+
+        {/* Analytics Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Total Revenue</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  <AnimatedNumber value={analytics.totalRevenue} />
+                </p>
+                <p className="text-xs text-green-600">₹{analytics.totalRevenue.toLocaleString()}</p>
+              </div>
+              <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <DollarSign className="h-6 w-6 text-green-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Total Orders</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  <AnimatedNumber value={analytics.totalOrders} />
+                </p>
+                <p className="text-xs text-blue-600">Completed orders</p>
+              </div>
+              <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <ShoppingCart className="h-6 w-6 text-blue-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Avg Order</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {formatCurrency(analytics.avgOrderValue)}
+                </p>
+                <p className="text-xs text-purple-600">Per order value</p>
+              </div>
+              <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                <Users className="h-6 w-6 text-purple-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Growth</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {analytics.growthRate > 0 ? '+' : ''}{analytics.growthRate.toFixed(1)}%
+                </p>
+                <p className="text-xs text-orange-600">Week over week</p>
+              </div>
+              <div className={`h-12 w-12 ${analytics.growthRate >= 0 ? 'bg-green-100' : 'bg-red-100'} rounded-lg flex items-center justify-center`}>
+                {analytics.growthRate >= 0 ? 
+                  <TrendingUp className="h-6 w-6 text-green-600" /> :
+                  <TrendingDown className="h-6 w-6 text-red-600" />
+                }
+              </div>
+            </div>
+          </div>
+        </div>
         
-        <Card className="mb-4 shadow-lg rounded-2xl">
-          <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', color: '#1e3a8a' }}>
-                Sales Trend
-              </Typography>
-            </Box>
-            <Box sx={{ height: 250, position: 'relative' }}>
-              {salesHistory.length > 0 ? (
-                <ResponsiveBar
-                  data={salesHistory}
-                  keys={['y']}
-                  indexBy="x"
-                  margin={{ top: 20, right: 20, bottom: 60, left: 50 }}
-                  padding={0.3}
-                  valueScale={{ type: 'linear' }}
-                  indexScale={{ type: 'band', round: true }}
-                  colors={['#1e3a8a']}
-                  axisTop={null}
-                  axisRight={null}
-                  axisBottom={isMobile ? {
-                    tickSize: 5,
-                    tickPadding: 5,
-                    tickRotation: 0,
-                    legend: 'Date',
-                    legendPosition: 'middle',
-                    legendOffset: 35,
-                    format: (value) => format(new Date(value), 'dd/MM'),
-                    tickValues: mobileTickValues,
-                  } : {
-                    tickSize: 5,
-                    tickPadding: 5,
-                    tickRotation: -45,
-                    legend: 'Date',
-                    legendPosition: 'middle',
-                    legendOffset: 50,
-                    format: (value) => format(new Date(value), 'MMM dd'),
-                  }}
-                  axisLeft={{
-                    tickSize: 5,
-                    tickPadding: 5,
-                    tickRotation: 0,
-                    legend: 'Sales (₹)',
-                    legendPosition: 'middle',
-                    legendOffset: -40,
-                    format: (value) => {
-                      if (value >= 100000) return `${(value/100000).toFixed(1)}L`;
-                      if (value >= 1000) return `${(value/1000).toFixed(0)}K`;
-                      return value;
-                    },
-                    tickValues: 5 // Limit to 5 ticks
-                  }}
-                  enableLabel={false}
-                  animate={true}
-                  motionConfig="wobbly"
-                  tooltip={({ id, value, color }) => (
-                    <div
-                      style={{
-                        padding: '5px 9px',
-                        background: '#fff',
-                        color: '#333',
-                        fontSize: '12px',
-                        borderRadius: '6px',
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                      }}
-                    >
-                      <strong style={{ color }}>{id}:</strong> ₹{value}
-                    </div>
-                  )}
-                  theme={{
-                    tooltip: {
-                      container: {
-                        background: '#fff',
-                        color: '#333',
-                        fontSize: '12px',
-                        borderRadius: '6px',
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                        padding: '5px 9px',
-                      },
-                    }
-                  }}
-                />
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Typography variant="body2" color="text.secondary">
-                    No sales data to display a chart.
-                  </Typography>
+        {/* Enhanced Sales Chart */}
+        <div className="mb-6">
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+            <div className="p-6 border-b border-gray-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">Sales Analytics</h3>
+                  <p className="text-sm text-gray-600">Revenue trends over the last 30 days</p>
                 </div>
-              )}
-            </Box>
-          </CardContent>
-        </Card>
+                <div className="flex items-center gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-600 to-purple-600"></div>
+                    <span className="text-gray-600">Sales</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="h-80">
+                {salesHistory.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={salesHistory} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                      <defs>
+                        <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.05}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                      <XAxis 
+                        dataKey="date" 
+                        tick={{ fontSize: 12, fill: '#64748b' }}
+                        tickFormatter={(value) => format(new Date(value), 'MMM dd')}
+                        axisLine={{ stroke: '#e2e8f0' }}
+                        tickLine={{ stroke: '#e2e8f0' }}
+                      />
+                      <YAxis 
+                        tick={{ fontSize: 12, fill: '#64748b' }}
+                        tickFormatter={formatCurrency}
+                        axisLine={{ stroke: '#e2e8f0' }}
+                        tickLine={{ stroke: '#e2e8f0' }}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Area
+                        type="monotone"
+                        dataKey="sales"
+                        stroke="url(#salesGradient)"
+                        strokeWidth={3}
+                        fill="url(#salesGradient)"
+                        dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                        activeDot={{ r: 6, fill: '#3b82f6', strokeWidth: 2, stroke: '#fff' }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                    <AlertCircle className="h-12 w-12 mb-4 text-gray-400" />
+                    <p className="text-lg font-medium mb-2">No sales data available</p>
+                    <p className="text-sm text-center">Complete some orders to see your sales analytics</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
 
         {reportData?.totalCredit > 0 && (
           <div className="mb-8 cursor-pointer" onClick={() => navigate('/collections')}>
-            <div className="text-lg font-semibold text-red-800 mb-2 flex items-center gap-2">
-              Pending Collections
-            </div>
-            <div className="bg-white rounded-2xl shadow p-4 border border-red-100">
-              <div className="text-2xl font-bold text-red-600 mb-2">₹{reportData.totalCredit.toLocaleString()}</div>
-              <div className="text-xs text-gray-500">Tap to view and collect udhaar</div>
+            <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-2xl shadow-sm border border-red-100 p-6 hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 bg-red-100 rounded-lg flex items-center justify-center">
+                  <AlertCircle className="h-6 w-6 text-red-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-red-800 mb-1">Pending Collections</h3>
+                  <p className="text-3xl font-bold text-red-600 mb-1">₹{reportData.totalCredit.toLocaleString()}</p>
+                  <p className="text-sm text-red-600/80">Tap to view and collect udhaar</p>
+                </div>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Recent Orders */}
-        <Card className="mb-4 shadow-lg rounded-2xl">
-          <CardContent>
-            <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', color: '#1e3a8a', mb: 2 }}>
-              Recent Orders
-            </Typography>
-            {recentOrders.length > 0 ? (
-              <div className="space-y-4">
-                {recentOrders.map((order) => (
-                  <div key={order.id} className="p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100" onClick={() => navigate(`/orders/${order.id}`)}>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{getCustomerName(order.customer_id)}</div>
-                        <div className="text-xs text-gray-500">{format(new Date(order.job_date), 'MMM dd, yyyy')}</div>
-                      </div>
-                      <div className={`px-2 py-1 rounded text-xs ${
-                        order.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                        order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+        {/* Recent Orders & Quotations */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card className="shadow-lg rounded-2xl border-gray-100">
+            <CardContent className="p-6">
+              <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', color: '#1e3a8a', mb: 3 }}>
+                Recent Orders
+              </Typography>
+              {recentOrders.length > 0 ? (
+                <div className="space-y-4">
+                  {recentOrders.map((order) => (
+                    <div key={order.id} className="p-4 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors border border-gray-100" onClick={() => navigate(`/orders/${order.id}`)}>
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{getCustomerName(order.customer_id)}</div>
+                          <div className="text-xs text-gray-500">{format(new Date(order.job_date), 'MMM dd, yyyy')}</div>
+                        </div>
+                        <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          order.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                          order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <Typography variant="body2" color="text.secondary">No recent orders</Typography>
-            )}
-          </CardContent>
-        </Card>
+                  ))}
+                </div>
+              ) : (
+                <Typography variant="body2" color="text.secondary">No recent orders</Typography>
+              )}
+            </CardContent>
+          </Card>
 
-        {/* Recent Quotations */}
-        <Card className="mb-4 shadow-lg rounded-2xl">
-          <CardContent>
-            <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', color: '#1e3a8a', mb: 2 }}>
-              Recent Quotations
-            </Typography>
-            {recentQuotations.length > 0 ? (
-              <div className="space-y-4">
-                {recentQuotations.map((quotation) => (
-                  <div key={quotation.id} className="p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100" onClick={() => navigate(`/quotations/${quotation.id}`)}>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{getCustomerName(quotation.customer_id)}</div>
-                        <div className="text-xs text-gray-500">{format(new Date(quotation.job_date), 'MMM dd, yyyy')}</div>
-                      </div>
-                      <div className={`px-2 py-1 rounded text-xs ${
-                        quotation.status === 'converted' ? 'bg-green-100 text-green-800' :
-                        quotation.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {quotation.status.charAt(0).toUpperCase() + quotation.status.slice(1)}
+          <Card className="shadow-lg rounded-2xl border-gray-100">
+            <CardContent className="p-6">
+              <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', color: '#1e3a8a', mb: 3 }}>
+                Recent Quotations
+              </Typography>
+              {recentQuotations.length > 0 ? (
+                <div className="space-y-4">
+                  {recentQuotations.map((quotation) => (
+                    <div key={quotation.id} className="p-4 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors border border-gray-100" onClick={() => navigate(`/quotations/${quotation.id}`)}>
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{getCustomerName(quotation.customer_id)}</div>
+                          <div className="text-xs text-gray-500">{format(new Date(quotation.job_date), 'MMM dd, yyyy')}</div>
+                        </div>
+                        <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          quotation.status === 'converted' ? 'bg-green-100 text-green-800' :
+                          quotation.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {quotation.status.charAt(0).toUpperCase() + quotation.status.slice(1)}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <Typography variant="body2" color="text.secondary">No recent quotations</Typography>
-            )}
-          </CardContent>
-        </Card>
+                  ))}
+                </div>
+              ) : (
+                <Typography variant="body2" color="text.secondary">No recent quotations</Typography>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
       </div>
       <FloatingActionButton />
