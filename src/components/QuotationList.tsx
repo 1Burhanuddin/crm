@@ -206,14 +206,16 @@ export function QuotationList() {
   // Convert quotation to order mutation
   const convertToOrderMutation = useMutation({
     mutationFn: async ({ quotation, advanceAmount }: { quotation: Quotation; advanceAmount: number }) => {
-      // Create the order
+      // Create the order with the new products array format
       const { error: orderError } = await supabase
         .from("orders")
         .insert([{
           user_id: user?.id,
           customer_id: quotation.customerId,
-          product_id: quotation.productId,
-          qty: quotation.qty,
+          products: [{
+            productId: quotation.productId,
+            qty: quotation.qty
+          }],
           job_date: quotation.jobDate,
           assigned_to: quotation.assignedTo,
           site_address: quotation.siteAddress || null,
@@ -747,4 +749,3 @@ export function QuotationList() {
     </div>
   );
 }
- 
