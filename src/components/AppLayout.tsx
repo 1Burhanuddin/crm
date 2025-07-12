@@ -6,6 +6,7 @@ import { useSession } from "@/hooks/useSession";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Home, ClipboardList, FileText, UserCircle, Shield } from "lucide-react";
 import { BackButton } from "./ui/BackButton";
+import { ProfileSidebar } from "./ui/ProfileSidebar";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -82,6 +83,7 @@ export function AppLayout({ children, title, shopName, loadingTitle }: AppLayout
               <BackButton />
             </div>
           )}
+          <ProfileSidebar />
           <span className="font-bold text-lg tracking-wide">
             {loadingTitle
               ? <span className="animate-pulse text-gray-200">Loading...</span>

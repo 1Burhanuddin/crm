@@ -18,6 +18,7 @@ import Suppliers from "./pages/Suppliers";
 import Collections from "./pages/Collections";
 import Admin from "./pages/Admin";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import Reports from "./pages/Reports";
 
 const Profile = lazy(() => import("./pages/Profile"));
 
@@ -98,6 +99,11 @@ const App = () => {
               <Route path="/quotations" element={
                 <ProtectedRoute>
                   <Quotations />
+                </ProtectedRoute>
+              } />
+              <Route path="/reports" element={
+                <ProtectedRoute>
+                  <Reports />
                 </ProtectedRoute>
               } />
               <Route path="*" element={<NotFound />} />

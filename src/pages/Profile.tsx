@@ -7,7 +7,6 @@ import { toast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import { AppLayout } from "@/components/AppLayout";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { ProfileTabs } from "@/components/ProfileTabs";
 import { LogOut, User, Store, AtSign, Edit2, FileText, Wallet2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useReportsData } from "@/hooks/useReportsData";
