@@ -27,7 +27,9 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
-  XCircle
+  XCircle,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { AddOrderModal } from "./AddOrderModal";
 import { EditOrderModal } from "./EditOrderModal";
@@ -274,17 +276,68 @@ export function OrderList() {
   };
 
   const OrderCard = ({ order }: { order: Order }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
     const customerName = getCustomerName(order.customer_id);
     const customerPhone = getCustomerPhone(order.customer_id);
     const orderTotal = calculateOrderTotal(order.products);
 
+    const handleStatusChange = async (newStatus: string) => {
+      try {
+        const { error } = await supabase
+          .from("orders")
+          .update({ status: newStatus, updated_at: new Date().toISOString() })
+          .eq("id", order.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Success",
+          description: `Order marked as ${newStatus}`,
+        });
+
+        fetchOrders();
+      } catch (error) {
+        console.error("Error updating order status:", error);
+        toast({
+          title: "Error",
+          description: "Failed to update order status",
+          variant: "destructive",
+        });
+      }
+    };
+
+    const getProductName = (productId: string) => {
+      const product = products.find(p => p.id === productId);
+      return product?.name || "Unknown Product";
+    };
+
+    const getProductUnit = (productId: string) => {
+      const product = products.find(p => p.id === productId);
+      return product?.unit || "unit";
+    };
+
+    const getProductPrice = (productId: string) => {
+      const product = products.find(p => p.id === productId);
+      return product?.price || 0;
+    };
+
     return (
-      <Card className="hover:shadow-md transition-shadow cursor-pointer">
-        <CardHeader className="pb-3">
+      <Card className="hover:shadow-md transition-all duration-200">
+        <CardHeader 
+          className="pb-3 cursor-pointer" 
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <CardTitle className="text-lg font-semibold text-gray-900 mb-1">
+              <CardTitle className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
                 {customerName}
+                <button className="text-gray-400 hover:text-gray-600 transition-colors">
+                  {isExpanded ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </button>
               </CardTitle>
               <div className="flex items-center gap-4 text-sm text-gray-600">
                 <div className="flex items-center gap-1">
@@ -297,16 +350,36 @@ export function OrderList() {
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Badge className={`${getStatusColor(order.status)} flex items-center gap-1`}>
-                {getStatusIcon(order.status)}
-                {order.status.replace("_", " ").toUpperCase()}
-              </Badge>
+            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+              <Select value={order.status} onValueChange={handleStatusChange}>
+                <SelectTrigger className="w-32 h-8">
+                  <SelectValue>
+                    <Badge className={`${getStatusColor(order.status)} flex items-center gap-1`}>
+                      {getStatusIcon(order.status)}
+                      {order.status === "pending" ? "Pending" : "Completed"}
+                    </Badge>
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-3 w-3" />
+                      Pending
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="delivered">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-3 w-3" />
+                      Completed
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
               <OrderActionsMenu
                 onEdit={() => handleEditOrder(order)}
                 onDelete={() => handleDeleteOrder(order)}
                 canMarkDelivered={order.status !== "delivered"}
-                onMarkDelivered={() => {}}
+                onMarkDelivered={() => handleStatusChange("delivered")}
               />
             </div>
           </div>
@@ -314,20 +387,7 @@ export function OrderList() {
 
         <CardContent className="pt-0">
           <div className="space-y-3">
-            {order.site_address && (
-              <div className="flex items-start gap-2 text-sm">
-                <MapPin className="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" />
-                <span className="text-gray-700">{order.site_address}</span>
-              </div>
-            )}
-
-            {order.assigned_to && (
-              <div className="flex items-center gap-2 text-sm">
-                <User className="h-4 w-4 text-gray-500" />
-                <span className="text-gray-700">Assigned to: {order.assigned_to}</span>
-              </div>
-            )}
-
+            {/* Products Summary */}
             <div className="flex items-center justify-between text-sm pt-2 border-t">
               <div className="flex items-center gap-2">
                 <Package className="h-4 w-4 text-gray-500" />
@@ -346,9 +406,49 @@ export function OrderList() {
               </div>
             </div>
 
-            {order.remarks && (
-              <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded-md">
-                <strong>Remarks:</strong> {order.remarks}
+            {/* Expandable Product Details */}
+            {isExpanded && (
+              <div className="animate-accordion-down space-y-3">
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <h4 className="font-medium text-gray-900 mb-2">Product Details</h4>
+                  <div className="space-y-2">
+                    {order.products.map((item, index) => (
+                      <div key={index} className="flex items-center justify-between text-sm">
+                        <div className="flex-1">
+                          <span className="font-medium text-gray-900">
+                            {getProductName(item.productId)}
+                          </span>
+                          <span className="text-gray-500 ml-2">
+                            (Qty: {item.qty} {getProductUnit(item.productId)})
+                          </span>
+                        </div>
+                        <span className="text-gray-700 font-medium">
+                          ₹{(getProductPrice(item.productId) * item.qty).toLocaleString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {order.site_address && (
+                  <div className="flex items-start gap-2 text-sm">
+                    <MapPin className="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-gray-700">{order.site_address}</span>
+                  </div>
+                )}
+
+                {order.assigned_to && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <User className="h-4 w-4 text-gray-500" />
+                    <span className="text-gray-700">Assigned to: {order.assigned_to}</span>
+                  </div>
+                )}
+
+                {order.remarks && (
+                  <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded-md">
+                    <strong>Remarks:</strong> {order.remarks}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -403,30 +503,22 @@ export function OrderList() {
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="in_progress">In Progress</SelectItem>
-            <SelectItem value="delivered">Delivered</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
+            <SelectItem value="delivered">Completed</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {/* Orders Tabs */}
       <Tabs defaultValue="all" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="all">
             All ({orders.length})
           </TabsTrigger>
           <TabsTrigger value="pending">
             Pending ({getOrdersByStatus("pending").length})
           </TabsTrigger>
-          <TabsTrigger value="in_progress">
-            In Progress ({getOrdersByStatus("in_progress").length})
-          </TabsTrigger>
           <TabsTrigger value="delivered">
-            Delivered ({getOrdersByStatus("delivered").length})
-          </TabsTrigger>
-          <TabsTrigger value="cancelled">
-            Cancelled ({getOrdersByStatus("cancelled").length})
+            Completed ({getOrdersByStatus("delivered").length})
           </TabsTrigger>
         </TabsList>
 
@@ -456,16 +548,16 @@ export function OrderList() {
           )}
         </TabsContent>
 
-        {["pending", "in_progress", "delivered", "cancelled"].map((status) => (
+        {["pending", "delivered"].map((status) => (
           <TabsContent key={status} value={status} className="mt-6">
             {getOrdersByStatus(status).length === 0 ? (
               <div className="text-center py-12">
                 <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  No {status.replace("_", " ")} orders
+                  No {status === "delivered" ? "completed" : status} orders
                 </h3>
                 <p className="text-gray-500">
-                  Orders with {status.replace("_", " ")} status will appear here
+                  Orders with {status === "delivered" ? "completed" : status} status will appear here
                 </p>
               </div>
             ) : (
