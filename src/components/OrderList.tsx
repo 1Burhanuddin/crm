@@ -105,7 +105,19 @@ export function OrderList() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setOrders(data || []);
+      
+      // Transform the data to match our Order interface  
+      const transformedOrders: Order[] = (data || []).map(order => ({
+        ...order,
+        products: Array.isArray(order.products) 
+          ? (order.products as any[]).map((p: any) => ({
+              productId: p.productId || p.product_id,
+              qty: p.qty
+            }))
+          : []
+      }));
+      
+      setOrders(transformedOrders);
     } catch (error) {
       console.error("Error fetching orders:", error);
       toast({
@@ -291,10 +303,10 @@ export function OrderList() {
                 {order.status.replace("_", " ").toUpperCase()}
               </Badge>
               <OrderActionsMenu
-                order={order}
                 onEdit={() => handleEditOrder(order)}
                 onDelete={() => handleDeleteOrder(order)}
-                onViewDetails={() => navigate(`/orders/${order.id}`)}
+                canMarkDelivered={order.status !== "delivered"}
+                onMarkDelivered={() => {}}
               />
             </div>
           </div>
@@ -469,9 +481,12 @@ export function OrderList() {
 
       {/* Modals */}
       <AddOrderModal
-        isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onOrderAdded={fetchOrders}
+        open={showAddModal}
+        onOpenChange={setShowAddModal}
+        onAdd={() => fetchOrders()}
+        customers={customers}
+        products={products}
+        refreshCustomers={fetchCustomers}
       />
 
       {selectedOrder && (
