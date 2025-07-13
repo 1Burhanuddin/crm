@@ -4,9 +4,9 @@ import { OfflineBanner } from "./OfflineBanner";
 import { toast } from "@/hooks/use-toast";
 import { useSession } from "@/hooks/useSession";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Home, ClipboardList, FileText, UserCircle, Shield, Package, Users, Receipt, BarChart3 } from "lucide-react";
+import { Home, ClipboardList, FileText, UserCircle, Shield } from "lucide-react";
 import { BackButton } from "./ui/BackButton";
-import { Sidebar, SidebarBody, SidebarLink } from "./ui/sidebar-animated";
+import { ProfileSidebar } from "./ui/ProfileSidebar";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -15,51 +15,36 @@ interface AppLayoutProps {
   loadingTitle?: boolean;
 }
 
-const sidebarLinks = [
+const navItems = [
   {
-    label: "Dashboard",
-    href: "/",
-    icon: <Home className="h-5 w-5" />,
+    title: "Home",
+    icon: Home,
+    path: "/",
   },
   {
-    label: "Orders",
-    href: "/orders",
-    icon: <ClipboardList className="h-5 w-5" />,
+    title: "Orders",
+    icon: ClipboardList,
+    path: "/orders",
   },
   {
-    label: "Quotations",
-    href: "/quotations",
-    icon: <FileText className="h-5 w-5" />,
+    title: "Quotations",
+    icon: FileText,
+    path: "/quotations",
   },
   {
-    label: "Bills",
-    href: "/bills",
-    icon: <Receipt className="h-5 w-5" />,
+    title: "Bills",
+    icon: FileText,
+    path: "/bills",
   },
   {
-    label: "Customers",
-    href: "/customers",
-    icon: <Users className="h-5 w-5" />,
+    title: "Profile",
+    icon: UserCircle,
+    path: "/profile",
   },
   {
-    label: "Products",
-    href: "/products",
-    icon: <Package className="h-5 w-5" />,
-  },
-  {
-    label: "Collections",
-    href: "/collections",
-    icon: <Receipt className="h-5 w-5" />,
-  },
-  {
-    label: "Reports",
-    href: "/reports",
-    icon: <BarChart3 className="h-5 w-5" />,
-  },
-  {
-    label: "Profile",
-    href: "/profile",
-    icon: <UserCircle className="h-5 w-5" />,
+    title: "Admin",
+    icon: Shield,
+    path: "/admin",
   },
 ];
 
@@ -68,6 +53,7 @@ export function AppLayout({ children, title, shopName, loadingTitle }: AppLayout
   const { status } = useSession();
   const location = useLocation();
   const navigate = useNavigate();
+  const showBackButton = location.pathname !== "/";
 
   // Listen for offline changes (to avoid adding listeners each render, useEffect is better)
   useEffect(() => {
@@ -81,46 +67,70 @@ export function AppLayout({ children, title, shopName, loadingTitle }: AppLayout
     };
   }, []);
 
+  // Height of header, match to py-3 and text height (py-3 + line-height ~ 56px)
+  const HEADER_HEIGHT = 56; // px
+
   return (
-    <div className="flex min-h-screen w-full bg-[hsl(var(--background))]">
-      <Sidebar>
-        <SidebarBody className="justify-between gap-10">
-          <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
-            <div className="mt-8 flex flex-col gap-2">
-              {sidebarLinks.map((link, idx) => (
-                <SidebarLink key={idx} link={link} />
-              ))}
+    <div className="flex flex-col min-h-screen bg-[hsl(var(--background))] w-full">
+      {/* Header fixed */}
+      <header
+        className="fixed top-0 left-0 right-0 bg-blue-900 text-white px-4 py-3 flex items-center shadow-md z-30"
+        style={{ height: HEADER_HEIGHT }}
+      >
+        <div className="flex items-center gap-2 flex-1">
+          {showBackButton && (
+            <div className="md:hidden">
+              <BackButton />
             </div>
-          </div>
-          <div>
-            <SidebarLink
-              link={{
-                label: shopName || title || "Shop for KhataBook",
-                href: "#",
-                icon: <UserCircle className="h-7 w-7" />,
-              }}
-            />
-          </div>
-        </SidebarBody>
-      </Sidebar>
-      
-      <div className="flex-1">
+          )}
+          <ProfileSidebar />
+          <span className="font-bold text-lg tracking-wide">
+            {loadingTitle
+              ? <span className="animate-pulse text-gray-200">Loading...</span>
+              : shopName
+                ? shopName
+                : (title || "Shop for KhataBook")
+            }
+          </span>
+        </div>
+        {/* Navigation items for large screens */}
+        <div className="hidden md:flex items-center gap-1">
+          {navItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <button
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors ${
+                  isActive 
+                    ? "bg-white/20 text-white" 
+                    : "text-white/80 hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                <item.icon size={18} className="stroke-[2.5]" />
+                <span className="font-medium">{item.title}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {isOffline && (
+          <span className="ml-2 px-2 py-1 rounded bg-yellow-500 text-xs font-medium animate-pulse shadow">Offline</span>
+        )}
+      </header>
+
+      {/* Add top padding to make room for header for ALL content */}
+      <div>
         <OfflineBanner show={isOffline} />
-        <main className="flex-1 overflow-y-auto p-2 md:p-8">
-          {children}
-        </main>
-        
+        <div className="flex w-full" style={{ paddingTop: HEADER_HEIGHT }}>
+          {/* Main content */}
+          <main className="flex-1 overflow-y-auto">{children}</main>
+        </div>
         {/* Only show BottomNav on mobile */}
-        <div className="md:hidden">
+        <div className="md:hidden" style={{ paddingTop: HEADER_HEIGHT }}>
           <BottomNav />
         </div>
       </div>
-
-      {isOffline && (
-        <div className="fixed top-4 right-4 z-50">
-          <span className="px-2 py-1 rounded bg-yellow-500 text-xs font-medium animate-pulse shadow">Offline</span>
-        </div>
-      )}
     </div>
   );
 }
