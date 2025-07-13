@@ -255,10 +255,10 @@ export default function Dashboard() {
         priceMap.set(p.id, Number(p.price) || 0);
       });
 
-      // Get all collections
+      // Get all collections with dates
       const { data: collections } = await supabase
         .from("collections")
-        .select("customer_id, amount")
+        .select("customer_id, amount, collection_date")
         .eq("user_id", user.id);
 
       const collectionsByCustomer = new Map();
@@ -267,8 +267,9 @@ export default function Dashboard() {
         collectionsByCustomer.set(c.customer_id, existing + Number(c.amount));
       });
 
-      // Calculate pending amounts
-      const pendingByCustomer = new Map();
+      // Calculate pending amounts with collection dates
+      const pendingByCustomer = new Map<string, { amount: number; collection_date?: string }>();
+      
       orders.forEach((order) => {
         let orderTotal = 0;
         if (Array.isArray(order.products)) {
@@ -286,14 +287,28 @@ export default function Dashboard() {
         const pending = totalDue - collected;
         
         if (pending > 0) {
-          const existing = pendingByCustomer.get(order.customer_id) || 0;
-          pendingByCustomer.set(order.customer_id, existing + pending);
+          const existing = pendingByCustomer.get(order.customer_id);
+          if (existing) {
+            existing.amount += pending;
+          } else {
+            // Find the earliest collection date for this customer
+            const customerCollections = collections?.filter(c => c.customer_id === order.customer_id) || [];
+            const earliestCollectionDate = customerCollections
+              .filter(c => c.collection_date)
+              .sort((a, b) => new Date(a.collection_date!).getTime() - new Date(b.collection_date!).getTime())[0]?.collection_date;
+            
+            pendingByCustomer.set(order.customer_id, {
+              amount: pending,
+              collection_date: earliestCollectionDate || undefined
+            });
+          }
         }
       });
 
-      const pendingArray = Array.from(pendingByCustomer.entries()).map(([customer_id, amount]) => ({
+      const pendingArray = Array.from(pendingByCustomer.entries()).map(([customer_id, data]) => ({
         customer_id,
-        amount
+        amount: data.amount,
+        collection_date: data.collection_date
       }));
 
       setPendingCollections(pendingArray);
@@ -478,6 +493,10 @@ export default function Dashboard() {
             <PendingCollectionsTab 
               pendingCollections={pendingCollections}
               customers={customers}
+              onCollectionUpdate={() => {
+                // Refresh data after collection is added
+                window.location.reload();
+              }}
             />
           </div>
         )}
