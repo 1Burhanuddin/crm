@@ -5,6 +5,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { getDueDateInfo } from "@/utils/dueDateUtils";
 
 interface CustomerWithPending {
   id: string;
@@ -83,6 +84,26 @@ export function PendingCollectionsPanel({
                   </h3>
                   {customer.phone && (
                     <p className="text-sm text-gray-600 mt-1">{customer.phone}</p>
+                  )}
+                  {/* Due Date Indicator */}
+                  {customerDates[customer.id] && (
+                    <div className="mt-2">
+                      {(() => {
+                        const dueDateInfo = getDueDateInfo(customerDates[customer.id]);
+                        return (
+                          <span 
+                            className={cn(
+                              "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
+                              dueDateInfo.color,
+                              dueDateInfo.bgColor,
+                              dueDateInfo.isUrgent && "animate-pulse"
+                            )}
+                          >
+                            {dueDateInfo.text}
+                          </span>
+                        );
+                      })()}
+                    </div>
                   )}
                 </div>
                 <div className="flex items-center gap-4">

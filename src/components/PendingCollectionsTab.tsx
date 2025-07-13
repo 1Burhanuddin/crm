@@ -1,8 +1,10 @@
 
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { AlertCircle } from "lucide-react";
+import { getDueDateInfo } from "@/utils/dueDateUtils";
+import { cn } from "@/lib/utils";
 
 interface Customer {
   id: string;
@@ -80,6 +82,11 @@ export function PendingCollectionsTab({
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
                   Click to manage collection
+                </div>
+                <div className="mt-2">
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-blue-700 bg-blue-100">
+                    Set collection date
+                  </span>
                 </div>
               </div>
               <div className="text-right">
