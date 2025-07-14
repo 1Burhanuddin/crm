@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
@@ -29,12 +29,18 @@ import {
   AlertCircle,
   XCircle,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { AddOrderModal } from "./AddOrderModal";
 import { EditOrderModal } from "./EditOrderModal";
 import { OrderActionsMenu } from "./OrderActionsMenu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useSwipeable } from "react-swipeable";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 interface Customer {
   id: string;
@@ -84,6 +90,40 @@ export function OrderList() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const isMobile = useIsMobile();
+  const [showSwipeHint, setShowSwipeHint] = useState(isMobile);
+  const [swipeFeedback, setSwipeFeedback] = useState("");
+  const [modalOrder, setModalOrder] = useState<Order | null>(null);
+
+  // Move handleStatusChange here so it is available to OrderCard and OrderDetailsModal
+  const handleStatusChange = async (order: Order, newStatus: string) => {
+    console.log('handleStatusChange called with:', newStatus, 'current:', order.status);
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .eq("id", order.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `Order marked as ${newStatus}`,
+      });
+
+      fetchOrders(); // Force UI refresh after status change
+    } catch (error) {
+      console.error("Error updating order status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update order status",
+        variant: "destructive",
+      });
+    }
+    if (isMobile) {
+      setSwipeFeedback(newStatus === "delivered" ? "bg-green-100" : "bg-yellow-100");
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -96,6 +136,14 @@ export function OrderList() {
   useEffect(() => {
     filterOrders();
   }, [orders, searchTerm, statusFilter]);
+
+  useEffect(() => {
+    if (isMobile) {
+      setShowSwipeHint(true);
+      const timer = setTimeout(() => setShowSwipeHint(false), 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [isMobile]);
 
   const fetchOrders = async () => {
     try {
@@ -276,184 +324,95 @@ export function OrderList() {
   };
 
   const OrderCard = ({ order }: { order: Order }) => {
-    const [isExpanded, setIsExpanded] = useState(false);
     const customerName = getCustomerName(order.customer_id);
     const customerPhone = getCustomerPhone(order.customer_id);
     const orderTotal = calculateOrderTotal(order.products);
-
-    const handleStatusChange = async (newStatus: string) => {
-      try {
-        const { error } = await supabase
-          .from("orders")
-          .update({ status: newStatus, updated_at: new Date().toISOString() })
-          .eq("id", order.id);
-
-        if (error) throw error;
-
-        toast({
-          title: "Success",
-          description: `Order marked as ${newStatus}`,
-        });
-
-        fetchOrders();
-      } catch (error) {
-        console.error("Error updating order status:", error);
-        toast({
-          title: "Error",
-          description: "Failed to update order status",
-          variant: "destructive",
-        });
-      }
-    };
 
     const getProductName = (productId: string) => {
       const product = products.find(p => p.id === productId);
       return product?.name || "Unknown Product";
     };
-
     const getProductUnit = (productId: string) => {
       const product = products.find(p => p.id === productId);
       return product?.unit || "unit";
     };
-
     const getProductPrice = (productId: string) => {
       const product = products.find(p => p.id === productId);
       return product?.price || 0;
     };
 
+    // Swipe handlers for mobile (no expand/collapse)
+    const swipeHandlers = useSwipeable({
+      onSwipedRight: (eventData) => {
+        if (order.status !== "delivered") handleStatusChange(order, "delivered");
+      },
+      onSwipedLeft: (eventData) => {
+        if (order.status !== "pending") handleStatusChange(order, "pending");
+      },
+      trackMouse: false,
+      trackTouch: true,
+      delta: 10,
+      stopPropagation: false,
+    });
+
     return (
-      <Card className="hover:shadow-md transition-all duration-200">
-        <CardHeader 
-          className="pb-3 cursor-pointer" 
-          onClick={() => setIsExpanded(!isExpanded)}
-        >
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <CardTitle className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
-                {customerName}
-                <button className="text-gray-400 hover:text-gray-600 transition-colors">
-                  {isExpanded ? (
-                    <ChevronUp className="h-4 w-4" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4" />
-                  )}
-                </button>
-              </CardTitle>
-              <div className="flex items-center gap-4 text-sm text-gray-600">
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
-                  <span>{format(new Date(order.job_date), "MMM dd, yyyy")}</span>
+      <div {...(isMobile ? swipeHandlers : {})} className={`relative transition-colors duration-300 ${swipeFeedback}`}
+        style={{ touchAction: isMobile ? 'pan-y' : undefined }}>
+        {/* Card content */}
+        <Card className="hover:shadow-md transition-all duration-200 cursor-pointer" onClick={() => setModalOrder(order)}>
+          <CardHeader className="pb-3">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <CardTitle className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                  {customerName}
+                </CardTitle>
+                <div className="flex items-center gap-4 text-sm text-gray-600">
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-4 w-4" />
+                    <span>{format(new Date(order.job_date), "MMM dd, yyyy")}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <PhoneCall className="h-4 w-4" />
+                    <span>{customerPhone}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <PhoneCall className="h-4 w-4" />
-                  <span>{customerPhone}</span>
-                </div>
+              </div>
+              {/* No status control or segmented control here */}
+              <div className="flex items-center gap-2" style={{ boxShadow: 'none', margin: 0, transform: 'none' }} onClick={e => e.stopPropagation()}>
+                <OrderActionsMenu
+                  onEdit={() => handleEditOrder(order)}
+                  onDelete={() => handleDeleteOrder(order)}
+                  canMarkDelivered={order.status !== "delivered"}
+                  onMarkDelivered={() => handleStatusChange(order, "delivered")}
+                />
               </div>
             </div>
-            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-              <Select value={order.status} onValueChange={handleStatusChange}>
-                <SelectTrigger className="w-32 h-8">
-                  <SelectValue>
-                    <Badge className={`${getStatusColor(order.status)} flex items-center gap-1`}>
-                      {getStatusIcon(order.status)}
-                      {order.status === "pending" ? "Pending" : "Completed"}
-                    </Badge>
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-3 w-3" />
-                      Pending
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="delivered">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="h-3 w-3" />
-                      Completed
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              <OrderActionsMenu
-                onEdit={() => handleEditOrder(order)}
-                onDelete={() => handleDeleteOrder(order)}
-                canMarkDelivered={order.status !== "delivered"}
-                onMarkDelivered={() => handleStatusChange("delivered")}
-              />
-            </div>
-          </div>
-        </CardHeader>
+          </CardHeader>
 
-        <CardContent className="pt-0">
-          <div className="space-y-3">
-            {/* Products Summary */}
-            <div className="flex items-center justify-between text-sm pt-2 border-t">
-              <div className="flex items-center gap-2">
-                <Package className="h-4 w-4 text-gray-500" />
-                <span className="text-gray-600">{order.products.length} items</span>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1 text-green-600 font-medium">
-                  <DollarSign className="h-4 w-4" />
-                  <span>₹{orderTotal.toLocaleString()}</span>
-                </div>
-                {order.advance_amount > 0 && (
-                  <div className="text-xs text-gray-500">
-                    Advance: ₹{order.advance_amount}
-                  </div>
+           <CardContent className="pt-0">
+             <div className="flex items-center justify-between text-sm pt-2 border-t">
+               <div className="flex items-center gap-2">
+                 <Package className="h-4 w-4 text-gray-500" />
+                 <span className="text-gray-600">{order.products.length} items</span>
+               </div>
+               <div className="flex items-center gap-4">
+                 <div className="flex items-center gap-1 text-green-600 font-medium">
+                   <DollarSign className="h-4 w-4" />
+                   <span>₹{orderTotal.toLocaleString()}</span>
+                 </div>
+                 {order.advance_amount > 0 && (
+                   <div className="text-xs text-gray-500">
+                     Advance: ₹{order.advance_amount}
+                   </div>
+                 )}
+                {order.status === 'pending' && (
+                  <span className="ml-2 px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 text-xs font-semibold">Pending</span>
                 )}
-              </div>
-            </div>
-
-            {/* Expandable Product Details */}
-            {isExpanded && (
-              <div className="animate-accordion-down space-y-3">
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <h4 className="font-medium text-gray-900 mb-2">Product Details</h4>
-                  <div className="space-y-2">
-                    {order.products.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between text-sm">
-                        <div className="flex-1">
-                          <span className="font-medium text-gray-900">
-                            {getProductName(item.productId)}
-                          </span>
-                          <span className="text-gray-500 ml-2">
-                            (Qty: {item.qty} {getProductUnit(item.productId)})
-                          </span>
-                        </div>
-                        <span className="text-gray-700 font-medium">
-                          ₹{(getProductPrice(item.productId) * item.qty).toLocaleString()}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {order.site_address && (
-                  <div className="flex items-start gap-2 text-sm">
-                    <MapPin className="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-gray-700">{order.site_address}</span>
-                  </div>
-                )}
-
-                {order.assigned_to && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <User className="h-4 w-4 text-gray-500" />
-                    <span className="text-gray-700">Assigned to: {order.assigned_to}</span>
-                  </div>
-                )}
-
-                {order.remarks && (
-                  <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded-md">
-                    <strong>Remarks:</strong> {order.remarks}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+               </div>
+             </div>
+           </CardContent>
+        </Card>
+      </div>
     );
   };
 
@@ -469,21 +428,9 @@ export function OrderList() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
-          <p className="text-gray-600">Manage your customer orders</p>
-        </div>
-        <Button onClick={() => setShowAddModal(true)} className="flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          Add Order
-        </Button>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
+    <div className="space-y-6 overflow-x-hidden w-full max-w-full">
+      {/* Search and Add Order Button */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
@@ -493,27 +440,15 @@ export function OrderList() {
             className="pl-10"
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-48">
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4" />
-              <SelectValue />
-            </div>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="delivered">Completed</SelectItem>
-          </SelectContent>
-        </Select>
+        <Button onClick={() => setShowAddModal(true)} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl flex items-center gap-2 text-base font-semibold hover:bg-blue-700 transition-all shadow-sm">
+          <Plus className="h-4 w-4" />
+          Add Order
+        </Button>
       </div>
 
       {/* Orders Tabs */}
-      <Tabs defaultValue="all" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="all">
-            All ({orders.length})
-          </TabsTrigger>
+      <Tabs defaultValue="pending" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="pending">
             Pending ({getOrdersByStatus("pending").length})
           </TabsTrigger>
@@ -540,7 +475,7 @@ export function OrderList() {
               )}
             </div>
           ) : (
-            <div className="grid gap-4">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               {filteredOrders.map((order) => (
                 <OrderCard key={order.id} order={order} />
               ))}
@@ -548,27 +483,45 @@ export function OrderList() {
           )}
         </TabsContent>
 
-        {["pending", "delivered"].map((status) => (
-          <TabsContent key={status} value={status} className="mt-6">
-            {getOrdersByStatus(status).length === 0 ? (
-              <div className="text-center py-12">
-                <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  No {status === "delivered" ? "completed" : status} orders
-                </h3>
-                <p className="text-gray-500">
-                  Orders with {status === "delivered" ? "completed" : status} status will appear here
-                </p>
-              </div>
-            ) : (
-              <div className="grid gap-4">
-                {getOrdersByStatus(status).map((order) => (
-                  <OrderCard key={order.id} order={order} />
-                ))}
-              </div>
-            )}
-          </TabsContent>
-        ))}
+        <TabsContent value="pending" className="mt-6">
+          {getOrdersByStatus("pending").length === 0 ? (
+            <div className="text-center py-12">
+              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No pending orders
+              </h3>
+              <p className="text-gray-500">
+                Orders with pending status will appear here
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+              {getOrdersByStatus("pending").map((order) => (
+                <OrderCard key={order.id} order={order} />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="delivered" className="mt-6">
+          {getOrdersByStatus("delivered").length === 0 ? (
+            <div className="text-center py-12">
+              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No completed orders
+              </h3>
+              <p className="text-gray-500">
+                Orders with completed status will appear here
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+              {getOrdersByStatus("delivered").map((order) => (
+                <OrderCard key={order.id} order={order} />
+              ))}
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
 
       {/* Modals */}
@@ -609,6 +562,177 @@ export function OrderList() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {modalOrder && (
+        <OrderDetailsModal
+          order={modalOrder}
+          customers={customers}
+          products={products}
+          isMobile={isMobile}
+          onClose={() => setModalOrder(null)}
+          onStatusChange={(newStatus) => handleStatusChange(modalOrder, newStatus)}
+        />
+      )}
     </div>
+  );
+}
+
+function SlideToConfirmButton({ status, onChangeStatus }: { status: string; onChangeStatus: (newStatus: string) => void }) {
+  const isPending = status === "pending";
+  const nextStatus = isPending ? "delivered" : "pending";
+  const buttonText = isPending ? "Slide to Complete" : "Slide to Pending";
+  const buttonClass = isPending
+    ? "bg-green-600 text-white"
+    : "bg-yellow-400 text-yellow-900";
+  const [dragX, setDragX] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
+  const trackRef = useRef<HTMLDivElement>(null);
+
+  // Responsive: get actual width of track
+  const [trackWidth, setTrackWidth] = useState(0);
+  useEffect(() => {
+    if (trackRef.current) {
+      setTrackWidth(trackRef.current.offsetWidth);
+    }
+    const handleResize = () => {
+      if (trackRef.current) setTrackWidth(trackRef.current.offsetWidth);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const minDragToConfirm = trackWidth * 0.7;
+
+  function onTouchStart(e: React.TouchEvent) {
+    setDragging(true);
+  }
+  function onTouchMove(e: React.TouchEvent) {
+    if (!dragging) return;
+    const touch = e.touches[0];
+    const trackRect = trackRef.current?.getBoundingClientRect();
+    if (!trackRect) return;
+    let x = touch.clientX - trackRect.left;
+    x = Math.max(0, Math.min(x, trackWidth - 48)); // 48px handle width
+    setDragX(x);
+  }
+  function onTouchEnd() {
+    setDragging(false);
+    if (dragX >= minDragToConfirm - 48) {
+      setConfirmed(true);
+      setTimeout(() => {
+        setDragX(0);
+        setConfirmed(false);
+        onChangeStatus(nextStatus);
+      }, 300);
+    } else {
+      setDragX(0);
+    }
+  }
+
+  return (
+    <div className="w-full flex flex-col items-center">
+      <div
+        ref={trackRef}
+        className={`relative w-full max-w-xs h-12 rounded-full overflow-hidden select-none ${buttonClass} transition-colors duration-200`}
+        style={{ background: isPending ? '#22c55e22' : '#fde047cc' }}
+      >
+        {/* Fill background as you drag */}
+        <div
+          className="absolute top-0 left-0 h-full rounded-full transition-all duration-200"
+          style={{
+            width: `${dragX + 48}px`, // fill matches handle
+            background: isPending ? '#22c55e' : '#fde047',
+            opacity: 0.3,
+            zIndex: 1,
+          }}
+        />
+        {/* Text */}
+        <div
+          className="absolute inset-0 flex items-center justify-center text-base font-semibold pointer-events-none"
+          style={{ color: isPending ? '#22c55e' : '#b45309', opacity: confirmed ? 0.5 : 1 }}
+        >
+          {confirmed ? (isPending ? 'Completed!' : 'Marked Pending!') : buttonText}
+        </div>
+        {/* Draggable handle */}
+        <div
+          className={`absolute top-1 left-1 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center z-10 active:scale-95 transition-transform duration-100 border border-gray-200`}
+          style={{ transform: `translateX(${dragX}px)` }}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        >
+          <ChevronRight className={`h-6 w-6 ${isPending ? 'text-green-600' : 'text-yellow-700'}`} />
+        </div>
+      </div>
+      <div className="text-xs text-gray-500 mt-1 text-center">Slide the handle to confirm</div>
+    </div>
+  );
+}
+
+function OrderDetailsModal({ order, customers, products, isMobile, onClose, onStatusChange }: {
+  order: Order;
+  customers: Customer[];
+  products: Product[];
+  isMobile: boolean;
+  onClose: () => void;
+  onStatusChange: (newStatus: string) => void;
+}) {
+  const getProductName = (productId: string) => products.find(p => p.id === productId)?.name || "Unknown Product";
+  const getProductUnit = (productId: string) => products.find(p => p.id === productId)?.unit || "unit";
+  const getProductPrice = (productId: string) => products.find(p => p.id === productId)?.price || 0;
+  const customer = customers.find(c => c.id === order.customer_id);
+  const orderTotal = order.products.reduce((total, item) => total + (getProductPrice(item.productId) * item.qty), 0);
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent
+        className={`w-full ${isMobile ? 'max-w-sm mx-auto min-h-[40vh] rounded-2xl p-5 shadow-2xl' : 'max-w-lg'}`}
+      >
+        <div className="mb-4 break-words">
+          <h2 className="text-xl font-bold mb-1 break-words">{customer?.name || "Unknown Customer"}</h2>
+          <div className="text-sm text-gray-600 mb-2 break-words">{order.job_date} | {customer?.phone}</div>
+          <div className="text-xs text-gray-500 mb-2 break-words">Order ID: {order.id}</div>
+        </div>
+        <div className="mb-4">
+          <h4 className="font-semibold mb-2">Products</h4>
+          <ul className="space-y-2">
+            {order.products.map((item, idx) => (
+              <li key={idx} className="flex justify-between text-sm break-words">
+                <span>{getProductName(item.productId)} (Qty: {item.qty} {getProductUnit(item.productId)})</span>
+                <span>₹{(getProductPrice(item.productId) * item.qty).toLocaleString()}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="mb-4 flex justify-between text-base font-semibold">
+          <span>Total</span>
+          <span>₹{orderTotal.toLocaleString()}</span>
+        </div>
+        {order.advance_amount > 0 && (
+          <div className="mb-2 text-sm text-gray-500">Advance: ₹{order.advance_amount}</div>
+        )}
+        {order.site_address && (
+          <div className="mb-2 text-sm text-gray-700 break-words">Site: {order.site_address}</div>
+        )}
+        {order.remarks && (
+          <div className="mb-2 text-xs text-gray-600 bg-gray-50 p-2 rounded-md break-words">Remarks: {order.remarks}</div>
+        )}
+        {/* Status control */}
+        {isMobile ? (
+          <div className="mt-4">
+            <SlideToConfirmButton status={order.status} onChangeStatus={onStatusChange} />
+          </div>
+        ) : (
+          <div className="mt-4 flex justify-center">
+            {order.status === "pending" ? (
+              <Button className="bg-green-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-700" onClick={() => onStatusChange("delivered")}> <CheckCircle className="h-4 w-4 mr-2" /> Mark as Completed </Button>
+            ) : (
+              <Button className="bg-yellow-400 text-yellow-900 px-6 py-2 rounded-lg font-semibold hover:bg-yellow-500" onClick={() => onStatusChange("pending")}> <Clock className="h-4 w-4 mr-2" /> Mark as Pending </Button>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -362,7 +362,7 @@ export default function Dashboard() {
               </div>
             </div>
             
-            <div className="p-6">
+            <div className="">
               <div className="h-80">
                 {salesHistory.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
@@ -380,6 +380,8 @@ export default function Dashboard() {
                         tickFormatter={(value) => format(new Date(value), 'MMM dd')}
                         axisLine={{ stroke: '#e2e8f0' }}
                         tickLine={{ stroke: '#e2e8f0' }}
+                        interval="preserveStartEnd"
+                        tickCount={4}
                       />
                       <YAxis 
                         tick={{ fontSize: 12, fill: '#64748b' }}
@@ -394,7 +396,7 @@ export default function Dashboard() {
                         stroke="url(#salesGradient)"
                         strokeWidth={3}
                         fill="url(#salesGradient)"
-                        dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                        dot={false}
                         activeDot={{ r: 6, fill: '#3b82f6', strokeWidth: 2, stroke: '#fff' }}
                       />
                     </AreaChart>
@@ -406,82 +408,6 @@ export default function Dashboard() {
                     <p className="text-sm text-center">Complete some orders to see your sales analytics</p>
                   </div>
                 )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Analytics Table */}
-        <div className="mb-6">
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-            <div className="p-6 border-b border-gray-100">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <BarChart3 className="h-5 w-5 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">Business Analytics</h3>
-                  <p className="text-sm text-gray-600">Key performance metrics</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
-                  <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <DollarSign className="h-6 w-6 text-green-600" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-green-700 font-medium mb-1">Total Revenue</p>
-                    <p className="text-xl font-bold text-green-800">
-                      ₹<AnimatedNumber value={analytics.totalRevenue} />
-                    </p>
-                    <p className="text-xs text-green-600">All time earnings</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border border-blue-100">
-                  <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <ShoppingCart className="h-6 w-6 text-blue-600" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-blue-700 font-medium mb-1">Total Orders</p>
-                    <p className="text-xl font-bold text-blue-800">
-                      <AnimatedNumber value={analytics.totalOrders} />
-                    </p>
-                    <p className="text-xs text-blue-600">Completed orders</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-purple-50 to-violet-50 rounded-xl border border-purple-100">
-                  <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <Users className="h-6 w-6 text-purple-600" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-purple-700 font-medium mb-1">Avg Order</p>
-                    <p className="text-xl font-bold text-purple-800">
-                      {formatCurrency(analytics.avgOrderValue)}
-                    </p>
-                    <p className="text-xs text-purple-600">Per order value</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl border border-orange-100">
-                  <div className={`h-12 w-12 ${analytics.growthRate >= 0 ? 'bg-green-100' : 'bg-red-100'} rounded-lg flex items-center justify-center`}>
-                    {analytics.growthRate >= 0 ? 
-                      <TrendingUp className="h-6 w-6 text-green-600" /> :
-                      <TrendingDown className="h-6 w-6 text-red-600" />
-                    }
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-orange-700 font-medium mb-1">Growth</p>
-                    <p className={`text-xl font-bold ${analytics.growthRate >= 0 ? 'text-green-800' : 'text-red-800'}`}>
-                      {analytics.growthRate > 0 ? '+' : ''}{analytics.growthRate.toFixed(1)}%
-                    </p>
-                    <p className="text-xs text-orange-600">Week over week</p>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -501,23 +427,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {reportData?.totalCredit > 0 && (
-          <div className="mb-8 cursor-pointer" onClick={() => navigate('/collections')}>
-            <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-2xl shadow-sm border border-red-100 p-6 hover:shadow-md transition-shadow">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 bg-red-100 rounded-lg flex items-center justify-center">
-                  <AlertCircle className="h-6 w-6 text-red-600" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-red-800 mb-1">Pending Collections</h3>
-                  <p className="text-3xl font-bold text-red-600 mb-1">₹{reportData.totalCredit.toLocaleString()}</p>
-                  <p className="text-sm text-red-600/80">Tap to view and collect udhaar</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Recent Orders & Quotations */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card className="shadow-lg rounded-2xl border-gray-100">
@@ -528,7 +437,7 @@ export default function Dashboard() {
               {recentOrders.length > 0 ? (
                 <div className="space-y-4">
                   {recentOrders.map((order) => (
-                    <div key={order.id} className="p-4 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors border border-gray-100" onClick={() => navigate(`/orders/${order.id}`)}>
+                    <div key={order.id} className="p-4 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors border border-gray-100" onClick={() => navigate('/orders')}>
                       <div className="flex justify-between items-center">
                         <div>
                           <div className="text-sm font-medium text-gray-900">{getCustomerName(order.customer_id)}</div>
@@ -559,7 +468,7 @@ export default function Dashboard() {
               {recentQuotations.length > 0 ? (
                 <div className="space-y-4">
                   {recentQuotations.map((quotation) => (
-                    <div key={quotation.id} className="p-4 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors border border-gray-100" onClick={() => navigate(`/quotations/${quotation.id}`)}>
+                    <div key={quotation.id} className="p-4 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors border border-gray-100" onClick={() => navigate('/quotations')}>
                       <div className="flex justify-between items-center">
                         <div>
                           <div className="text-sm font-medium text-gray-900">{getCustomerName(quotation.customer_id)}</div>

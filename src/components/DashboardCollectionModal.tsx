@@ -206,7 +206,7 @@ export function DashboardCollectionModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-full max-w-sm mx-auto max-h-[90vh] overflow-y-auto rounded-2xl p-5 shadow-2xl">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-blue-900">
             Collection Management
@@ -329,26 +329,25 @@ export function DashboardCollectionModal({
               )}
             </Button>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-row gap-3 w-full">
               <Button
                 variant="outline"
                 onClick={() => setShowReminder(true)}
-                className="flex items-center justify-center"
+                className="flex-1 flex items-center justify-center text-black border-gray-300"
               >
                 <MessageSquare className="h-4 w-4 mr-2" />
                 Send Reminder
               </Button>
-
-              {customer.phone && (
-                <Button
-                  variant="outline"
-                  onClick={() => window.open(`tel:${customer.phone}`, '_self')}
-                  className="flex items-center justify-center"
-                >
-                  <Phone className="h-4 w-4 mr-2" />
-                  Call Customer
-                </Button>
-              )}
+              <Button
+                variant="outline"
+                onClick={() => customer.phone && window.open(`tel:${customer.phone}`, '_self')}
+                className="flex-1 flex items-center justify-center text-black border-gray-300"
+                disabled={!customer.phone}
+                title={customer.phone ? undefined : 'No phone number available'}
+              >
+                <Phone className="h-4 w-4 mr-2" />
+                Call Customer
+              </Button>
             </div>
           </div>
         </div>

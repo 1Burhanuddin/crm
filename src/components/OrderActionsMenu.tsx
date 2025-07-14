@@ -25,7 +25,7 @@ export function OrderActionsMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className="p-2 rounded-full bg-blue-50 hover:bg-blue-100 transition-colors text-blue-700 shadow"
+          className="p-2 rounded-full transition-colors text-blue-700 shadow"
           aria-label="Show actions"
           type="button"
         >

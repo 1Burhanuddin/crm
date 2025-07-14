@@ -99,7 +99,7 @@ export function ProfileSidebar() {
           <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-80 bg-white">
+      <SheetContent side="right" className="w-80 bg-white">
         <SheetHeader>
           <SheetTitle className="text-left text-xl font-bold text-gray-900">
             Navigation

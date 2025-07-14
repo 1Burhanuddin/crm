@@ -83,7 +83,6 @@ export function AppLayout({ children, title, shopName, loadingTitle }: AppLayout
               <BackButton />
             </div>
           )}
-          <ProfileSidebar />
           <span className="font-bold text-lg tracking-wide">
             {loadingTitle
               ? <span className="animate-pulse text-gray-200">Loading...</span>
@@ -92,6 +91,9 @@ export function AppLayout({ children, title, shopName, loadingTitle }: AppLayout
                 : (title || "Shop for KhataBook")
             }
           </span>
+        </div>
+        <div className="flex items-center">
+          <ProfileSidebar />
         </div>
         {/* Navigation items for large screens */}
         <div className="hidden md:flex items-center gap-1">

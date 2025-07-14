@@ -313,6 +313,26 @@ export function QuotationList() {
   const approvedQuotations = quotations.filter(q => q.status === "approved");
   const rejectedQuotations = quotations.filter(q => q.status === "rejected");
 
+  // Search state
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Filter quotations based on search term
+  const filteredPending = pendingQuotations.filter(q =>
+    customerName(q.customerId).toLowerCase().includes(searchTerm.toLowerCase()) ||
+    productName(q.productId).toLowerCase().includes(searchTerm.toLowerCase()) ||
+    q.remarks?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  const filteredApproved = approvedQuotations.filter(q =>
+    customerName(q.customerId).toLowerCase().includes(searchTerm.toLowerCase()) ||
+    productName(q.productId).toLowerCase().includes(searchTerm.toLowerCase()) ||
+    q.remarks?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  const filteredRejected = rejectedQuotations.filter(q =>
+    customerName(q.customerId).toLowerCase().includes(searchTerm.toLowerCase()) ||
+    productName(q.productId).toLowerCase().includes(searchTerm.toLowerCase()) ||
+    q.remarks?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   // Show loading and error state
   if (loadingCustomers || loadingProducts || loadingQuotations) {
     return (
@@ -558,32 +578,19 @@ export function QuotationList() {
 
   return (
     <div className="space-y-6">
-      {/* Header Stats */}
-      <div className="bg-blue-100/60 rounded-2xl p-4">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="bg-blue-100 p-2 rounded-lg">
-            <FileText className="h-5 w-5 text-blue-700" />
-          </div>
-          <h2 className="text-xl font-semibold text-blue-900">Quotations</h2>
+      {/* Search Bar */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-2">
+        <div className="relative flex-1">
+          <Input
+            placeholder="Search by customer, product, remarks..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+            <FileText className="h-4 w-4" />
+          </span>
         </div>
-        <div className="grid grid-cols-3 gap-4 mt-4">
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-100">
-            <div className="text-2xl font-bold text-blue-900">{pendingQuotations.length}</div>
-            <div className="text-gray-500 text-sm">Pending</div>
-          </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-100">
-            <div className="text-2xl font-bold text-blue-900">{approvedQuotations.length}</div>
-            <div className="text-gray-500 text-sm">Approved</div>
-          </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-100">
-            <div className="text-2xl font-bold text-blue-900">{rejectedQuotations.length}</div>
-            <div className="text-gray-500 text-sm">Rejected</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Add Button */}
-      <div className="flex justify-end">
         <Button
           onClick={() => setShowAdd(true)}
           className="bg-blue-600 text-white px-6 py-2.5 rounded-xl flex items-center gap-2 text-base font-semibold hover:bg-blue-700 transition-all shadow-sm"
@@ -596,34 +603,34 @@ export function QuotationList() {
       {/* Tabs */}
       <Tabs defaultValue="pending" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="pending">Pending</TabsTrigger>
-          <TabsTrigger value="approved">Approved</TabsTrigger>
-          <TabsTrigger value="rejected">Rejected</TabsTrigger>
+          <TabsTrigger value="pending">Pending ({filteredPending.length})</TabsTrigger>
+          <TabsTrigger value="approved">Approved ({filteredApproved.length})</TabsTrigger>
+          <TabsTrigger value="rejected">Rejected ({filteredRejected.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pending">
           <ul>
-            {pendingQuotations.map((q) => renderQuotationCard(q))}
+            {filteredPending.map((q) => renderQuotationCard(q))}
           </ul>
-          {pendingQuotations.length === 0 && (
+          {filteredPending.length === 0 && (
             <div className="text-gray-500 mt-10 text-center">No pending quotations found.</div>
           )}
         </TabsContent>
 
         <TabsContent value="approved">
           <ul>
-            {approvedQuotations.map((q) => renderQuotationCard(q))}
+            {filteredApproved.map((q) => renderQuotationCard(q))}
           </ul>
-          {approvedQuotations.length === 0 && (
+          {filteredApproved.length === 0 && (
             <div className="text-gray-500 mt-10 text-center">No approved quotations found.</div>
           )}
         </TabsContent>
 
         <TabsContent value="rejected">
           <ul>
-            {rejectedQuotations.map((q) => renderQuotationCard(q))}
+            {filteredRejected.map((q) => renderQuotationCard(q))}
           </ul>
-          {rejectedQuotations.length === 0 && (
+          {filteredRejected.length === 0 && (
             <div className="text-gray-500 mt-10 text-center">No rejected quotations found.</div>
           )}
         </TabsContent>

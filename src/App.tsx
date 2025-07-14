@@ -19,6 +19,8 @@ import Collections from "./pages/Collections";
 import Admin from "./pages/Admin";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Reports from "./pages/Reports";
+import OrderDetails from "./pages/OrderDetails";
+import QuotationDetails from "./pages/QuotationDetails";
 
 const Profile = lazy(() => import("./pages/Profile"));
 
@@ -104,6 +106,16 @@ const App = () => {
               <Route path="/reports" element={
                 <ProtectedRoute>
                   <Reports />
+                </ProtectedRoute>
+              } />
+              <Route path="/orders/:id" element={
+                <ProtectedRoute>
+                  <OrderDetails />
+                </ProtectedRoute>
+              } />
+              <Route path="/quotations/:id" element={
+                <ProtectedRoute>
+                  <QuotationDetails />
                 </ProtectedRoute>
               } />
               <Route path="*" element={<NotFound />} />
