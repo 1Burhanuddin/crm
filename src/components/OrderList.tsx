@@ -31,11 +31,13 @@ import {
   ChevronDown,
   ChevronUp,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Receipt
 } from "lucide-react";
 import { AddOrderModal } from "./AddOrderModal";
 import { EditOrderModal } from "./EditOrderModal";
 import { OrderActionsMenu } from "./OrderActionsMenu";
+import { BillCreateModal } from "./BillCreateModal";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -95,6 +97,44 @@ export function OrderList() {
   const [swipeFeedback, setSwipeFeedback] = useState("");
   const [modalOrder, setModalOrder] = useState<Order | null>(null);
   const [completionAnimation, setCompletionAnimation] = useState<string | null>(null);
+  const [showBillModal, setShowBillModal] = useState(false);
+  const [billOrderData, setBillOrderData] = useState<any>(null);
+  const [collections, setCollections] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (user) {
+      fetchOrders();
+      fetchCustomers();
+      fetchProducts();
+      fetchCollections();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    filterOrders();
+  }, [orders, searchTerm, statusFilter]);
+
+  useEffect(() => {
+    if (isMobile) {
+      setShowSwipeHint(true);
+      const timer = setTimeout(() => setShowSwipeHint(false), 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [isMobile]);
+
+  const fetchCollections = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("collections")
+        .select("*")
+        .eq("user_id", user?.id);
+
+      if (error) throw error;
+      setCollections(data || []);
+    } catch (error) {
+      console.error("Error fetching collections:", error);
+    }
+  };
 
   const handleStatusChange = async (order: Order, newStatus: string) => {
     console.log('handleStatusChange called with:', newStatus, 'current:', order.status);
@@ -140,26 +180,6 @@ export function OrderList() {
       setCompletionAnimation(null);
     }, 1000);
   };
-
-  useEffect(() => {
-    if (user) {
-      fetchOrders();
-      fetchCustomers();
-      fetchProducts();
-    }
-  }, [user]);
-
-  useEffect(() => {
-    filterOrders();
-  }, [orders, searchTerm, statusFilter]);
-
-  useEffect(() => {
-    if (isMobile) {
-      setShowSwipeHint(true);
-      const timer = setTimeout(() => setShowSwipeHint(false), 2500);
-      return () => clearTimeout(timer);
-    }
-  }, [isMobile]);
 
   const fetchOrders = async () => {
     try {
@@ -294,6 +314,34 @@ export function OrderList() {
     }, 0);
   };
 
+  const calculatePendingAmount = (order: Order) => {
+    const orderTotal = calculateOrderTotal(order.products);
+    const collected = collections
+      .filter(c => c.order_id === order.id)
+      .reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+    const pending = orderTotal - order.advance_amount - collected;
+    return Math.max(0, pending);
+  };
+
+  const handleGenerateBill = (order: Order) => {
+    const customer = customers.find(c => c.id === order.customer_id);
+    const orderItems = order.products.map(item => {
+      const product = products.find(p => p.id === item.productId);
+      return {
+        name: product?.name || "Unknown Product",
+        qty: item.qty,
+        price: product?.price || 0
+      };
+    });
+
+    setBillOrderData({
+      customerName: customer?.name || "",
+      customerPhone: customer?.phone || "",
+      items: orderItems
+    });
+    setShowBillModal(true);
+  };
+
   const handleEditOrder = (order: Order) => {
     setSelectedOrder(order);
     setShowEditModal(true);
@@ -342,6 +390,7 @@ export function OrderList() {
     const customerName = getCustomerName(order.customer_id);
     const customerPhone = getCustomerPhone(order.customer_id);
     const orderTotal = calculateOrderTotal(order.products);
+    const pendingAmount = calculatePendingAmount(order);
     const isCompleting = completionAnimation === order.id;
 
     const getProductName = (productId: string) => {
@@ -367,7 +416,6 @@ export function OrderList() {
       trackMouse: false,
       trackTouch: true,
       delta: 10,
-      stopPropagation: false,
     });
 
     return (
@@ -392,7 +440,16 @@ export function OrderList() {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2" style={{ boxShadow: 'none', margin: 0, transform: 'none' }} onClick={e => e.stopPropagation()}>
+              <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleGenerateBill(order)}
+                  className="text-xs"
+                >
+                  <Receipt className="h-3 w-3 mr-1" />
+                  Bill
+                </Button>
                 <OrderActionsMenu
                   onEdit={() => handleEditOrder(order)}
                   onDelete={() => handleDeleteOrder(order)}
@@ -417,6 +474,11 @@ export function OrderList() {
                  {order.advance_amount > 0 && (
                    <div className="text-xs text-gray-500">
                      Advance: ₹{order.advance_amount}
+                   </div>
+                 )}
+                 {pendingAmount > 0 && (
+                   <div className="text-xs text-red-600 font-medium">
+                     Udaar: ₹{pendingAmount}
                    </div>
                  )}
                 {order.status === 'pending' && (
@@ -557,6 +619,16 @@ export function OrderList() {
         />
       )}
 
+      <BillCreateModal
+        open={showBillModal}
+        setOpen={setShowBillModal}
+        onBillCreated={() => {
+          setShowBillModal(false);
+          setBillOrderData(null);
+        }}
+        initialData={billOrderData}
+      />
+
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -582,6 +654,8 @@ export function OrderList() {
           isMobile={isMobile}
           onClose={() => setModalOrder(null)}
           onStatusChange={(newStatus) => handleStatusChange(modalOrder, newStatus)}
+          pendingAmount={calculatePendingAmount(modalOrder)}
+          onGenerateBill={() => handleGenerateBill(modalOrder)}
         />
       )}
     </div>
@@ -677,13 +751,15 @@ function SlideToConfirmButton({ status, onChangeStatus }: { status: string; onCh
   );
 }
 
-function OrderDetailsModal({ order, customers, products, isMobile, onClose, onStatusChange }: {
+function OrderDetailsModal({ order, customers, products, isMobile, onClose, onStatusChange, pendingAmount, onGenerateBill }: {
   order: Order;
   customers: Customer[];
   products: Product[];
   isMobile: boolean;
   onClose: () => void;
   onStatusChange: (newStatus: string) => void;
+  pendingAmount: number;
+  onGenerateBill: () => void;
 }) {
   const getProductName = (productId: string) => products.find(p => p.id === productId)?.name || "Unknown Product";
   const getProductUnit = (productId: string) => products.find(p => p.id === productId)?.unit || "unit";
@@ -712,19 +788,42 @@ function OrderDetailsModal({ order, customers, products, isMobile, onClose, onSt
             ))}
           </ul>
         </div>
-        <div className="mb-4 flex justify-between text-base font-semibold">
-          <span>Total</span>
-          <span>₹{orderTotal.toLocaleString()}</span>
+        <div className="mb-4 space-y-2">
+          <div className="flex justify-between text-base font-semibold">
+            <span>Total</span>
+            <span>₹{orderTotal.toLocaleString()}</span>
+          </div>
+          {order.advance_amount > 0 && (
+            <div className="flex justify-between text-sm text-gray-600">
+              <span>Advance</span>
+              <span>₹{order.advance_amount}</span>
+            </div>
+          )}
+          {pendingAmount > 0 && (
+            <div className="flex justify-between text-sm text-red-600 font-medium">
+              <span>Pending (Udaar)</span>
+              <span>₹{pendingAmount}</span>
+            </div>
+          )}
         </div>
-        {order.advance_amount > 0 && (
-          <div className="mb-2 text-sm text-gray-500">Advance: ₹{order.advance_amount}</div>
-        )}
         {order.site_address && (
           <div className="mb-2 text-sm text-gray-700 break-words">Site: {order.site_address}</div>
         )}
         {order.remarks && (
           <div className="mb-2 text-xs text-gray-600 bg-gray-50 p-2 rounded-md break-words">Remarks: {order.remarks}</div>
         )}
+        
+        <div className="flex gap-2 mb-4">
+          <Button 
+            onClick={onGenerateBill}
+            variant="outline"
+            className="flex-1"
+          >
+            <Receipt className="h-4 w-4 mr-2" />
+            Generate Bill
+          </Button>
+        </div>
+
         {isMobile ? (
           <div className="mt-4">
             <SlideToConfirmButton status={order.status} onChangeStatus={onStatusChange} />

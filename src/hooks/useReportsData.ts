@@ -11,6 +11,7 @@ export interface ReportsData {
   monthSales: number;
   totalCredit: number; // <-- (udhaar after collections)
   ordersPending: number;
+  totalPendingAmount: number; // New field for total pending amount
 }
 
 // Interface for individual products in an order
@@ -76,6 +77,8 @@ export function useReportsData() {
 
       // Only count orders that are fully settled (udhaar == 0)
       let totalSales = 0, daySales = 0, weekSales = 0, monthSales = 0;
+      let totalPendingAmount = 0; // Track total pending amount across all delivered orders
+      
       if (Array.isArray(deliveredOrders)) {
         for (const o of deliveredOrders) {
           // Calculate order total from products array
@@ -90,6 +93,9 @@ export function useReportsData() {
           const advance = Number(o.advance_amount) || 0;
           const collected = collectionsMap[o.id] || 0;
           const udhaar = Math.max(0, orderTotal - advance - collected);
+          
+          // Add to total pending amount regardless of whether it's fully settled
+          totalPendingAmount += udhaar;
           
           if (udhaar === 0) {
             // Use job_date for date filtering
@@ -155,6 +161,7 @@ export function useReportsData() {
         monthSales,
         totalCredit: totalDeliveredCredit,
         ordersPending: ordersPending || 0,
+        totalPendingAmount: Math.round(totalPendingAmount),
       };
     },
   });

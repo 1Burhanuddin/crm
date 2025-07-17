@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format, parseISO, addDays } from "date-fns";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, DollarSign } from "lucide-react";
 import { getDueDateInfo } from "@/utils/dueDateUtils";
 import { cn } from "@/lib/utils";
 import { DashboardCollectionModal } from "./DashboardCollectionModal";
@@ -38,6 +38,7 @@ export function PendingCollectionsTab({
     phone?: string;
   } | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  
   const getCustomerName = (customerId: string) => {
     const customer = customers.find(c => c.id === customerId);
     return customer?.name || "Unknown Customer";
@@ -75,6 +76,8 @@ export function PendingCollectionsTab({
     return acc;
   }, [] as PendingCollection[]);
 
+  const totalPendingAmount = groupedCollections.reduce((sum, collection) => sum + collection.amount, 0);
+
   if (groupedCollections.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
@@ -96,8 +99,14 @@ export function PendingCollectionsTab({
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-bold text-gray-900">Pending Collections</h3>
-          <div className="text-sm text-gray-600">
-            {groupedCollections.length} customer{groupedCollections.length !== 1 ? 's' : ''}
+          <div className="text-right">
+            <div className="text-sm text-gray-600">
+              {groupedCollections.length} customer{groupedCollections.length !== 1 ? 's' : ''}
+            </div>
+            <div className="flex items-center gap-1 text-red-600 font-bold text-lg">
+              <DollarSign className="h-5 w-5" />
+              <span>₹{totalPendingAmount.toLocaleString()}</span>
+            </div>
           </div>
         </div>
         
