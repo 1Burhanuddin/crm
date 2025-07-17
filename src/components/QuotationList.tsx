@@ -1,758 +1,417 @@
-import { useSession } from "@/hooks/useSession";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Quotation, Product, Customer } from "@/constants/types";
-import { Plus, FileText, CheckCircle, XCircle, Share2 } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
-import { toast } from "@/hooks/use-toast";
-import { AddQuotationModal } from "./AddQuotationModal";
-import { QuotationHtmlPreview } from "./QuotationHtmlPreview";
-import React from "react";
+import { useSession } from "@/hooks/useSession";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogClose,
-} from "@/components/ui/dialog";
-import html2pdf from "html2pdf.js";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import { 
+  Search, 
+  Plus, 
+  Calendar, 
+  MapPin, 
+  User, 
+  DollarSign, 
+  Package,
+  PhoneCall,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  XCircle,
+  ChevronDown,
+  FileText,
+  Eye
+} from "lucide-react";
+import { AddQuotationModal } from "./AddQuotationModal";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
-// Helper: fetch customers for current user
-const fetchCustomers = async (user_id: string): Promise<Customer[]> => {
-  const { data, error } = await supabase
-    .from("customers")
-    .select("*")
-    .eq("user_id", user_id)
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return (data || []).map((c) => ({ id: c.id, name: c.name, phone: c.phone }));
-};
+interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+}
 
-// Helper: fetch products for current user
-const fetchProducts = async (user_id?: string): Promise<Product[]> => {
-  let query = supabase
-    .from("products")
-    .select("*")
-    .order("created_at", { ascending: false });
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  unit: string;
+}
 
-  if (user_id) {
-    query = query.eq("user_id", user_id);
-  }
-  const { data, error } = await query;
-  if (error) throw error;
-  return (data || []) as Product[];
-};
-
-// Helper: fetch quotations for current user
-const fetchQuotations = async (user_id: string): Promise<Quotation[]> => {
-  const { data, error } = await supabase
-    .from("quotations")
-    .select("*")
-    .eq("user_id", user_id)
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return (data || []).map((q) => ({
-    id: q.id,
-    customerId: q.customer_id,
-    productId: q.product_id,
-    qty: q.qty,
-    status: q.status as "pending" | "approved" | "rejected",
-    jobDate: q.job_date,
-    assignedTo: q.assigned_to,
-    siteAddress: q.site_address || "",
-    remarks: q.remarks || "",
-    validUntil: q.valid_until || "",
-    terms: q.terms || "",
-    convertedToOrder: q.converted_to_order || false,
-  }));
-};
+interface Quotation {
+  id: string;
+  customer_id: string;
+  product_id: string;
+  qty: number;
+  job_date: string;
+  status: string;
+  site_address?: string | null;
+  remarks?: string | null;
+  assigned_to: string;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+  converted_to_order: boolean;
+}
 
 export function QuotationList() {
   const { user } = useSession();
-  const queryClient = useQueryClient();
-
-  // Modal state
-  const [showAdd, setShowAdd] = useState(false);
-  const [showAdvanceModal, setShowAdvanceModal] = useState(false);
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
-  const [advanceAmount, setAdvanceAmount] = useState("");
-
-  // Expanded quotation state
-  const [expandedQuotationId, setExpandedQuotationId] = useState<string | null>(null);
-
-  // PDF state
-  const [pdfQuotation, setPdfQuotation] = useState<Quotation | null>(null);
-  const [pdfCustomer, setPdfCustomer] = useState<Customer | null>(null);
-  const [pdfProduct, setPdfProduct] = useState<Product | null>(null);
-  const pdfRef = useRef<HTMLDivElement>(null);
-
-  // Profile state for real shop name
-  const [profile, setProfile] = useState<{ shop_name: string | null } | null>(null);
+  const navigate = useNavigate();
+  const [quotations, setQuotations] = useState<Quotation[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [filteredQuotations, setFilteredQuotations] = useState<Quotation[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [modalQuotation, setModalQuotation] = useState<Quotation | null>(null);
 
   useEffect(() => {
-    if (user?.id) {
-      supabase
-        .from("profiles")
-        .select("shop_name")
-        .eq("id", user.id)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) setProfile(data);
-        });
+    if (user) {
+      fetchQuotations();
+      fetchCustomers();
+      fetchProducts();
     }
-  }, [user?.id]);
+  }, [user]);
 
-  // Fetch all required data (quotations, customers, products)
-  const {
-    data: customers = [],
-    isLoading: loadingCustomers,
-    error: customerError,
-  } = useQuery({
-    queryKey: ["customers", user?.id],
-    queryFn: () => fetchCustomers(user?.id ?? ""),
-    enabled: !!user?.id,
-  });
+  useEffect(() => {
+    filterQuotations();
+  }, [quotations, searchTerm]);
 
-  const {
-    data: products = [],
-    isLoading: loadingProducts,
-    error: productError,
-  } = useQuery({
-    queryKey: ["products", user?.id],
-    queryFn: () => fetchProducts(user?.id ?? ""),
-    enabled: !!user?.id,
-  });
-
-  // Fetch quotations
-  const {
-    data: quotations = [],
-    isLoading: loadingQuotations,
-    error: quotationError,
-  } = useQuery({
-    queryKey: ["quotations", user?.id],
-    queryFn: () => fetchQuotations(user?.id ?? ""),
-    enabled: !!user?.id,
-  });
-
-  // Add new quotation
-  const addQuotationMutation = useMutation({
-    mutationFn: async (quotationData: Omit<Quotation, 'id'>) => {
+  const fetchQuotations = async () => {
+    try {
+      setIsLoading(true);
       const { data, error } = await supabase
         .from("quotations")
-        .insert([{
-          user_id: user?.id,
-          customer_id: quotationData.customerId,
-          product_id: quotationData.productId,
-          qty: quotationData.qty,
-          status: quotationData.status,
-          job_date: quotationData.jobDate,
-          assigned_to: quotationData.assignedTo,
-          site_address: quotationData.siteAddress || null,
-          remarks: quotationData.remarks || null,
-          valid_until: quotationData.validUntil || null,
-          terms: quotationData.terms || null,
-          converted_to_order: false,
-        }])
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["quotations", user?.id] });
-      toast({ title: "Quotation Added", description: "New quotation has been added successfully." });
-      setShowAdd(false);
-    },
-    onError: (error: any) => {
-      toast({ 
-        title: "Error", 
-        description: error.message || "Failed to add quotation", 
-        variant: "destructive" 
-      });
-    }
-  });
+        .select("*")
+        .eq("user_id", user?.id)
+        .order("created_at", { ascending: false });
 
-  // Update quotation status mutation
-  const updateQuotationStatusMutation = useMutation({
-    mutationFn: async ({ quotationId, status }: { quotationId: string; status: "approved" | "rejected" }) => {
-      const { error } = await supabase
-        .from("quotations")
-        .update({ status })
-        .eq("id", quotationId)
-        .eq("user_id", user?.id);
       if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["quotations", user?.id] });
-      toast({
-        title: "Status Updated",
-        description: "Quotation status updated successfully.",
-      });
-    },
-    onError: (error: any) => {
+      setQuotations(data || []);
+    } catch (error) {
+      console.error("Error fetching quotations:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to update quotation status",
-        variant: "destructive"
+        description: "Failed to fetch quotations",
+        variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
-  });
+  };
 
-  // Convert quotation to order mutation
-  const convertToOrderMutation = useMutation({
-    mutationFn: async ({ quotation, advanceAmount }: { quotation: Quotation; advanceAmount: number }) => {
-      // Create the order with the new products array format
-      const { error: orderError } = await supabase
-        .from("orders")
-        .insert([{
-          user_id: user?.id,
-          customer_id: quotation.customerId,
-          products: [{
-            productId: quotation.productId,
-            qty: quotation.qty
-          }],
-          job_date: quotation.jobDate,
-          assigned_to: quotation.assignedTo,
-          site_address: quotation.siteAddress || null,
-          status: "pending",
-          advance_amount: advanceAmount,
-        }]);
-
-      if (orderError) throw orderError;
-
-      // Update quotation to mark as converted
-      const { error: quotationError } = await supabase
-        .from("quotations")
-        .update({ 
-          status: "approved",
-          converted_to_order: true 
-        })
-        .eq("id", quotation.id)
+  const fetchCustomers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("customers")
+        .select("*")
         .eq("user_id", user?.id);
 
-      if (quotationError) throw quotationError;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["quotations", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["orders", user?.id] });
-      toast({
-        title: "Order Created",
-        description: "Quotation has been converted to an order successfully.",
-      });
-      setShowAdvanceModal(false);
-      setSelectedQuotation(null);
-      setAdvanceAmount("");
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to convert quotation to order",
-        variant: "destructive"
+      if (error) throw error;
+      setCustomers(data || []);
+    } catch (error) {
+      console.error("Error fetching customers:", error);
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("user_id", user?.id);
+
+      if (error) throw error;
+      setProducts(data || []);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    }
+  };
+
+  const filterQuotations = () => {
+    let filtered = [...quotations];
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(quotation => {
+        const customer = customers.find(c => c.id === quotation.customer_id);
+        const product = products.find(p => p.id === quotation.product_id);
+        return (
+          customer?.name.toLowerCase().includes(term) ||
+          customer?.phone.includes(term) ||
+          product?.name.toLowerCase().includes(term) ||
+          quotation.site_address?.toLowerCase().includes(term) ||
+          quotation.assigned_to?.toLowerCase().includes(term) ||
+          quotation.remarks?.toLowerCase().includes(term)
+        );
       });
     }
-  });
 
-  // Refresh customers function
-  const refreshCustomers = () => {
-    queryClient.invalidateQueries({ queryKey: ["customers", user?.id] });
+    setFilteredQuotations(filtered);
   };
 
-  // Handle quotation status updates
-  const updateQuotationStatus = async (quotationId: string, status: "approved" | "rejected") => {
-    updateQuotationStatusMutation.mutate({ quotationId, status });
+  const getCustomerName = (customerId: string) => {
+    const customer = customers.find(c => c.id === customerId);
+    return customer?.name || "Unknown Customer";
   };
 
-  // Handle convert to order with advance amount
-  const handleConvertToOrder = (quotation: Quotation) => {
-    setSelectedQuotation(quotation);
-    setShowAdvanceModal(true);
+  const getCustomerPhone = (customerId: string) => {
+    const customer = customers.find(c => c.id === customerId);
+    return customer?.phone || "";
   };
 
-  // Confirm convert to order
-  const confirmConvertToOrder = () => {
-    if (!selectedQuotation) return;
-    
-    const advance = parseFloat(advanceAmount) || 0;
-    const product = products.find((p) => p.id === selectedQuotation.productId);
-    const total = product ? product.price * selectedQuotation.qty : 0;
-    
-    if (advance > total) {
-      toast({
-        title: "Invalid Amount",
-        description: "Advance amount cannot exceed total order amount.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    convertToOrderMutation.mutate({ quotation: selectedQuotation, advanceAmount: advance });
+  const getProductName = (productId: string) => {
+    const product = products.find(p => p.id === productId);
+    return product?.name || "Unknown Product";
   };
 
-  // Helper functions
-  function customerName(id: string) {
-    const customer = customers.find((c) => c.id === id);
-    return customer ? customer.name : "Unknown Customer";
-  }
+  const getProductPrice = (productId: string) => {
+    const product = products.find(p => p.id === productId);
+    return product?.price || 0;
+  };
 
-  function productName(id: string) {
-    const product = products.find((p) => p.id === id);
-    return product ? product.name : "Unknown Product";
-  }
+  const calculateQuotationTotal = (quotation: Quotation) => {
+    const productPrice = getProductPrice(quotation.product_id);
+    return productPrice * quotation.qty;
+  };
 
-  function handleAddQuotation(quotationData: Omit<Quotation, 'id'>) {
-    addQuotationMutation.mutate(quotationData);
-  }
+  const getQuotationsByStatus = (status: string) => {
+    return quotations.filter(quotation => quotation.status === status);
+  };
 
-  // Filter quotations by status
-  const pendingQuotations = quotations.filter(q => q.status === "pending");
-  const approvedQuotations = quotations.filter(q => q.status === "approved");
-  const rejectedQuotations = quotations.filter(q => q.status === "rejected");
-
-  // Search state
-  const [searchTerm, setSearchTerm] = useState("");
-
-  // Filter quotations based on search term
-  const filteredPending = pendingQuotations.filter(q =>
-    customerName(q.customerId).toLowerCase().includes(searchTerm.toLowerCase()) ||
-    productName(q.productId).toLowerCase().includes(searchTerm.toLowerCase()) ||
-    q.remarks?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  const filteredApproved = approvedQuotations.filter(q =>
-    customerName(q.customerId).toLowerCase().includes(searchTerm.toLowerCase()) ||
-    productName(q.productId).toLowerCase().includes(searchTerm.toLowerCase()) ||
-    q.remarks?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  const filteredRejected = rejectedQuotations.filter(q =>
-    customerName(q.customerId).toLowerCase().includes(searchTerm.toLowerCase()) ||
-    productName(q.productId).toLowerCase().includes(searchTerm.toLowerCase()) ||
-    q.remarks?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Show loading and error state
-  if (loadingCustomers || loadingProducts || loadingQuotations) {
-    return (
-      <div className="flex items-center justify-center min-h-[200px]">
-        <div className="text-blue-900/70 flex flex-col items-center gap-2">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-900"></div>
-          <span>Loading quotations…</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (customerError || productError || quotationError) {
-    return (
-      <div className="flex items-center justify-center min-h-[200px]">
-        <div className="text-red-600 flex flex-col items-center gap-2">
-          <span className="text-lg">⚠️ Error loading data</span>
-        </div>
-      </div>
-    );
-  }
-
-  // Helper to render a single quotation card
-  function renderQuotationCard(q: Quotation) {
-    const missingCustomer = !customers.find((c) => c.id === q.customerId);
-    const missingProduct = !products.find((p) => p.id === q.productId);
-    const cardError =
-      missingCustomer || missingProduct
-        ? "bg-yellow-50 border-yellow-300"
-        : "bg-white";
-    const isExpanded = expandedQuotationId === q.id;
-    const product = products.find((p) => p.id === q.productId);
-    const total = product ? product.price * q.qty : 0;
+  const QuotationCard = ({ quotation }: { quotation: Quotation }) => {
+    const customerName = getCustomerName(quotation.customer_id);
+    const customerPhone = getCustomerPhone(quotation.customer_id);
+    const productName = getProductName(quotation.product_id);
+    const quotationTotal = calculateQuotationTotal(quotation);
 
     return (
-      <li
-        key={q.id}
-        className={`mb-6 ${cardError} rounded-xl px-0 py-0 shadow-lg border hover:shadow-xl transition-all duration-200 relative cursor-pointer`}
-        onClick={() => setExpandedQuotationId(isExpanded ? null : q.id)}
-      >
-        {/* Card container */}
-        <div className={`rounded-xl bg-white transition-all duration-200 ${isExpanded ? "shadow-2xl border-2 border-blue-200" : "border border-gray-100"} relative`}>
-          {/* Collapsed view */}
-          {!isExpanded && (
-            <div className="px-4 py-3 flex flex-col gap-1 relative">
-              <div className="font-bold text-blue-900 text-base truncate">
-                {customerName(q.customerId)}
-                {missingCustomer && (
-                  <span className="ml-2 text-xs text-yellow-700">(not found)</span>
-                )}
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-700 truncate">
-                  {productName(q.productId)}
-                  {missingProduct && (
-                    <span className="ml-2 text-xs text-yellow-700">(not found)</span>
-                  )}
+      <Card className="hover:shadow-md transition-all duration-200 cursor-pointer group" onClick={() => setModalQuotation(quotation)}>
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <CardTitle className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                {customerName}
+                <ChevronDown className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-all duration-200 group-hover:animate-pulse" />
+              </CardTitle>
+              <div className="flex items-center gap-4 text-sm text-gray-600">
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-4 w-4" />
+                  <span>{format(new Date(quotation.job_date), "MMM dd, yyyy")}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="bg-blue-50 text-blue-800 font-bold text-sm rounded-lg px-2 py-0.5">
-                    ₹{total}
-                  </span>
-                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
-                    q.status === "pending" ? "bg-yellow-100 text-yellow-800" :
-                    q.status === "approved" ? "bg-green-100 text-green-700" :
-                    "bg-red-100 text-red-700"
-                  }`}>
-                    {q.status === "pending" ? "Pending" : q.status === "approved" ? "Approved" : "Rejected"}
-                  </span>
-                  {q.convertedToOrder && (
-                    <span className="bg-purple-100 text-purple-700 text-xs font-semibold rounded-full px-2 py-0.5">
-                      Converted
-                    </span>
-                  )}
+                <div className="flex items-center gap-1">
+                  <PhoneCall className="h-4 w-4" />
+                  <span>{customerPhone}</span>
                 </div>
               </div>
             </div>
-          )}
+          </div>
+        </CardHeader>
 
-          {/* Expanded view */}
-          {isExpanded && (
-            <div className="px-6 py-6 relative">
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <div className="font-bold text-blue-900 text-xl">
-                    {customerName(q.customerId)}
-                    {missingCustomer && (
-                      <span className="ml-2 text-xs text-yellow-700">(not found)</span>
-                    )}
-                  </div>
-                  <div className="text-base text-gray-700 mt-1">
-                    {productName(q.productId)}
-                    {missingProduct && (
-                      <span className="ml-2 text-xs text-yellow-700">(not found)</span>
-                    )}
-                  </div>
-                </div>
-                {/* Top right icon buttons */}
-                <div className="flex gap-2">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={e => {
-                      e.stopPropagation();
-                      setSelectedQuotation(q);
-                      setShowPreviewModal(true);
-                    }}
-                    className="rounded-full bg-blue-100 hover:bg-blue-200 text-blue-700"
-                    aria-label="Preview"
-                  >
-                    <FileText size={20} />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={async e => {
-                      e.stopPropagation();
-                      // Prepare data for PDF
-                      const customer = customers.find(c => c.id === q.customerId);
-                      const product = products.find(p => p.id === q.productId);
-                      setPdfQuotation(q);
-                      setPdfCustomer(customer || null);
-                      setPdfProduct(product || null);
-                      setTimeout(() => {
-                        if (pdfRef.current) {
-                          html2pdf()
-                            .set({
-                              margin: 0.5,
-                              filename: `Quotation_${q.id.slice(0,8)}.pdf`,
-                              html2canvas: { scale: 2 },
-                              jsPDF: { unit: "in", format: "a4", orientation: "portrait" }
-                            })
-                            .from(pdfRef.current)
-                            .save();
-                        }
-                      }, 100);
-                    }}
-                    className="rounded-full bg-green-100 hover:bg-green-200 text-green-700"
-                    aria-label="Share PDF"
-                  >
-                    <Share2 size={20} />
-                  </Button>
-                </div>
+        <CardContent className="pt-0">
+          <div className="flex items-center justify-between text-sm pt-2 border-t">
+            <div className="flex items-center gap-2">
+              <Package className="h-4 w-4 text-gray-500" />
+              <span className="text-gray-600">{productName}</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1 text-green-600 font-medium">
+                <DollarSign className="h-4 w-4" />
+                <span>₹{quotationTotal.toLocaleString()}</span>
               </div>
-
-              <div className="flex gap-2 mb-4 mt-2">
-                <span className={`text-xs px-3 py-1 rounded-full font-semibold ${
-                  q.status === "pending" ? "bg-yellow-200 text-yellow-900" :
-                  q.status === "approved" ? "bg-green-200 text-green-900" :
-                  "bg-red-200 text-red-900"
-                }`}>
-                  {q.status === "pending" ? "Pending" : q.status === "approved" ? "Approved" : "Rejected"}
-                </span>
-                {q.convertedToOrder && (
-                  <span className="bg-purple-200 text-purple-900 text-xs px-3 py-1 rounded-full font-semibold">
-                    Converted to Order
-                  </span>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="flex flex-col gap-2 bg-blue-50 rounded-lg p-4">
-                  <span className="text-xs text-gray-500">Total</span>
-                  <span className="text-blue-900 font-bold text-lg">₹{total}</span>
-                </div>
-                <div className="flex flex-col gap-2 bg-gray-50 rounded-lg p-4">
-                  <span className="text-xs text-gray-500">Quantity</span>
-                  <span className="text-gray-700 font-bold text-lg">{q.qty}</span>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3 mb-4">
-                <span className="text-sm bg-gray-100 px-3 py-1.5 rounded-lg font-medium">
-                  Qty: {q.qty}
-                </span>
-                {q.assignedTo && (
-                  <span className="text-sm text-gray-700 font-medium">
-                    Assigned to: {q.assignedTo}
-                  </span>
-                )}
-                <span className="text-gray-500 text-sm">Job: {q.jobDate}</span>
-              </div>
-
-              {q.siteAddress && (
-                <div className="mb-4">
-                  <span className="text-sm text-gray-500">Site Address:</span>
-                  <div className="text-sm text-gray-700 mt-1">{q.siteAddress}</div>
-                </div>
+              {quotation.status === 'pending' && (
+                <span className="ml-2 px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 text-xs font-semibold">Pending</span>
               )}
-
-              {q.remarks && (
-                <div className="mb-4">
-                  <span className="text-sm text-gray-500">Remarks:</span>
-                  <div className="text-sm text-gray-700 mt-1">{q.remarks}</div>
-                </div>
-              )}
-
-              {/* Action buttons (bottom) */}
-              {q.status === "pending" && (
-                <div className="flex flex-col sm:flex-row gap-2 mt-6 w-full">
-                  <Button
-                    onClick={e => {
-                      e.stopPropagation();
-                      updateQuotationStatus(q.id, "approved");
-                    }}
-                    className="w-full sm:w-auto sm:flex-1 h-12 text-center bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center justify-center gap-2 text-base font-semibold"
-                  >
-                    <CheckCircle size={18} />
-                    Approve
-                  </Button>
-                  <Button
-                    onClick={e => {
-                      e.stopPropagation();
-                      updateQuotationStatus(q.id, "rejected");
-                    }}
-                    className="w-full sm:w-auto sm:flex-1 h-12 text-center bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center justify-center gap-2 text-base font-semibold"
-                  >
-                    <XCircle size={18} />
-                    Reject
-                  </Button>
-                </div>
-              )}
-              {q.status === "approved" && !q.convertedToOrder && (
-                <div className="flex mt-6">
-                  <Button
-                    onClick={e => {
-                      e.stopPropagation();
-                      handleConvertToOrder(q);
-                    }}
-                    className="w-full sm:w-auto sm:flex-1 h-12 text-center bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center justify-center gap-2 text-base font-semibold"
-                  >
-                    <Plus size={18} />
-                    Convert to Order
-                  </Button>
-                </div>
+              {quotation.converted_to_order && (
+                <span className="ml-2 px-3 py-1 rounded-full bg-green-100 text-green-800 text-xs font-semibold">Converted</span>
               )}
             </div>
-          )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+          <p className="text-gray-600">Loading quotations...</p>
         </div>
-      </li>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Search Bar */}
+    <div className="space-y-6 overflow-x-hidden w-full max-w-full">
+      {/* Search and Add Quotation Button */}
       <div className="flex flex-col sm:flex-row gap-4 mb-2">
         <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
-            placeholder="Search by customer, product, remarks..."
+            placeholder="Search by customer, phone, product..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
           />
-          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-            <FileText className="h-4 w-4" />
-          </span>
         </div>
-        <Button
-          onClick={() => setShowAdd(true)}
-          className="bg-blue-600 text-white px-6 py-2.5 rounded-xl flex items-center gap-2 text-base font-semibold hover:bg-blue-700 transition-all shadow-sm"
-        >
-          <Plus size={20} />
+        <Button onClick={() => setShowAddModal(true)} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl flex items-center gap-2 text-base font-semibold hover:bg-blue-700 transition-all shadow-sm">
+          <Plus className="h-4 w-4" />
           Add Quotation
         </Button>
       </div>
 
-      {/* Tabs */}
+      {/* Quotations Tabs */}
       <Tabs defaultValue="pending" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="pending">Pending ({filteredPending.length})</TabsTrigger>
-          <TabsTrigger value="approved">Approved ({filteredApproved.length})</TabsTrigger>
-          <TabsTrigger value="rejected">Rejected ({filteredRejected.length})</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="pending">
+            Pending ({getQuotationsByStatus("pending").length})
+          </TabsTrigger>
+          <TabsTrigger value="converted">
+            Converted ({quotations.filter(q => q.converted_to_order).length})
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="pending">
-          <ul>
-            {filteredPending.map((q) => renderQuotationCard(q))}
-          </ul>
-          {filteredPending.length === 0 && (
-            <div className="text-gray-500 mt-10 text-center">No pending quotations found.</div>
+        <TabsContent value="pending" className="mt-6">
+          {getQuotationsByStatus("pending").length === 0 ? (
+            <div className="text-center py-12">
+              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No pending quotations
+              </h3>
+              <p className="text-gray-500">
+                Quotations with pending status will appear here
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+              {getQuotationsByStatus("pending").map((quotation) => (
+                <QuotationCard key={quotation.id} quotation={quotation} />
+              ))}
+            </div>
           )}
         </TabsContent>
 
-        <TabsContent value="approved">
-          <ul>
-            {filteredApproved.map((q) => renderQuotationCard(q))}
-          </ul>
-          {filteredApproved.length === 0 && (
-            <div className="text-gray-500 mt-10 text-center">No approved quotations found.</div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="rejected">
-          <ul>
-            {filteredRejected.map((q) => renderQuotationCard(q))}
-          </ul>
-          {filteredRejected.length === 0 && (
-            <div className="text-gray-500 mt-10 text-center">No rejected quotations found.</div>
+        <TabsContent value="converted" className="mt-6">
+          {quotations.filter(q => q.converted_to_order).length === 0 ? (
+            <div className="text-center py-12">
+              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No converted quotations
+              </h3>
+              <p className="text-gray-500">
+                Quotations converted to orders will appear here
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+              {quotations.filter(q => q.converted_to_order).map((quotation) => (
+                <QuotationCard key={quotation.id} quotation={quotation} />
+              ))}
+            </div>
           )}
         </TabsContent>
       </Tabs>
 
-      {/* Modals */}
+      {/* Add Modal */}
       <AddQuotationModal
-        open={showAdd}
-        onOpenChange={setShowAdd}
-        onAdd={handleAddQuotation}
+        open={showAddModal}
+        onOpenChange={setShowAddModal}
+        onAdd={() => fetchQuotations()}
         customers={customers}
         products={products}
-        refreshCustomers={refreshCustomers}
+        refreshCustomers={fetchCustomers}
       />
 
-      {/* Advance Amount Modal */}
-      <Dialog open={showAdvanceModal} onOpenChange={setShowAdvanceModal}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Convert to Order</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 pt-2">
-            {selectedQuotation && (
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="text-sm text-gray-600 mb-2">Quotation Details:</div>
-                <div className="text-sm">
-                  <div><strong>Customer:</strong> {customerName(selectedQuotation.customerId)}</div>
-                  <div><strong>Product:</strong> {productName(selectedQuotation.productId)}</div>
-                  <div><strong>Quantity:</strong> {selectedQuotation.qty}</div>
-                  <div><strong>Total:</strong> ₹{products.find(p => p.id === selectedQuotation.productId)?.price * selectedQuotation.qty || 0}</div>
-                </div>
-              </div>
-            )}
-            <div>
-              <label className="block text-sm font-medium mb-2">Advance Amount (₹)</label>
-              <Input
-                type="number"
-                placeholder="Enter advance amount"
-                value={advanceAmount}
-                onChange={(e) => setAdvanceAmount(e.target.value)}
-                min="0"
-                max={selectedQuotation ? (products.find(p => p.id === selectedQuotation.productId)?.price * selectedQuotation.qty || 0) : 0}
-                className="w-full"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Leave empty or enter 0 for no advance payment
-              </p>
+      {/* Quotation Details Modal */}
+      {modalQuotation && (
+        <QuotationDetailsModal
+          quotation={modalQuotation}
+          customers={customers}
+          products={products}
+          onClose={() => setModalQuotation(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function QuotationDetailsModal({ quotation, customers, products, onClose }: {
+  quotation: Quotation;
+  customers: Customer[];
+  products: Product[];
+  onClose: () => void;
+}) {
+  const customer = customers.find(c => c.id === quotation.customer_id);
+  const product = products.find(p => p.id === quotation.product_id);
+  const quotationTotal = product ? product.price * quotation.qty : 0;
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="w-full max-w-lg rounded-2xl p-5 shadow-2xl">
+        <div className="mb-4 break-words">
+          <h2 className="text-xl font-bold mb-1 break-words">{customer?.name || "Unknown Customer"}</h2>
+          <div className="text-sm text-gray-600 mb-2 break-words">{quotation.job_date} | {customer?.phone}</div>
+          <div className="text-xs text-gray-500 mb-2 break-words">Quotation ID: {quotation.id}</div>
+        </div>
+        
+        <div className="mb-4">
+          <h4 className="font-semibold mb-2">Product Details</h4>
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <div className="flex justify-between items-center">
+              <span className="font-medium">{product?.name || "Unknown Product"}</span>
+              <span className="text-sm text-gray-600">Qty: {quotation.qty} {product?.unit || "units"}</span>
+            </div>
+            <div className="flex justify-between items-center mt-2">
+              <span className="text-sm text-gray-600">Unit Price: ₹{product?.price || 0}</span>
+              <span className="font-medium">₹{quotationTotal.toLocaleString()}</span>
             </div>
           </div>
-          <DialogFooter className="gap-2 pt-2">
-            <DialogClose asChild>
-              <Button type="button" variant="outline">
-                Cancel
-              </Button>
-            </DialogClose>
-            <Button
-              type="button"
-              onClick={confirmConvertToOrder}
-              disabled={convertToOrderMutation.isPending}
-            >
-              {convertToOrderMutation.isPending ? "Converting..." : "Convert to Order"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
 
-      {/* Preview Modal */}
-      <Dialog open={showPreviewModal} onOpenChange={setShowPreviewModal}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Quotation Preview</DialogTitle>
-          </DialogHeader>
-          <div className="pt-4" id="printable-quotation">
-            {selectedQuotation && (
-              <QuotationHtmlPreview
-                quotation={selectedQuotation}
-                customer={customers.find(c => c.id === selectedQuotation.customerId) || { id: '', name: 'Unknown Customer', phone: '' }}
-                product={products.find(p => p.id === selectedQuotation.productId) || { id: '', name: 'Unknown Product', price: 0, unit: '' }}
-                userName={user?.user_metadata?.full_name || 'User'}
-                shopName={profile?.shop_name || 'Company Name'}
-              />
-            )}
-          </div>
-          <DialogFooter className="pt-4 sm:justify-between">
-            <Button 
-              type="button" 
-              onClick={() => {
-                const printContents = document.getElementById('printable-quotation')?.innerHTML;
-                const originalContents = document.body.innerHTML;
-                if (printContents) {
-                  document.body.innerHTML = printContents;
-                  window.print();
-                  document.body.innerHTML = originalContents;
-                  window.location.reload(); // Reload to restore event listeners
-                }
-              }}
-            >
-              Print
-            </Button>
-            <DialogClose asChild>
-              <Button type="button" variant="outline">
-                Close Preview
-              </Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        <div className="mb-4 flex justify-between text-base font-semibold">
+          <span>Total</span>
+          <span>₹{quotationTotal.toLocaleString()}</span>
+        </div>
 
-      {/* Hidden PDF preview for html2pdf */}
-      <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
-        {pdfQuotation && pdfCustomer && pdfProduct && (
-          <div ref={pdfRef}>
-            <QuotationHtmlPreview
-              quotation={pdfQuotation}
-              customer={pdfCustomer}
-              product={pdfProduct}
-              userName={user?.user_metadata?.full_name || 'User'}
-              shopName={profile?.shop_name || 'Company Name'}
-            />
+        {quotation.assigned_to && (
+          <div className="mb-2 text-sm text-gray-700 break-words">
+            <span className="font-medium">Assigned to:</span> {quotation.assigned_to}
           </div>
         )}
-      </div>
-    </div>
+
+        {quotation.site_address && (
+          <div className="mb-2 text-sm text-gray-700 break-words">
+            <span className="font-medium">Site:</span> {quotation.site_address}
+          </div>
+        )}
+
+        {quotation.remarks && (
+          <div className="mb-2 text-xs text-gray-600 bg-gray-50 p-2 rounded-md break-words">
+            <span className="font-medium">Remarks:</span> {quotation.remarks}
+          </div>
+        )}
+
+        <div className="mt-4 flex justify-center">
+          <Button
+            onClick={() => {
+              // Navigate to quotation details page
+              window.open(`/quotations/${quotation.id}`, '_blank');
+            }}
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700"
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            View Details
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

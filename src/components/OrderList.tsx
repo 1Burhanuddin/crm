@@ -94,10 +94,15 @@ export function OrderList() {
   const [showSwipeHint, setShowSwipeHint] = useState(isMobile);
   const [swipeFeedback, setSwipeFeedback] = useState("");
   const [modalOrder, setModalOrder] = useState<Order | null>(null);
+  const [completionAnimation, setCompletionAnimation] = useState<string | null>(null);
 
-  // Move handleStatusChange here so it is available to OrderCard and OrderDetailsModal
   const handleStatusChange = async (order: Order, newStatus: string) => {
     console.log('handleStatusChange called with:', newStatus, 'current:', order.status);
+    
+    if (newStatus === "delivered") {
+      setCompletionAnimation(order.id);
+    }
+    
     try {
       const { error } = await supabase
         .from("orders")
@@ -111,7 +116,13 @@ export function OrderList() {
         description: `Order marked as ${newStatus}`,
       });
 
-      fetchOrders(); // Force UI refresh after status change
+      if (newStatus === "delivered" && modalOrder?.id === order.id) {
+        setTimeout(() => {
+          setModalOrder(null);
+        }, 800);
+      }
+
+      fetchOrders();
     } catch (error) {
       console.error("Error updating order status:", error);
       toast({
@@ -120,9 +131,14 @@ export function OrderList() {
         variant: "destructive",
       });
     }
+    
     if (isMobile) {
       setSwipeFeedback(newStatus === "delivered" ? "bg-green-100" : "bg-yellow-100");
     }
+    
+    setTimeout(() => {
+      setCompletionAnimation(null);
+    }, 1000);
   };
 
   useEffect(() => {
@@ -156,7 +172,6 @@ export function OrderList() {
 
       if (error) throw error;
       
-      // Transform the data to match our Order interface  
       const transformedOrders: Order[] = (data || []).map(order => ({
         ...order,
         products: Array.isArray(order.products) 
@@ -327,6 +342,7 @@ export function OrderList() {
     const customerName = getCustomerName(order.customer_id);
     const customerPhone = getCustomerPhone(order.customer_id);
     const orderTotal = calculateOrderTotal(order.products);
+    const isCompleting = completionAnimation === order.id;
 
     const getProductName = (productId: string) => {
       const product = products.find(p => p.id === productId);
@@ -341,7 +357,6 @@ export function OrderList() {
       return product?.price || 0;
     };
 
-    // Swipe handlers for mobile (no expand/collapse)
     const swipeHandlers = useSwipeable({
       onSwipedRight: (eventData) => {
         if (order.status !== "delivered") handleStatusChange(order, "delivered");
@@ -356,15 +371,15 @@ export function OrderList() {
     });
 
     return (
-      <div {...(isMobile ? swipeHandlers : {})} className={`relative transition-colors duration-300 ${swipeFeedback}`}
+      <div {...(isMobile ? swipeHandlers : {})} className={`relative transition-all duration-500 ${swipeFeedback} ${isCompleting ? 'animate-pulse bg-green-50 shadow-lg' : ''}`}
         style={{ touchAction: isMobile ? 'pan-y' : undefined }}>
-        {/* Card content */}
-        <Card className="hover:shadow-md transition-all duration-200 cursor-pointer" onClick={() => setModalOrder(order)}>
+        <Card className={`hover:shadow-md transition-all duration-200 cursor-pointer group ${isCompleting ? 'border-green-300 shadow-md' : ''}`} onClick={() => setModalOrder(order)}>
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <CardTitle className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
                   {customerName}
+                  <ChevronDown className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-all duration-200 group-hover:animate-pulse" />
                 </CardTitle>
                 <div className="flex items-center gap-4 text-sm text-gray-600">
                   <div className="flex items-center gap-1">
@@ -377,7 +392,6 @@ export function OrderList() {
                   </div>
                 </div>
               </div>
-              {/* No status control or segmented control here */}
               <div className="flex items-center gap-2" style={{ boxShadow: 'none', margin: 0, transform: 'none' }} onClick={e => e.stopPropagation()}>
                 <OrderActionsMenu
                   onEdit={() => handleEditOrder(order)}
@@ -429,7 +443,6 @@ export function OrderList() {
 
   return (
     <div className="space-y-6 overflow-x-hidden w-full max-w-full">
-      {/* Search and Add Order Button */}
       <div className="flex flex-col sm:flex-row gap-4 mb-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -446,7 +459,6 @@ export function OrderList() {
         </Button>
       </div>
 
-      {/* Orders Tabs */}
       <Tabs defaultValue="pending" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="pending">
@@ -524,7 +536,6 @@ export function OrderList() {
         </TabsContent>
       </Tabs>
 
-      {/* Modals */}
       <AddOrderModal
         open={showAddModal}
         onOpenChange={setShowAddModal}
@@ -589,7 +600,6 @@ function SlideToConfirmButton({ status, onChangeStatus }: { status: string; onCh
   const [confirmed, setConfirmed] = useState(false);
   const trackRef = useRef<HTMLDivElement>(null);
 
-  // Responsive: get actual width of track
   const [trackWidth, setTrackWidth] = useState(0);
   useEffect(() => {
     if (trackRef.current) {
@@ -613,7 +623,7 @@ function SlideToConfirmButton({ status, onChangeStatus }: { status: string; onCh
     const trackRect = trackRef.current?.getBoundingClientRect();
     if (!trackRect) return;
     let x = touch.clientX - trackRect.left;
-    x = Math.max(0, Math.min(x, trackWidth - 48)); // 48px handle width
+    x = Math.max(0, Math.min(x, trackWidth - 48));
     setDragX(x);
   }
   function onTouchEnd() {
@@ -624,7 +634,7 @@ function SlideToConfirmButton({ status, onChangeStatus }: { status: string; onCh
         setDragX(0);
         setConfirmed(false);
         onChangeStatus(nextStatus);
-      }, 300);
+      }, 500);
     } else {
       setDragX(0);
     }
@@ -634,29 +644,26 @@ function SlideToConfirmButton({ status, onChangeStatus }: { status: string; onCh
     <div className="w-full flex flex-col items-center">
       <div
         ref={trackRef}
-        className={`relative w-full max-w-xs h-12 rounded-full overflow-hidden select-none ${buttonClass} transition-colors duration-200`}
+        className={`relative w-full max-w-xs h-12 rounded-full overflow-hidden select-none ${buttonClass} transition-all duration-300`}
         style={{ background: isPending ? '#22c55e22' : '#fde047cc' }}
       >
-        {/* Fill background as you drag */}
         <div
           className="absolute top-0 left-0 h-full rounded-full transition-all duration-200"
           style={{
-            width: `${dragX + 48}px`, // fill matches handle
+            width: `${dragX + 48}px`,
             background: isPending ? '#22c55e' : '#fde047',
             opacity: 0.3,
             zIndex: 1,
           }}
         />
-        {/* Text */}
         <div
-          className="absolute inset-0 flex items-center justify-center text-base font-semibold pointer-events-none"
+          className="absolute inset-0 flex items-center justify-center text-base font-semibold pointer-events-none transition-all duration-300"
           style={{ color: isPending ? '#22c55e' : '#b45309', opacity: confirmed ? 0.5 : 1 }}
         >
           {confirmed ? (isPending ? 'Completed!' : 'Marked Pending!') : buttonText}
         </div>
-        {/* Draggable handle */}
         <div
-          className={`absolute top-1 left-1 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center z-10 active:scale-95 transition-transform duration-100 border border-gray-200`}
+          className={`absolute top-1 left-1 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center z-10 active:scale-95 transition-all duration-200 border border-gray-200`}
           style={{ transform: `translateX(${dragX}px)` }}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
@@ -718,7 +725,6 @@ function OrderDetailsModal({ order, customers, products, isMobile, onClose, onSt
         {order.remarks && (
           <div className="mb-2 text-xs text-gray-600 bg-gray-50 p-2 rounded-md break-words">Remarks: {order.remarks}</div>
         )}
-        {/* Status control */}
         {isMobile ? (
           <div className="mt-4">
             <SlideToConfirmButton status={order.status} onChangeStatus={onStatusChange} />
@@ -726,9 +732,9 @@ function OrderDetailsModal({ order, customers, products, isMobile, onClose, onSt
         ) : (
           <div className="mt-4 flex justify-center">
             {order.status === "pending" ? (
-              <Button className="bg-green-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-700" onClick={() => onStatusChange("delivered")}> <CheckCircle className="h-4 w-4 mr-2" /> Mark as Completed </Button>
+              <Button className="bg-green-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-700 transition-all duration-200" onClick={() => onStatusChange("delivered")}> <CheckCircle className="h-4 w-4 mr-2" /> Mark as Completed </Button>
             ) : (
-              <Button className="bg-yellow-400 text-yellow-900 px-6 py-2 rounded-lg font-semibold hover:bg-yellow-500" onClick={() => onStatusChange("pending")}> <Clock className="h-4 w-4 mr-2" /> Mark as Pending </Button>
+              <Button className="bg-yellow-400 text-yellow-900 px-6 py-2 rounded-lg font-semibold hover:bg-yellow-500 transition-all duration-200" onClick={() => onStatusChange("pending")}> <Clock className="h-4 w-4 mr-2" /> Mark as Pending </Button>
             )}
           </div>
         )}
