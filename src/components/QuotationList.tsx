@@ -25,10 +25,15 @@ import {
   XCircle,
   ChevronDown,
   FileText,
-  Eye
+  Eye,
+  Printer,
+  Check,
+  X
 } from "lucide-react";
 import { AddQuotationModal } from "./AddQuotationModal";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { QuotationHtmlPreview } from "./QuotationHtmlPreview";
+import html2pdf from "html2pdf.js";
 
 interface Customer {
   id: string;
@@ -70,12 +75,15 @@ export function QuotationList() {
   const [isLoading, setIsLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [modalQuotation, setModalQuotation] = useState<Quotation | null>(null);
+  const [previewQuotation, setPreviewQuotation] = useState<Quotation | null>(null);
+  const [profile, setProfile] = useState<{ name: string | null; shop_name: string | null }>({ name: null, shop_name: null });
 
   useEffect(() => {
     if (user) {
       fetchQuotations();
       fetchCustomers();
       fetchProducts();
+      fetchProfile();
     }
   }, [user]);
 
@@ -134,6 +142,22 @@ export function QuotationList() {
     }
   };
 
+  const fetchProfile = async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("name, shop_name")
+        .eq("id", user.id)
+        .single();
+      if (!error && data) {
+        setProfile({ name: data.name, shop_name: data.shop_name });
+      }
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+    }
+  };
+
   const filterQuotations = () => {
     let filtered = [...quotations];
 
@@ -183,6 +207,156 @@ export function QuotationList() {
 
   const getQuotationsByStatus = (status: string) => {
     return quotations.filter(quotation => quotation.status === status);
+  };
+
+  const handleApproveQuotation = async (quotationId: string) => {
+    try {
+      const { error } = await supabase
+        .from("quotations")
+        .update({ status: "approved" })
+        .eq("id", quotationId);
+
+      if (error) throw error;
+      
+      toast({
+        title: "Success",
+        description: "Quotation approved successfully",
+      });
+      
+      fetchQuotations();
+    } catch (error) {
+      console.error("Error approving quotation:", error);
+      toast({
+        title: "Error",
+        description: "Failed to approve quotation",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRejectQuotation = async (quotationId: string) => {
+    try {
+      const { error } = await supabase
+        .from("quotations")
+        .update({ status: "rejected" })
+        .eq("id", quotationId);
+
+      if (error) throw error;
+      
+      toast({
+        title: "Success",
+        description: "Quotation rejected successfully",
+      });
+      
+      fetchQuotations();
+    } catch (error) {
+      console.error("Error rejecting quotation:", error);
+      toast({
+        title: "Error",
+        description: "Failed to reject quotation",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handlePreviewQuotation = (quotation: Quotation) => {
+    setPreviewQuotation(quotation);
+  };
+
+  const handlePrintQuotation = async (quotation: Quotation) => {
+    const customer = customers.find(c => c.id === quotation.customer_id);
+    const product = products.find(p => p.id === quotation.product_id);
+    
+    if (!customer || !product) {
+      toast({
+        title: "Error",
+        description: "Unable to find customer or product details",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Create a temporary div for PDF generation
+    const tempDiv = document.createElement('div');
+    tempDiv.style.position = 'absolute';
+    tempDiv.style.left = '-9999px';
+    tempDiv.style.top = '0';
+    document.body.appendChild(tempDiv);
+
+    // Render the QuotationHtmlPreview component content
+    tempDiv.innerHTML = `
+      <div style="background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #0001; padding: 24px; max-width: 500px; margin: 0 auto; font-family: Inter, Arial, sans-serif; color: #222;">
+        <div style="text-align: center; margin-bottom: 8px;">
+          <div style="font-size: 22px; font-weight: 700; text-transform: uppercase;">${profile.shop_name || 'Shop Name'}</div>
+          <div style="font-size: 13px; color: #666; margin-bottom: 2px;">QUOTATION</div>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+          <div>
+            <div style="font-weight: 600;">Buyer:</div>
+            <div>${customer.name}</div>
+            ${customer.phone ? `<div style="font-size: 13px; color: #555;">Phone: ${customer.phone}</div>` : ''}
+          </div>
+          <div style="text-align: right; font-size: 13px;">
+            <div>Quotation No: <span style="font-family: monospace;">${quotation.id.slice(0, 8).toUpperCase()}</span></div>
+            <div>Date: ${new Date().toLocaleDateString()}</div>
+          </div>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
+          <thead>
+            <tr style="background: #f5f5f5;">
+              <th style="text-align: left; padding: 6px; border: 1px solid #eee;">Item</th>
+              <th style="text-align: center; padding: 6px; border: 1px solid #eee;">Qty</th>
+              <th style="text-align: right; padding: 6px; border: 1px solid #eee;">Price</th>
+              <th style="text-align: right; padding: 6px; border: 1px solid #eee;">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding: 6px; border: 1px solid #eee;">${product.name}</td>
+              <td style="text-align: center; padding: 6px; border: 1px solid #eee;">${quotation.qty}</td>
+              <td style="text-align: right; padding: 6px; border: 1px solid #eee;">₹${product.price.toLocaleString()}</td>
+              <td style="text-align: right; padding: 6px; border: 1px solid #eee;">₹${(product.price * quotation.qty).toLocaleString()}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="display: flex; justify-content: flex-end; align-items: center; font-weight: 600; font-size: 16px;">
+          Total: <span style="margin-left: 12px; font-weight: 700; color: #1976d2;">₹${(product.price * quotation.qty).toLocaleString()}</span>
+        </div>
+        <div style="margin-top: 18px; font-size: 12px; color: #666; font-style: italic;">
+          Terms: This quotation is valid for 30 days.
+        </div>
+        <div style="margin-top: 18px; text-align: right; font-size: 13px;">
+          <div style="font-weight: 600;">For ${profile.shop_name || 'Shop Name'}</div>
+        </div>
+      </div>
+    `;
+
+    try {
+      await html2pdf()
+        .set({
+          margin: 0.5,
+          filename: `Quotation_${quotation.id.slice(0, 8)}.pdf`,
+          html2canvas: { scale: 2 },
+          jsPDF: { unit: "in", format: "a4", orientation: "portrait" }
+        })
+        .from(tempDiv)
+        .save();
+
+      toast({
+        title: "Success",
+        description: "Quotation PDF downloaded successfully",
+      });
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate PDF",
+        variant: "destructive",
+      });
+    } finally {
+      // Clean up
+      document.body.removeChild(tempDiv);
+    }
   };
 
   const QuotationCard = ({ quotation }: { quotation: Quotation }) => {
@@ -296,7 +470,7 @@ export function QuotationList() {
           ) : (
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               {getQuotationsByStatus("pending").map((quotation) => (
-                <QuotationCard key={quotation.id} quotation={quotation} />
+                <PendingQuotationCard key={quotation.id} quotation={quotation} />
               ))}
             </div>
           )}
@@ -362,8 +536,153 @@ export function QuotationList() {
           onClose={() => setModalQuotation(null)}
         />
       )}
+
+      {/* Preview Modal */}
+      {previewQuotation && (
+        <Dialog open onOpenChange={() => setPreviewQuotation(null)}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold">Quotation Preview</h2>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => window.print()}
+                  className="flex items-center gap-2"
+                >
+                  <Printer className="h-4 w-4" />
+                  Print
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handlePrintQuotation(previewQuotation)}
+                  className="flex items-center gap-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  Download PDF
+                </Button>
+              </div>
+            </div>
+            {(() => {
+              const customer = customers.find(c => c.id === previewQuotation.customer_id);
+              const product = products.find(p => p.id === previewQuotation.product_id);
+              if (customer && product) {
+                return (
+                  <QuotationHtmlPreview
+                    quotation={previewQuotation}
+                    customer={customer}
+                    product={product}
+                    userName={profile.name || ""}
+                    shopName={profile.shop_name || ""}
+                  />
+                );
+              }
+              return <div>Unable to load quotation details</div>;
+            })()}
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
+
+  // New component for pending quotations with approve/reject buttons
+  const PendingQuotationCard = ({ quotation }: { quotation: Quotation }) => {
+    const customerName = getCustomerName(quotation.customer_id);
+    const customerPhone = getCustomerPhone(quotation.customer_id);
+    const productName = getProductName(quotation.product_id);
+    const quotationTotal = calculateQuotationTotal(quotation);
+
+    return (
+      <Card className="hover:shadow-md transition-all duration-200">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <CardTitle className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                {customerName}
+              </CardTitle>
+              <div className="flex items-center gap-4 text-sm text-gray-600">
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-4 w-4" />
+                  <span>{format(new Date(quotation.job_date), "MMM dd, yyyy")}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <PhoneCall className="h-4 w-4" />
+                  <span>{customerPhone}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="pt-0">
+          <div className="flex items-center justify-between text-sm pt-2 border-t mb-4">
+            <div className="flex items-center gap-2">
+              <Package className="h-4 w-4 text-gray-500" />
+              <span className="text-gray-600">{productName}</span>
+            </div>
+            <div className="flex items-center gap-1 text-green-600 font-medium">
+              <DollarSign className="h-4 w-4" />
+              <span>₹{quotationTotal.toLocaleString()}</span>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-2 mb-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePreviewQuotation(quotation);
+              }}
+              className="flex-1"
+            >
+              <Eye className="h-4 w-4 mr-1" />
+              Preview
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePrintQuotation(quotation);
+              }}
+              className="flex-1"
+            >
+              <Printer className="h-4 w-4 mr-1" />
+              Print
+            </Button>
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleApproveQuotation(quotation.id);
+              }}
+              className="flex-1 bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+            >
+              <Check className="h-4 w-4 mr-1" />
+              Approve
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRejectQuotation(quotation.id);
+              }}
+              className="flex-1 bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+            >
+              <X className="h-4 w-4 mr-1" />
+              Reject
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
 }
 
 function QuotationDetailsModal({ quotation, customers, products, onClose }: {

@@ -1,6 +1,34 @@
 import React from "react";
-import { Quotation, Customer, Product } from "../constants/types";
 import { amountInWords } from "../utils/amountInWords";
+
+interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  unit: string;
+}
+
+interface Quotation {
+  id: string;
+  customer_id: string;
+  product_id: string;
+  qty: number;
+  job_date: string;
+  status: string;
+  site_address?: string | null;
+  remarks?: string | null;
+  assigned_to: string;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+  converted_to_order: boolean;
+}
 
 interface QuotationHtmlPreviewProps {
   quotation: Quotation;
