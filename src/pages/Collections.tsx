@@ -91,7 +91,7 @@ export default function Collections() {
       .from("orders")
       .select("id, customer_id, products, advance_amount, status")
       .eq("user_id", user.id)
-      .eq("status", "delivered");
+      .eq("status", "completed");
     if (!orders) {
       setPendingCustomers([]);
       setCustomerDeliveredOrders({});

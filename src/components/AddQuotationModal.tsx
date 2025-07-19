@@ -21,7 +21,7 @@ import { useSession } from "@/hooks/useSession";
 interface AddQuotationModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAdd: (quotation: Omit<Quotation, "id">) => void;
+  onAdd: () => void;
   customers: Customer[];
   products: Product[];
   refreshCustomers?: () => void;
@@ -173,23 +173,42 @@ export function AddQuotationModal({
 
     setSubmitting(true);
 
-    const newQuotation: Omit<Quotation, "id"> = {
-      customerId,
-      productId,
-      qty: parseInt(qty),
-      status: "pending",
-      jobDate,
-      assignedTo: assignedTo.trim(),
-      siteAddress: siteAddress.trim(),
-      remarks: remarks.trim(),
-      validUntil: "",
-      terms: "",
-    };
+    try {
+      const { error } = await supabase
+        .from("quotations")
+        .insert({
+          user_id: user?.id,
+          customer_id: customerId,
+          product_id: productId,
+          qty: parseInt(qty),
+          job_date: jobDate,
+          status: "pending",
+          assigned_to: assignedTo.trim(),
+          site_address: siteAddress.trim(),
+          remarks: remarks.trim(),
+          converted_to_order: false,
+        });
 
-    onAdd(newQuotation);
-    resetForm();
-    setSubmitting(false);
-    onOpenChange(false);
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Quotation added successfully",
+      });
+
+      onAdd();
+      resetForm();
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error("Error adding quotation:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add quotation",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const isFormValid =

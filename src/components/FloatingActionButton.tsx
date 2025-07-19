@@ -98,7 +98,7 @@ export function FloatingActionButton() {
   };
 
   // Add Quotation
-  const handleAddQuotation = (quotation: Omit<Quotation, 'id'>) => {
+  const handleAddQuotation = () => {
     setShowQuotationModal(false);
     navigate('/quotations');
   };
