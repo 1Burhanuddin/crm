@@ -9,7 +9,7 @@ export interface ReportsData {
   daySales: number;
   weekSales: number;
   monthSales: number;
-  totalCredit: number; // <-- (udhaar after collections)
+  totalCredit: number; // <-- (credit after collections)
   ordersPending: number;
   totalPendingAmount: number; // New field for total pending amount
 }
@@ -132,18 +132,18 @@ export function useReportsData() {
             const advance = Number(o.advance_amount) || 0;
             const collected = collectionsMap[o.id] || 0;
             const pending = orderTotal - advance - collected;
-            const udhaar = pending > 0 ? pending : 0;
-            orderUdhaarMap[o.id] = udhaar;
-            return sum + udhaar;
+            const credit = pending > 0 ? pending : 0;
+            orderUdhaarMap[o.id] = credit;
+            return sum + credit;
           }, 0)
         : 0;
 
-      // Calculate net outstanding udhaar for delivered orders only
+      // Calculate net outstanding credit for delivered orders only
       let totalDeliveredCredit = 0;
       Object.keys(orderUdhaarMap).forEach((orderId) => {
         const collected = collectionsMap[orderId] || 0;
-        const udhaarLeft = Math.max(0, orderUdhaarMap[orderId] - collected);
-        totalDeliveredCredit += udhaarLeft;
+        const creditLeft = Math.max(0, orderUdhaarMap[orderId] - collected);
+        totalDeliveredCredit += creditLeft;
       });
 
       // Pending orders count (status = pending)

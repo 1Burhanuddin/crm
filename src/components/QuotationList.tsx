@@ -270,12 +270,15 @@ export function QuotationList() {
 
       {/* Quotations Tabs */}
       <Tabs defaultValue="pending" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="pending">
             Pending ({getQuotationsByStatus("pending").length})
           </TabsTrigger>
-          <TabsTrigger value="converted">
-            Converted ({quotations.filter(q => q.converted_to_order).length})
+          <TabsTrigger value="approved">
+            Approved ({getQuotationsByStatus("approved").length})
+          </TabsTrigger>
+          <TabsTrigger value="rejected">
+            Rejected ({getQuotationsByStatus("rejected").length})
           </TabsTrigger>
         </TabsList>
 
@@ -299,20 +302,40 @@ export function QuotationList() {
           )}
         </TabsContent>
 
-        <TabsContent value="converted" className="mt-6">
-          {quotations.filter(q => q.converted_to_order).length === 0 ? (
+        <TabsContent value="approved" className="mt-6">
+          {getQuotationsByStatus("approved").length === 0 ? (
             <div className="text-center py-12">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No converted quotations
+                No approved quotations
               </h3>
               <p className="text-gray-500">
-                Quotations converted to orders will appear here
+                Approved quotations will appear here
               </p>
             </div>
           ) : (
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-              {quotations.filter(q => q.converted_to_order).map((quotation) => (
+              {getQuotationsByStatus("approved").map((quotation) => (
+                <QuotationCard key={quotation.id} quotation={quotation} />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="rejected" className="mt-6">
+          {getQuotationsByStatus("rejected").length === 0 ? (
+            <div className="text-center py-12">
+              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No rejected quotations
+              </h3>
+              <p className="text-gray-500">
+                Rejected quotations will appear here
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+              {getQuotationsByStatus("rejected").map((quotation) => (
                 <QuotationCard key={quotation.id} quotation={quotation} />
               ))}
             </div>
@@ -349,9 +372,64 @@ function QuotationDetailsModal({ quotation, customers, products, onClose }: {
   products: Product[];
   onClose: () => void;
 }) {
+  const { user } = useSession();
+  const [converting, setConverting] = useState(false);
   const customer = customers.find(c => c.id === quotation.customer_id);
   const product = products.find(p => p.id === quotation.product_id);
   const quotationTotal = product ? product.price * quotation.qty : 0;
+
+  const handleConvertToOrder = async () => {
+    if (!user || !product) return;
+    
+    setConverting(true);
+    try {
+      // Create order from quotation
+      const { error: orderError } = await supabase
+        .from("orders")
+        .insert({
+          user_id: user.id,
+          customer_id: quotation.customer_id,
+          job_date: quotation.job_date,
+          status: "pending",
+          site_address: quotation.site_address,
+          remarks: quotation.remarks,
+          assigned_to: quotation.assigned_to,
+          advance_amount: 0,
+          products: [{
+            productId: quotation.product_id,
+            qty: quotation.qty
+          }]
+        });
+
+      if (orderError) throw orderError;
+
+      // Mark quotation as converted
+      const { error: quotationError } = await supabase
+        .from("quotations")
+        .update({ converted_to_order: true })
+        .eq("id", quotation.id);
+
+      if (quotationError) throw quotationError;
+
+      toast({
+        title: "Success",
+        description: "Quotation converted to order successfully",
+      });
+
+      onClose();
+      // Refresh the quotations list
+      window.location.reload();
+    } catch (error) {
+      console.error("Error converting quotation:", error);
+      toast({
+        title: "Error",
+        description: "Failed to convert quotation to order",
+        variant: "destructive",
+      });
+    } finally {
+      setConverting(false);
+    }
+  };
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -399,17 +477,28 @@ function QuotationDetailsModal({ quotation, customers, products, onClose }: {
           </div>
         )}
 
-        <div className="mt-4 flex justify-center">
+        <div className="mt-4 flex justify-center gap-2">
           <Button
             onClick={() => {
               // Navigate to quotation details page
               window.open(`/quotations/${quotation.id}`, '_blank');
             }}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700"
+            variant="outline"
+            className="px-4 py-2 rounded-lg font-semibold"
           >
             <Eye className="h-4 w-4 mr-2" />
             View Details
           </Button>
+          
+          {quotation.status === "approved" && !quotation.converted_to_order && (
+            <Button
+              onClick={handleConvertToOrder}
+              disabled={converting}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700"
+            >
+              {converting ? "Converting..." : "Convert to Order"}
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

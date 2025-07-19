@@ -441,15 +441,17 @@ export function OrderList() {
                 </div>
               </div>
               <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleGenerateBill(order)}
-                  className="text-xs"
-                >
-                  <Receipt className="h-3 w-3 mr-1" />
-                  Bill
-                </Button>
+                {order.status === "delivered" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleGenerateBill(order)}
+                    className="text-xs"
+                  >
+                    <Receipt className="h-3 w-3 mr-1" />
+                    Bill
+                  </Button>
+                )}
                 <OrderActionsMenu
                   onEdit={() => handleEditOrder(order)}
                   onDelete={() => handleDeleteOrder(order)}
@@ -476,11 +478,11 @@ export function OrderList() {
                      Advance: ₹{order.advance_amount}
                    </div>
                  )}
-                 {pendingAmount > 0 && (
-                   <div className="text-xs text-red-600 font-medium">
-                     Udaar: ₹{pendingAmount}
-                   </div>
-                 )}
+                  {pendingAmount > 0 && (
+                    <div className="text-xs text-red-600 font-medium">
+                      Credit: ₹{pendingAmount}
+                    </div>
+                  )}
                 {order.status === 'pending' && (
                   <span className="ml-2 px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 text-xs font-semibold">Pending</span>
                 )}
@@ -801,7 +803,7 @@ function OrderDetailsModal({ order, customers, products, isMobile, onClose, onSt
           )}
           {pendingAmount > 0 && (
             <div className="flex justify-between text-sm text-red-600 font-medium">
-              <span>Pending (Udaar)</span>
+              <span>Pending (Credit)</span>
               <span>₹{pendingAmount}</span>
             </div>
           )}
