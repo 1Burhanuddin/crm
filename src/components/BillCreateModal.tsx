@@ -26,10 +26,10 @@ export function BillCreateModal({
 }) {
   const { user } = useSession();
   // Only initialize with a default item if there are NO valid initialData.items
-  const [customerName, setCustomerName] = useState(initialData.customerName || "");
-  const [customerPhone, setCustomerPhone] = useState(initialData.customerPhone || "");
+  const [customerName, setCustomerName] = useState(initialData?.customerName || "");
+  const [customerPhone, setCustomerPhone] = useState(initialData?.customerPhone || "");
   // New logic: Check if initialData.items exists, has length, and at least one item has a non-empty name
-  const hasValidItems = Array.isArray(initialData.items)
+  const hasValidItems = Array.isArray(initialData?.items)
     && initialData.items.length > 0
     && initialData.items.some(it => it && it.name);
   const [items, setItems] = useState<Item[]>(
@@ -42,9 +42,9 @@ export function BillCreateModal({
   useEffect(() => {
     // Re-fill form if modal is opened with different order data
     if (open) {
-      setCustomerName(initialData.customerName || "");
-      setCustomerPhone(initialData.customerPhone || "");
-      const valid = Array.isArray(initialData.items)
+      setCustomerName(initialData?.customerName || "");
+      setCustomerPhone(initialData?.customerPhone || "");
+      const valid = Array.isArray(initialData?.items)
         && initialData.items.length > 0
         && initialData.items.some(it => it && it.name);
       setItems(
@@ -54,7 +54,7 @@ export function BillCreateModal({
       );
     }
     // eslint-disable-next-line
-  }, [open, initialData.customerName, initialData.customerPhone, JSON.stringify(initialData.items)]);
+  }, [open, initialData?.customerName, initialData?.customerPhone, JSON.stringify(initialData?.items)]);
 
   const handleAddItem = () => setItems([...items, { name: "", qty: 1, price: 0 }]);
   const handleItemChange = (i: number, key: string, value: any) => {
