@@ -209,6 +209,106 @@ export function QuotationList() {
     return quotations.filter(quotation => quotation.status === status);
   };
 
+  // New component for pending quotations with approve/reject buttons  
+  const PendingQuotationCard = ({ quotation }: { quotation: Quotation }) => {
+    const customerName = getCustomerName(quotation.customer_id);
+    const customerPhone = getCustomerPhone(quotation.customer_id);
+    const productName = getProductName(quotation.product_id);
+    const quotationTotal = calculateQuotationTotal(quotation);
+
+    return (
+      <Card className="hover:shadow-md transition-all duration-200">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <CardTitle className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                {customerName}
+              </CardTitle>
+              <div className="flex items-center gap-4 text-sm text-gray-600">
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-4 w-4" />
+                  <span>{format(new Date(quotation.job_date), "MMM dd, yyyy")}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <PhoneCall className="h-4 w-4" />
+                  <span>{customerPhone}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="pt-0">
+          <div className="flex items-center justify-between text-sm pt-2 border-t mb-4">
+            <div className="flex items-center gap-2">
+              <Package className="h-4 w-4 text-gray-500" />
+              <span className="text-gray-600">{productName}</span>
+            </div>
+            <div className="flex items-center gap-1 text-green-600 font-medium">
+              <DollarSign className="h-4 w-4" />
+              <span>₹{quotationTotal.toLocaleString()}</span>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-2 mb-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePreviewQuotation(quotation);
+              }}
+              className="flex-1"
+            >
+              <Eye className="h-4 w-4 mr-1" />
+              Preview
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePrintQuotation(quotation);
+              }}
+              className="flex-1"
+            >
+              <Printer className="h-4 w-4 mr-1" />
+              Print
+            </Button>
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleApproveQuotation(quotation.id);
+              }}
+              className="flex-1 bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+            >
+              <Check className="h-4 w-4 mr-1" />
+              Approve
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRejectQuotation(quotation.id);
+              }}
+              className="flex-1 bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+            >
+              <X className="h-4 w-4 mr-1" />
+              Reject
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   const handleApproveQuotation = async (quotationId: string) => {
     try {
       const { error } = await supabase
@@ -583,106 +683,6 @@ export function QuotationList() {
       )}
     </div>
   );
-
-  // New component for pending quotations with approve/reject buttons
-  const PendingQuotationCard = ({ quotation }: { quotation: Quotation }) => {
-    const customerName = getCustomerName(quotation.customer_id);
-    const customerPhone = getCustomerPhone(quotation.customer_id);
-    const productName = getProductName(quotation.product_id);
-    const quotationTotal = calculateQuotationTotal(quotation);
-
-    return (
-      <Card className="hover:shadow-md transition-all duration-200">
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <CardTitle className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
-                {customerName}
-              </CardTitle>
-              <div className="flex items-center gap-4 text-sm text-gray-600">
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
-                  <span>{format(new Date(quotation.job_date), "MMM dd, yyyy")}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <PhoneCall className="h-4 w-4" />
-                  <span>{customerPhone}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardHeader>
-
-        <CardContent className="pt-0">
-          <div className="flex items-center justify-between text-sm pt-2 border-t mb-4">
-            <div className="flex items-center gap-2">
-              <Package className="h-4 w-4 text-gray-500" />
-              <span className="text-gray-600">{productName}</span>
-            </div>
-            <div className="flex items-center gap-1 text-green-600 font-medium">
-              <DollarSign className="h-4 w-4" />
-              <span>₹{quotationTotal.toLocaleString()}</span>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-2 mb-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                handlePreviewQuotation(quotation);
-              }}
-              className="flex-1"
-            >
-              <Eye className="h-4 w-4 mr-1" />
-              Preview
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                handlePrintQuotation(quotation);
-              }}
-              className="flex-1"
-            >
-              <Printer className="h-4 w-4 mr-1" />
-              Print
-            </Button>
-          </div>
-
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleApproveQuotation(quotation.id);
-              }}
-              className="flex-1 bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
-            >
-              <Check className="h-4 w-4 mr-1" />
-              Approve
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleRejectQuotation(quotation.id);
-              }}
-              className="flex-1 bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
-            >
-              <X className="h-4 w-4 mr-1" />
-              Reject
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
 }
 
 function QuotationDetailsModal({ quotation, customers, products, onClose }: {
