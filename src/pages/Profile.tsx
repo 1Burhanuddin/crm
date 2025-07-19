@@ -194,18 +194,18 @@ export default function ProfilePage() {
               {/* Profile info in a flat panel (no card background, only field values have light gray bg) */}
               <div className="w-full max-w-md mx-auto relative px-8 py-8 flex flex-col items-center">
                 {/* Edit icon button at top right inside the panel */}
-                {!editing && (
-                  <Button
+              {!editing && (
+                <Button
                     variant="ghost"
-                    size="icon"
-                    onClick={handleEdit}
+                  size="icon"
+                  onClick={handleEdit}
                     className="absolute top-4 right-4 z-20 text-black hover:bg-gray-200"
-                    title="Edit Profile"
-                  >
-                    <Edit2 className="h-5 w-5" />
-                    <span className="sr-only">Edit</span>
-                  </Button>
-                )}
+                  title="Edit Profile"
+                >
+                  <Edit2 className="h-5 w-5" />
+                  <span className="sr-only">Edit</span>
+                </Button>
+              )}
                 <Avatar className="h-24 w-24 border-4 border-white bg-gray-200 mb-6">
                   <AvatarImage
                     src={
@@ -225,55 +225,55 @@ export default function ProfilePage() {
                     <tr>
                       <td className="font-semibold text-black w-24">Name</td>
                       <td className="text-black bg-gray-50 rounded-lg px-4 py-2">
-                        {editing ? (
-                          <Input
-                            type="text"
-                            value={newName}
-                            onChange={(e) => setNewName(e.target.value)}
+                    {editing ? (
+                      <Input
+                        type="text"
+                        value={newName}
+                        onChange={(e) => setNewName(e.target.value)}
                             className="w-full font-bold text-left border-gray-200 bg-white"
-                            maxLength={50}
-                            placeholder="Name"
-                          />
-                        ) : profile?.name ? (
-                          profile.name
-                        ) : (
-                          <span className="text-gray-400 italic">No name</span>
-                        )}
+                        maxLength={50}
+                        placeholder="Name"
+                      />
+                    ) : profile?.name ? (
+                      profile.name
+                    ) : (
+                      <span className="text-gray-400 italic">No name</span>
+                    )}
                       </td>
                     </tr>
                     <tr>
                       <td className="font-semibold text-black">Shop</td>
                       <td className="text-black bg-gray-50 rounded-lg px-4 py-2">
-                        {editing ? (
-                          <Input
-                            type="text"
-                            value={newShopName}
-                            onChange={(e) => setNewShopName(e.target.value)}
+                    {editing ? (
+                      <Input
+                        type="text"
+                        value={newShopName}
+                        onChange={(e) => setNewShopName(e.target.value)}
                             className="w-full text-left border-gray-200 bg-white"
-                            maxLength={60}
-                            placeholder="Shop/Enterprise Name"
-                          />
-                        ) : profile?.shop_name ? (
-                          profile.shop_name
-                        ) : (
+                        maxLength={60}
+                        placeholder="Shop/Enterprise Name"
+                      />
+                    ) : profile?.shop_name ? (
+                      profile.shop_name
+                    ) : (
                           <span className="text-gray-400 italic">No shop/enterprise</span>
-                        )}
+                    )}
                       </td>
                     </tr>
                     <tr>
                       <td className="font-semibold text-black">Email</td>
                       <td className="text-black bg-gray-50 rounded-lg px-4 py-2">
-                        {editing ? (
-                          <Input
-                            type="email"
-                            value={newEmail}
-                            onChange={(e) => setNewEmail(e.target.value)}
+                    {editing ? (
+                      <Input
+                        type="email"
+                        value={newEmail}
+                        onChange={(e) => setNewEmail(e.target.value)}
                             className="w-full text-left border-gray-200 bg-white"
-                            placeholder="Email"
-                          />
-                        ) : (
-                          profile?.email
-                        )}
+                        placeholder="Email"
+                      />
+                    ) : (
+                      profile?.email
+                    )}
                       </td>
                     </tr>
                   </tbody>
@@ -295,10 +295,10 @@ export default function ProfilePage() {
                     {newImageFile && (
                       <span className="text-xs text-blue-800 ml-2">{newImageFile.name}</span>
                     )}
-                  </div>
+            </div>
                 )}
-                {/* Edit Actions */}
-                {editing && (
+            {/* Edit Actions */}
+            {editing && (
                   <div className="flex w-full gap-3 mt-6">
                     <Button
                       className="w-full bg-blue-600 text-white hover:bg-blue-700 shadow"
@@ -335,7 +335,7 @@ export default function ProfilePage() {
                   >
                     Log Out
                   </Button>
-                </div>
+                  </div>
               )}
             </div>
             {/* Quick Access Section for Bills, Customers, and Products */}

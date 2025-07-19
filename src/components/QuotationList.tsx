@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
@@ -28,10 +28,12 @@ import {
   Eye,
   Printer,
   Check,
-  X
+  X,
+  X as CloseIcon
 } from "lucide-react";
 import { AddQuotationModal } from "./AddQuotationModal";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { QuotationHtmlPreview } from "./QuotationHtmlPreview";
 import html2pdf from "html2pdf.js";
 
@@ -77,6 +79,11 @@ export function QuotationList() {
   const [modalQuotation, setModalQuotation] = useState<Quotation | null>(null);
   const [previewQuotation, setPreviewQuotation] = useState<Quotation | null>(null);
   const [profile, setProfile] = useState<{ name: string | null; shop_name: string | null }>({ name: null, shop_name: null });
+  const [showApproveDialog, setShowApproveDialog] = useState(false);
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [selectedQuotationForAction, setSelectedQuotationForAction] = useState<Quotation | null>(null);
+  const [pdfQuotation, setPdfQuotation] = useState<Quotation | null>(null);
+  const pdfRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (user) {
@@ -104,8 +111,8 @@ export function QuotationList() {
       setQuotations(data || []);
     } catch (error) {
       console.error("Error fetching quotations:", error);
-      toast({
-        title: "Error",
+      toast({ 
+        title: "Error", 
         description: "Failed to fetch quotations",
         variant: "destructive",
       });
@@ -251,57 +258,44 @@ export function QuotationList() {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-2 mb-3">
+          <div className="flex gap-3 mb-4">
             <Button
               variant="outline"
-              size="sm"
+              size="lg"
+              className="flex-1 font-semibold py-3 text-base border-blue-200 hover:bg-blue-50 rounded-full"
               onClick={(e) => {
                 e.stopPropagation();
                 handlePreviewQuotation(quotation);
               }}
-              className="flex-1"
             >
-              <Eye className="h-4 w-4 mr-1" />
+              <Eye className="h-5 w-5 mr-2" />
               Preview
             </Button>
             <Button
               variant="outline"
-              size="sm"
+              size="lg"
+              className="flex-1 font-semibold py-3 text-base border-blue-200 hover:bg-blue-50 rounded-full"
               onClick={(e) => {
                 e.stopPropagation();
                 handlePrintQuotation(quotation);
               }}
-              className="flex-1"
             >
-              <Printer className="h-4 w-4 mr-1" />
-              Print
+              <FileText className="h-5 w-5 mr-2" />
+              Download
             </Button>
           </div>
-
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <Button
               variant="outline"
-              size="sm"
+              size="lg"
+              className="flex-1 font-semibold py-3 text-base border-blue-200 hover:bg-blue-50 rounded-full"
               onClick={(e) => {
                 e.stopPropagation();
-                handleApproveQuotation(quotation.id);
+                setModalQuotation(quotation);
               }}
-              className="flex-1 bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
             >
-              <Check className="h-4 w-4 mr-1" />
-              Approve
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleRejectQuotation(quotation.id);
-              }}
-              className="flex-1 bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
-            >
-              <X className="h-4 w-4 mr-1" />
-              Reject
+              <Eye className="h-5 w-5 mr-2" />
+              View Details
             </Button>
           </div>
         </CardContent>
@@ -309,12 +303,12 @@ export function QuotationList() {
     );
   };
 
-  const handleApproveQuotation = async (quotationId: string) => {
+  const handleApproveQuotation = async (quotation: Quotation) => {
     try {
       const { error } = await supabase
         .from("quotations")
         .update({ status: "approved" })
-        .eq("id", quotationId);
+        .eq("id", quotation.id);
 
       if (error) throw error;
       
@@ -324,6 +318,9 @@ export function QuotationList() {
       });
       
       fetchQuotations();
+      setShowApproveDialog(false);
+      setSelectedQuotationForAction(null);
+      setModalQuotation(null);
     } catch (error) {
       console.error("Error approving quotation:", error);
       toast({
@@ -334,12 +331,12 @@ export function QuotationList() {
     }
   };
 
-  const handleRejectQuotation = async (quotationId: string) => {
+  const handleRejectQuotation = async (quotation: Quotation) => {
     try {
       const { error } = await supabase
         .from("quotations")
         .update({ status: "rejected" })
-        .eq("id", quotationId);
+        .eq("id", quotation.id);
 
       if (error) throw error;
       
@@ -349,6 +346,9 @@ export function QuotationList() {
       });
       
       fetchQuotations();
+      setShowRejectDialog(false);
+      setSelectedQuotationForAction(null);
+      setModalQuotation(null);
     } catch (error) {
       console.error("Error rejecting quotation:", error);
       toast({
@@ -366,7 +366,6 @@ export function QuotationList() {
   const handlePrintQuotation = async (quotation: Quotation) => {
     const customer = customers.find(c => c.id === quotation.customer_id);
     const product = products.find(p => p.id === quotation.product_id);
-    
     if (!customer || !product) {
       toast({
         title: "Error",
@@ -375,88 +374,21 @@ export function QuotationList() {
       });
       return;
     }
-
-    // Create a temporary div for PDF generation
-    const tempDiv = document.createElement('div');
-    tempDiv.style.position = 'absolute';
-    tempDiv.style.left = '-9999px';
-    tempDiv.style.top = '0';
-    document.body.appendChild(tempDiv);
-
-    // Render the QuotationHtmlPreview component content
-    tempDiv.innerHTML = `
-      <div style="background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #0001; padding: 24px; max-width: 500px; margin: 0 auto; font-family: Inter, Arial, sans-serif; color: #222;">
-        <div style="text-align: center; margin-bottom: 8px;">
-          <div style="font-size: 22px; font-weight: 700; text-transform: uppercase;">${profile.shop_name || 'Shop Name'}</div>
-          <div style="font-size: 13px; color: #666; margin-bottom: 2px;">QUOTATION</div>
-        </div>
-        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
-          <div>
-            <div style="font-weight: 600;">Buyer:</div>
-            <div>${customer.name}</div>
-            ${customer.phone ? `<div style="font-size: 13px; color: #555;">Phone: ${customer.phone}</div>` : ''}
-          </div>
-          <div style="text-align: right; font-size: 13px;">
-            <div>Quotation No: <span style="font-family: monospace;">${quotation.id.slice(0, 8).toUpperCase()}</span></div>
-            <div>Date: ${new Date().toLocaleDateString()}</div>
-          </div>
-        </div>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
-          <thead>
-            <tr style="background: #f5f5f5;">
-              <th style="text-align: left; padding: 6px; border: 1px solid #eee;">Item</th>
-              <th style="text-align: center; padding: 6px; border: 1px solid #eee;">Qty</th>
-              <th style="text-align: right; padding: 6px; border: 1px solid #eee;">Price</th>
-              <th style="text-align: right; padding: 6px; border: 1px solid #eee;">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style="padding: 6px; border: 1px solid #eee;">${product.name}</td>
-              <td style="text-align: center; padding: 6px; border: 1px solid #eee;">${quotation.qty}</td>
-              <td style="text-align: right; padding: 6px; border: 1px solid #eee;">₹${product.price.toLocaleString()}</td>
-              <td style="text-align: right; padding: 6px; border: 1px solid #eee;">₹${(product.price * quotation.qty).toLocaleString()}</td>
-            </tr>
-          </tbody>
-        </table>
-        <div style="display: flex; justify-content: flex-end; align-items: center; font-weight: 600; font-size: 16px;">
-          Total: <span style="margin-left: 12px; font-weight: 700; color: #1976d2;">₹${(product.price * quotation.qty).toLocaleString()}</span>
-        </div>
-        <div style="margin-top: 18px; font-size: 12px; color: #666; font-style: italic;">
-          Terms: This quotation is valid for 30 days.
-        </div>
-        <div style="margin-top: 18px; text-align: right; font-size: 13px;">
-          <div style="font-weight: 600;">For ${profile.shop_name || 'Shop Name'}</div>
-        </div>
-      </div>
-    `;
-
-    try {
-      await html2pdf()
-        .set({
-          margin: 0.5,
-          filename: `Quotation_${quotation.id.slice(0, 8)}.pdf`,
-          html2canvas: { scale: 2 },
-          jsPDF: { unit: "in", format: "a4", orientation: "portrait" }
-        })
-        .from(tempDiv)
-        .save();
-
-      toast({
-        title: "Success",
-        description: "Quotation PDF downloaded successfully",
-      });
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-      toast({
-        title: "Error",
-        description: "Failed to generate PDF",
-        variant: "destructive",
-      });
-    } finally {
-      // Clean up
-      document.body.removeChild(tempDiv);
-    }
+    setPdfQuotation(quotation);
+    setTimeout(async () => {
+                        if (pdfRef.current) {
+        await html2pdf()
+                            .set({
+                              margin: 0.5,
+            filename: `Quotation_${quotation.id.slice(0, 8)}.pdf`,
+                              html2canvas: { scale: 2 },
+                              jsPDF: { unit: "in", format: "a4", orientation: "portrait" }
+                            })
+                            .from(pdfRef.current)
+                            .save();
+        setPdfQuotation(null);
+      }
+    }, 200);
   };
 
   const QuotationCard = ({ quotation }: { quotation: Quotation }) => {
@@ -464,9 +396,48 @@ export function QuotationList() {
     const customerPhone = getCustomerPhone(quotation.customer_id);
     const productName = getProductName(quotation.product_id);
     const quotationTotal = calculateQuotationTotal(quotation);
+    const [showAdvanceDialog, setShowAdvanceDialog] = useState(false);
+    const [advanceAmount, setAdvanceAmount] = useState("");
+    const [converting, setConverting] = useState(false);
+
+    const handleConvertToOrder = async () => {
+      setConverting(true);
+      try {
+        const product = products.find(p => p.id === quotation.product_id);
+        if (!user || !product) return;
+        const advance = advanceAmount === "" ? 0 : Number(advanceAmount);
+        const { error: orderError } = await supabase
+          .from("orders")
+          .insert({
+            user_id: user.id,
+            customer_id: quotation.customer_id,
+            job_date: quotation.job_date,
+            status: "pending",
+            site_address: quotation.site_address,
+            remarks: quotation.remarks,
+            assigned_to: quotation.assigned_to,
+            advance_amount: advance,
+            products: [{ productId: quotation.product_id, qty: quotation.qty }]
+          });
+        if (orderError) throw orderError;
+        const { error: quotationError } = await supabase
+          .from("quotations")
+          .update({ converted_to_order: true })
+          .eq("id", quotation.id);
+        if (quotationError) throw quotationError;
+        toast({ title: "Success", description: "Quotation converted to order successfully" });
+        setShowAdvanceDialog(false);
+        setAdvanceAmount("");
+        fetchQuotations();
+      } catch (error) {
+        toast({ title: "Error", description: "Failed to convert quotation", variant: "destructive" });
+      } finally {
+        setConverting(false);
+      }
+    };
 
     return (
-      <Card className="hover:shadow-md transition-all duration-200 cursor-pointer group" onClick={() => setModalQuotation(quotation)}>
+      <Card className="hover:shadow-md transition-all duration-200 cursor-pointer group">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="flex-1">
@@ -487,7 +458,6 @@ export function QuotationList() {
             </div>
           </div>
         </CardHeader>
-
         <CardContent className="pt-0">
           <div className="flex items-center justify-between text-sm pt-2 border-t">
             <div className="flex items-center gap-2">
@@ -507,6 +477,45 @@ export function QuotationList() {
               )}
             </div>
           </div>
+          {/* Convert to Order button for approved quotations */}
+          {quotation.status === 'approved' && !quotation.converted_to_order && (
+            <div className="mt-4 flex flex-col gap-2">
+              {!showAdvanceDialog && (
+                  <Button
+                  className="bg-green-600 text-white hover:bg-green-700 font-semibold"
+                  onClick={() => setShowAdvanceDialog(true)}
+                  disabled={converting}
+                >
+                  {converting ? "Converting..." : "Convert to Order"}
+                  </Button>
+              )}
+              {showAdvanceDialog && (
+                <div className="mt-2 p-3 rounded-2xl border bg-white flex flex-col gap-2">
+                  <label className="font-medium text-sm mb-1 text-blue-900">Advance Amount (optional)</label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={advanceAmount}
+                    onChange={e => {
+                      // Only allow numbers and empty string
+                      const val = e.target.value;
+                      if (/^\d*$/.test(val)) setAdvanceAmount(val);
+                    }}
+                    placeholder="Enter advance amount"
+                    className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 h-14 min-h-[56px] w-full"
+                  />
+                  <div className="flex gap-2 mt-2">
+                    <Button size="sm" className="bg-green-600 text-white w-1/2" onClick={handleConvertToOrder} disabled={converting}>
+                      Confirm
+                    </Button>
+                    <Button size="sm" variant="outline" className="w-1/2" onClick={() => setShowAdvanceDialog(false)} disabled={converting}>
+                      Cancel
+                  </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     );
@@ -526,17 +535,20 @@ export function QuotationList() {
   return (
     <div className="space-y-6 overflow-x-hidden w-full max-w-full">
       {/* Search and Add Quotation Button */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-2">
+      <div className="flex flex-row gap-3 mb-2 items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
             placeholder="Search by customer, phone, product..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-10 rounded-full"
           />
         </div>
-        <Button onClick={() => setShowAddModal(true)} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl flex items-center gap-2 text-base font-semibold hover:bg-blue-700 transition-all shadow-sm">
+        <Button
+          onClick={() => setShowAddModal(true)}
+          className="bg-blue-600 text-white px-6 py-2.5 rounded-full flex items-center gap-2 text-base font-semibold hover:bg-blue-700 transition-all shadow-sm flex-shrink-0"
+        >
           <Plus className="h-4 w-4" />
           Add Quotation
         </Button>
@@ -544,14 +556,14 @@ export function QuotationList() {
 
       {/* Quotations Tabs */}
       <Tabs defaultValue="pending" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="pending">
+        <TabsList className="flex w-full bg-transparent border border-blue-200 rounded-full p-1 mb-4 h-12">
+          <TabsTrigger value="pending" className="flex-1 rounded-full h-10 text-base font-semibold data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-blue-700 data-[state=inactive]:bg-transparent transition-all">
             Pending ({getQuotationsByStatus("pending").length})
           </TabsTrigger>
-          <TabsTrigger value="approved">
+          <TabsTrigger value="approved" className="flex-1 rounded-full h-10 text-base font-semibold data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-blue-700 data-[state=inactive]:bg-transparent transition-all">
             Approved ({getQuotationsByStatus("approved").length})
           </TabsTrigger>
-          <TabsTrigger value="rejected">
+          <TabsTrigger value="rejected" className="flex-1 rounded-full h-10 text-base font-semibold data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-blue-700 data-[state=inactive]:bg-transparent transition-all">
             Rejected ({getQuotationsByStatus("rejected").length})
           </TabsTrigger>
         </TabsList>
@@ -634,6 +646,14 @@ export function QuotationList() {
           customers={customers}
           products={products}
           onClose={() => setModalQuotation(null)}
+          onApprove={(quotation) => {
+            setSelectedQuotationForAction(quotation);
+            setShowApproveDialog(true);
+          }}
+          onReject={(quotation) => {
+            setSelectedQuotationForAction(quotation);
+            setShowRejectDialog(true);
+          }}
         />
       )}
 
@@ -681,21 +701,84 @@ export function QuotationList() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Approve Confirmation Dialog */}
+      <AlertDialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Approve Quotation</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to approve this quotation? This action will mark the quotation as approved and allow it to be converted to an order.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => selectedQuotationForAction && handleApproveQuotation(selectedQuotationForAction)}
+              className="bg-green-600 text-white hover:bg-green-700"
+            >
+              Approve
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reject Confirmation Dialog */}
+      <AlertDialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reject Quotation</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to reject this quotation? This action will mark the quotation as rejected and it cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => selectedQuotationForAction && handleRejectQuotation(selectedQuotationForAction)}
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              Reject
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+        {pdfQuotation && (() => {
+          const customer = customers.find(c => c.id === pdfQuotation.customer_id);
+          const product = products.find(p => p.id === pdfQuotation.product_id);
+          if (!customer || !product) return null;
+          return (
+            <div ref={pdfRef}>
+              <QuotationHtmlPreview
+                quotation={pdfQuotation}
+                customer={customer}
+                product={product}
+                userName={profile.name || ""}
+                shopName={profile.shop_name || "Shop Name"}
+              />
+            </div>
+          );
+        })()}
+      </div>
     </div>
   );
 }
 
-function QuotationDetailsModal({ quotation, customers, products, onClose }: {
+function QuotationDetailsModal({ quotation, customers, products, onClose, onApprove, onReject }: {
   quotation: Quotation;
   customers: Customer[];
   products: Product[];
   onClose: () => void;
+  onApprove: (quotation: Quotation) => void;
+  onReject: (quotation: Quotation) => void;
 }) {
   const { user } = useSession();
   const [converting, setConverting] = useState(false);
   const customer = customers.find(c => c.id === quotation.customer_id);
   const product = products.find(p => p.id === quotation.product_id);
   const quotationTotal = product ? product.price * quotation.qty : 0;
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
 
   const handleConvertToOrder = async () => {
     if (!user || !product) return;
@@ -752,7 +835,15 @@ function QuotationDetailsModal({ quotation, customers, products, onClose }: {
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="w-full max-w-lg rounded-2xl p-5 shadow-2xl">
+      <DialogContent className={`w-full ${isMobile ? 'max-w-sm mx-auto min-h-[40vh] rounded-2xl p-5 shadow-2xl' : 'max-w-lg'}`}>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
+        >
+          <CloseIcon className="h-6 w-6 text-gray-400" />
+        </button>
         <div className="mb-4 break-words">
           <h2 className="text-xl font-bold mb-1 break-words">{customer?.name || "Unknown Customer"}</h2>
           <div className="text-sm text-gray-600 mb-2 break-words">{quotation.job_date} | {customer?.phone}</div>
@@ -797,18 +888,6 @@ function QuotationDetailsModal({ quotation, customers, products, onClose }: {
         )}
 
         <div className="mt-4 flex justify-center gap-2">
-          <Button
-            onClick={() => {
-              // Navigate to quotation details page
-              window.open(`/quotations/${quotation.id}`, '_blank');
-            }}
-            variant="outline"
-            className="px-4 py-2 rounded-lg font-semibold"
-          >
-            <Eye className="h-4 w-4 mr-2" />
-            View Details
-          </Button>
-          
           {quotation.status === "approved" && !quotation.converted_to_order && (
             <Button
               onClick={handleConvertToOrder}
@@ -817,8 +896,29 @@ function QuotationDetailsModal({ quotation, customers, products, onClose }: {
             >
               {converting ? "Converting..." : "Convert to Order"}
             </Button>
-          )}
-        </div>
+            )}
+          </div>
+
+        {quotation.status === "pending" && (
+          <div className="mt-4 flex gap-3">
+            <Button 
+              onClick={() => onApprove(quotation)}
+              className="flex-1 bg-green-600 text-white hover:bg-green-700 font-semibold rounded-full py-3 text-base"
+              size="lg"
+            >
+              <Check className="h-5 w-5 mr-2" />
+              Approve
+            </Button>
+            <Button
+              onClick={() => onReject(quotation)}
+              className="flex-1 bg-red-600 text-white hover:bg-red-700 font-semibold rounded-full py-3 text-base"
+              size="lg"
+            >
+              <X className="h-5 w-5 mr-2" />
+              Reject
+            </Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

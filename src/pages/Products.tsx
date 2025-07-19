@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Search, Trash2, Edit } from "lucide-react";
+import { Plus, Search, Trash2, Edit, MoreHorizontal } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
@@ -14,6 +14,14 @@ import { Product } from "@/constants/types";
 import { EditProductModal } from "@/components/EditProductModal";
 import { DeleteProductDialog } from "@/components/DeleteProductDialog";
 import { AddProductModal } from "@/components/AddProductModal";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem
+} from "@/components/ui/dropdown-menu";
+import { BottomNav } from "@/components/ui/BottomNav";
+import { AppLayout } from "@/components/AppLayout";
 
 const fetchProducts = async (user_id: string): Promise<Product[]> => {
   const { data, error } = await supabase
@@ -119,89 +127,84 @@ export default function Products() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Products</h1>
-        <Button onClick={() => setShowAddModal(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Product
-        </Button>
-      </div>
+    <AppLayout title="Products">
+      <div className="p-6 space-y-6 pb-24">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold">Products</h1>
+          <Button onClick={() => setShowAddModal(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Product
+          </Button>
+        </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-        <Input
-          placeholder="Search products..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Search products..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredProducts.map((product) => (
+            <Card key={product.id} className="rounded-xl border border-gray-200 shadow-sm bg-white">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-lg font-semibold text-blue-900">{product.name}</CardTitle>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="p-2 rounded-full hover:bg-gray-100 focus:outline-none cursor-pointer">
+                      <MoreHorizontal className="h-5 w-5 text-gray-500" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleEdit(product)}>
+                      <Edit className="h-4 w-4 mr-2 text-blue-600" /> Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleDelete(product)} className="text-red-600">
+                      <Trash2 className="h-4 w-4 mr-2" /> Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-end gap-6 w-full">
+                  <span className="text-sm text-gray-600">Price: <span className="font-medium text-gray-900">₹{product.price}</span></span>
+                  <span className="text-sm text-gray-600">Unit: <span className="font-medium text-gray-900">{product.unit}</span></span>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {filteredProducts.length === 0 && (
+          <div className="text-center py-12">
+            <p className="text-gray-500">No products found</p>
+          </div>
+        )}
+
+        <AddProductModal
+          open={showAddModal}
+          onOpenChange={setShowAddModal}
+          onSuccess={handleAddSuccess}
+        />
+
+        <EditProductModal
+          open={!!editingProduct}
+          onOpenChange={(open) => !open && setEditingProduct(null)}
+          onSubmit={handleUpdate}
+          initialProduct={editingProduct}
+        />
+
+        <DeleteProductDialog
+          open={!!deletingProduct}
+          onOpenChange={(open) => !open && setDeletingProduct(null)}
+          onDelete={confirmDelete}
+          product={deletingProduct}
         />
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredProducts.map((product) => (
-          <Card key={product.id}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-lg font-semibold">{product.name}</CardTitle>
-              <div className="flex gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleEdit(product)}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDelete(product)}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Price:</span>
-                  <span className="font-medium">₹{product.price}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Unit:</span>
-                  <span className="font-medium">{product.unit}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {filteredProducts.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-gray-500">No products found</p>
-        </div>
-      )}
-
-      <AddProductModal
-        open={showAddModal}
-        onOpenChange={setShowAddModal}
-        onSuccess={handleAddSuccess}
-      />
-
-      <EditProductModal
-        open={!!editingProduct}
-        onOpenChange={(open) => !open && setEditingProduct(null)}
-        onSubmit={handleUpdate}
-        initialProduct={editingProduct}
-      />
-
-      <DeleteProductDialog
-        open={!!deletingProduct}
-        onOpenChange={(open) => !open && setDeletingProduct(null)}
-        product={deletingProduct}
-        onDelete={confirmDelete}
-      />
-    </div>
+      <BottomNav />
+    </AppLayout>
   );
 }

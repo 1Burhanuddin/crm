@@ -338,16 +338,16 @@ export function DashboardCollectionModal({
                 <MessageSquare className="h-4 w-4 mr-2" />
                 Send Reminder
               </Button>
-              <Button
-                variant="outline"
+                <Button
+                  variant="outline"
                 onClick={() => customer.phone && window.open(`tel:${customer.phone}`, '_self')}
                 className="flex-1 flex items-center justify-center text-black border-gray-300"
                 disabled={!customer.phone}
                 title={customer.phone ? undefined : 'No phone number available'}
-              >
-                <Phone className="h-4 w-4 mr-2" />
-                Call Customer
-              </Button>
+                >
+                  <Phone className="h-4 w-4 mr-2" />
+                  Call Customer
+                </Button>
             </div>
           </div>
         </div>

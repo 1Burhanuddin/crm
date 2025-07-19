@@ -523,13 +523,14 @@ export function AddOrderModal({
                         filteredProducts.map((p) => (
                           <button
                             key={p.id}
-                            className={`w-full text-left px-5 py-3 text-base font-medium rounded-xl hover:bg-blue-100 transition mb-1 h-14 min-h-[56px] ${pendingProductId === p.id ? "bg-blue-50 text-blue-700" : "text-gray-900"}`}
+                            className={`w-full flex items-center justify-between px-5 py-3 text-base font-medium rounded-xl hover:bg-blue-100 transition mb-1 h-14 min-h-[56px] ${pendingProductId === p.id ? "bg-blue-50 text-blue-700" : "text-gray-900"}`}
                             onClick={() => {
                               console.log('Product selected:', p);
                               handleProductSelect(p.id);
                             }}
                           >
-                            {p.name}
+                            <span>{p.name}</span>
+                            <span className="text-sm text-gray-500 font-normal whitespace-nowrap">₹{p.price} / {p.unit}</span>
                           </button>
                         ))
                       )}

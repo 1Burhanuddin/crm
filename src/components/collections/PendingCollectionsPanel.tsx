@@ -7,11 +7,14 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { getDueDateInfo } from "@/utils/dueDateUtils";
 
-interface CustomerWithPending {
-  id: string;
-  name: string;
-  pending: number;
+// Replace CustomerWithPending with PendingOrderWithCredit
+interface PendingOrderWithCredit {
+  orderId: string;
+  customerId: string;
+  customerName: string;
   phone?: string;
+  creditAmount: number;
+  jobDate?: string;
 }
 
 interface DeliveredOrder {
@@ -20,7 +23,7 @@ interface DeliveredOrder {
 }
 
 interface PendingCollectionsPanelProps {
-  pendingCustomers: CustomerWithPending[];
+  pendingOrders: PendingOrderWithCredit[];
   customers: { id: string; name: string }[];
   customerDates: Record<string, Date>;
   openDateMenu: (id: string) => void;
@@ -28,13 +31,13 @@ interface PendingCollectionsPanelProps {
   handleDateChangeForCustomer: (customerId: string, date: Date) => void;
   displayDate: (date: Date) => string;
   customerDeliveredOrders: Record<string, DeliveredOrder[]>;
-  setFormAndShowForm: (customer: CustomerWithPending) => void;
+  setFormAndShowForm: (customer: PendingOrderWithCredit) => void;
   isAdding: boolean;
-  handleOpenReminderModal: (customer: CustomerWithPending) => void;
+  handleOpenReminderModal: (customer: PendingOrderWithCredit) => void;
 }
 
 export function PendingCollectionsPanel({
-  pendingCustomers,
+  pendingOrders,
   customers,
   customerDates,
   openDateMenu,
@@ -55,7 +58,7 @@ export function PendingCollectionsPanel({
     }));
   };
 
-  if (!pendingCustomers || pendingCustomers.length === 0) {
+  if (!pendingOrders || pendingOrders.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-sm border p-6 text-center">
         <div className="text-gray-500">No pending collections</div>
@@ -67,151 +70,37 @@ export function PendingCollectionsPanel({
     <div>
       <div className="mb-2 text-blue-800 font-bold">Pending Collections</div>
       <ul className="space-y-4">
-        {pendingCustomers.map((customer) => (
+        {pendingOrders.map((order) => (
           <li
-            key={customer.id}
+            key={order.orderId}
             className="bg-white rounded-xl shadow-lg border hover:shadow-xl transition-all duration-200 relative overflow-hidden"
           >
-            {/* Collapsed View */}
-            <div 
-              className="p-4 cursor-pointer"
-              onClick={() => toggleCard(customer.id)}
-            >
+            <div className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-blue-900">
-                    {customer.name}
+                    {order.customerName}
                   </h3>
-                  {customer.phone && (
-                    <p className="text-sm text-gray-600 mt-1">{customer.phone}</p>
+                  {order.phone && (
+                    <p className="text-sm text-gray-600 mt-1">{order.phone}</p>
                   )}
-                  {/* Due Date Indicator */}
-                  {customerDates[customer.id] && (
-                    <div className="mt-2">
-                      {(() => {
-                        const dueDateInfo = getDueDateInfo(customerDates[customer.id]);
-                        return (
-                          <span 
-                            className={cn(
-                              "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
-                              dueDateInfo.color,
-                              dueDateInfo.bgColor,
-                              dueDateInfo.isUrgent && "animate-pulse"
-                            )}
-                          >
-                            {dueDateInfo.text}
-                          </span>
-                        );
-                      })()}
+                  {order.jobDate && (
+                    <div className="text-xs text-gray-500 mt-1">
+                      {new Date(order.jobDate).toLocaleDateString()}
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-red-600">
-                      ₹{customer.pending}
-                    </div>
-                    <div className="text-sm text-gray-500">Pending Amount</div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-red-600">
+                    ₹{order.creditAmount}
                   </div>
-                  <div className="text-gray-400">
-                    {expandedCards[customer.id] ? (
-                      <ChevronUp className="h-5 w-5" />
-                    ) : (
-                      <ChevronDown className="h-5 w-5" />
-                    )}
-                  </div>
+                  <div className="text-sm text-gray-500">Pending Amount</div>
                 </div>
               </div>
             </div>
-
-            {/* Expanded View */}
-            {expandedCards[customer.id] && (
-              <div className="px-4 pb-4 border-t border-gray-100">
-                {/* Action Buttons */}
-                <div className="flex flex-col sm:flex-row gap-3 mt-4">
-                  <button
-                    onClick={() => setFormAndShowForm(customer)}
-                    disabled={isAdding}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2.5 rounded-lg transition-all duration-200 shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                  >
-                    {isAdding ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Processing...
-                      </>
-                    ) : (
-                      "Collect Payment"
-                    )}
-                  </button>
-                  <button
-                    onClick={() => handleOpenReminderModal(customer)}
-                    className="flex-1 border border-gray-200 hover:border-gray-300 text-gray-700 font-medium px-4 py-2.5 rounded-lg transition-all duration-200 shadow-sm hover:shadow"
-                  >
-                    Send Reminder
-                  </button>
-                  {customer.phone && (
-                    <a
-                      href={`tel:${customer.phone}`}
-                      className="flex-1 border border-green-200 hover:border-green-400 text-green-700 font-medium px-4 py-2.5 rounded-lg transition-all duration-200 shadow-sm hover:shadow flex items-center justify-center bg-green-50 hover:bg-green-100"
-                      style={{ textDecoration: 'none' }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm0 14a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5a2 2 0 00-2 2v2zm14-14a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5a2 2 0 012-2h2zm0 14a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2h-2a2 2 0 00-2 2v2z" /></svg>
-                      Call Customer
-                    </a>
-                  )}
-                </div>
-
-                {/* Order Details Section */}
-                {customerDeliveredOrders[customer.id] && customerDeliveredOrders[customer.id].length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-gray-100">
-                    <h4 className="text-sm font-medium text-gray-700 mb-2">Pending Orders:</h4>
-                    <ul className="space-y-2">
-                      {customerDeliveredOrders[customer.id].map((order) => (
-                        <li
-                          key={order.id}
-                          className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-lg"
-                        >
-                          Order #{order.id.slice(0, 8)} - ₹{order.amount}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Collection Date Section */}
-                <div className="mt-4 pt-4 border-t border-gray-100">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-medium text-gray-700">Collection Date:</div>
-                    <Popover open={dateMenuOpen[customer.id]} onOpenChange={() => openDateMenu(customer.id)}>
-                      <PopoverTrigger asChild>
-                        <button
-                          className={cn(
-                            "flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900",
-                            "px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
-                          )}
-                        >
-                          <CalendarIcon className="h-4 w-4" />
-                          {customerDates[customer.id]
-                            ? displayDate(customerDates[customer.id])
-                            : "Set date"}
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="end">
-                        <Calendar
-                          mode="single"
-                          selected={customerDates[customer.id]}
-                          onSelect={(date) => date && handleDateChangeForCustomer(customer.id, date)}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-              </div>
-            )}
-            </li>
-          ))}
-        </ul>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

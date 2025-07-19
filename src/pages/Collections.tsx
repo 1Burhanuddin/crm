@@ -35,6 +35,16 @@ type DeliveredOrder = {
   amount: number;
 };
 
+// Add new type for pending order with credit
+interface PendingOrderWithCredit {
+  orderId: string;
+  customerId: string;
+  customerName: string;
+  phone?: string;
+  creditAmount: number;
+  jobDate?: string;
+}
+
 export default function Collections() {
   const { user } = useSession();
   const {
@@ -71,6 +81,7 @@ export default function Collections() {
     remarks: string;
   }>(null);
   const [deleteDialog, setDeleteDialog] = useState<null | { id: string; name: string }>(null);
+  const [pendingOrdersWithCredit, setPendingOrdersWithCredit] = useState<PendingOrderWithCredit[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -91,7 +102,7 @@ export default function Collections() {
       .from("orders")
       .select("id, customer_id, products, advance_amount, status")
       .eq("user_id", user.id)
-      .eq("status", "completed");
+      .eq("status", "delivered");
     if (!orders) {
       setPendingCustomers([]);
       setCustomerDeliveredOrders({});
@@ -106,7 +117,6 @@ export default function Collections() {
     );
     const deliveredOrderUdhaar: { [orderId: string]: { customer_id: string; amount: number } } = {};
     for (const o of orders) {
-      // Calculate order total from products array
       let orderTotal = 0;
       const orderProducts = Array.isArray(o.products) ? (o.products as unknown as OrderProduct[]) : [];
       for (const item of orderProducts) {
@@ -114,7 +124,6 @@ export default function Collections() {
         const qty = Number(item.qty) || 0;
         orderTotal += price * qty;
       }
-      
       const amt = orderTotal - (Number(o.advance_amount) || 0);
       deliveredOrderUdhaar[o.id] = {
         customer_id: o.customer_id,
@@ -158,28 +167,12 @@ export default function Collections() {
   }, [user, collections, customers]);
 
   useEffect(() => {
-    if (pendingCustomers.length > 0) {
-      setCustomerDates(prev => {
-        const next: Record<string, Date> = { ...prev };
-        pendingCustomers.forEach((c) => {
-          if (!next[c.id]) {
-            next[c.id] = addDays(new Date(), 1);
-          }
-        });
-        Object.keys(next).forEach((id) => {
-          if (!pendingCustomers.some((c) => c.id === id)) {
-            delete next[id];
-          }
-        });
-        return next;
-      });
+    if (customers.length > 0) {
+      console.log("Customers loaded, calling calculatePending. Customers count:", customers.length);
+      calculatePending();
     }
-  }, [pendingCustomers]);
-
-  useEffect(() => {
-    if (customers.length > 0) calculatePending();
     // eslint-disable-next-line
-  }, [collections, customers]);
+  }, [collections, customers, calculatePending]);
 
   const handleOpenForm = (customerId?: string, amount?: number) => {
     let order_id = "";
@@ -380,12 +373,17 @@ export default function Collections() {
         <h2 className="text-xl font-semibold text-blue-900 mb-4">Collections</h2>
 
         <Tabs defaultValue="pending" className="w-full">
-          <TabsList className="grid grid-cols-2 w-full mb-4">
-            <TabsTrigger value="pending">Pending</TabsTrigger>
-            <TabsTrigger value="history">History</TabsTrigger>
+          <TabsList className="flex w-full bg-transparent border border-blue-200 rounded-full p-1 mb-4 h-12">
+            <TabsTrigger value="pending" className="flex-1 rounded-full h-10 text-base font-semibold data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-blue-700 data-[state=inactive]:bg-transparent transition-all">
+              Pending
+            </TabsTrigger>
+            <TabsTrigger value="history" className="flex-1 rounded-full h-10 text-base font-semibold data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-blue-700 data-[state=inactive]:bg-transparent transition-all">
+              History
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="pending" className="focus-visible:outline-none">
+        {console.log("Rendering pending tab with pendingCustomers:", pendingCustomers)}
         <PendingCollectionsPanel
           pendingCustomers={pendingCustomers}
           customers={customers}

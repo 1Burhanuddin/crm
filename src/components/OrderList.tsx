@@ -16,7 +16,6 @@ import {
   Calendar, 
   MapPin, 
   User, 
-  DollarSign, 
   Package,
   Filter,
   Eye,
@@ -32,7 +31,8 @@ import {
   ChevronUp,
   ChevronLeft,
   ChevronRight,
-  Receipt
+  Receipt,
+  X as CloseIcon
 } from "lucide-react";
 import { AddOrderModal } from "./AddOrderModal";
 import { EditOrderModal } from "./EditOrderModal";
@@ -156,12 +156,8 @@ export function OrderList() {
         description: `Order marked as ${newStatus}`,
       });
 
-      if (newStatus === "delivered" && modalOrder?.id === order.id) {
-        setTimeout(() => {
-          setModalOrder(null);
-        }, 800);
-      }
-
+      // Always close the modal after status change
+      setModalOrder(null);
       fetchOrders();
     } catch (error) {
       console.error("Error updating order status:", error);
@@ -406,91 +402,115 @@ export function OrderList() {
       return product?.price || 0;
     };
 
-    const swipeHandlers = useSwipeable({
-      onSwipedRight: (eventData) => {
-        if (order.status !== "delivered") handleStatusChange(order, "delivered");
-      },
-      onSwipedLeft: (eventData) => {
-        if (order.status !== "pending") handleStatusChange(order, "pending");
-      },
-      trackMouse: false,
-      trackTouch: true,
-      delta: 10,
-    });
-
     return (
-      <div {...(isMobile ? swipeHandlers : {})} className={`relative transition-all duration-500 ${swipeFeedback} ${isCompleting ? 'animate-pulse bg-green-50 shadow-lg' : ''}`}
+      <div className={`relative transition-all duration-500 ${swipeFeedback} ${isCompleting ? 'animate-pulse bg-green-50 shadow-lg' : ''}`}
         style={{ touchAction: isMobile ? 'pan-y' : undefined }}>
         <Card className={`hover:shadow-md transition-all duration-200 cursor-pointer group ${isCompleting ? 'border-green-300 shadow-md' : ''}`} onClick={() => setModalOrder(order)}>
           <CardHeader className="pb-3">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <CardTitle className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
-                  {customerName}
-                  <ChevronDown className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-all duration-200 group-hover:animate-pulse" />
-                </CardTitle>
-                <div className="flex items-center gap-4 text-sm text-gray-600">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    <span>{format(new Date(order.job_date), "MMM dd, yyyy")}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <PhoneCall className="h-4 w-4" />
-                    <span>{customerPhone}</span>
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <CardTitle className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                    {customerName}
+                    {order.status === 'pending' && (
+                      <span className="ml-2 px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 text-xs font-semibold">Pending</span>
+                    )}
+                    <ChevronDown className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-all duration-200 group-hover:animate-pulse" />
+                  </CardTitle>
+                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-4 w-4" />
+                      <span>{format(new Date(order.job_date), "MMM dd, yyyy")}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <PhoneCall className="h-4 w-4" />
+                      <span>{customerPhone}</span>
+                    </div>
                   </div>
                 </div>
+                <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                  <OrderActionsMenu
+                    onEdit={() => handleEditOrder(order)}
+                    onDelete={() => handleDeleteOrder(order)}
+                    canMarkDelivered={order.status !== "delivered"}
+                    onMarkDelivered={() => handleStatusChange(order, "delivered")}
+                  />
+                </div>
               </div>
-              <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                {order.status === "delivered" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleGenerateBill(order)}
-                    className="text-xs"
-                  >
-                    <Receipt className="h-3 w-3 mr-1" />
-                    Bill
-                  </Button>
-                )}
-                <OrderActionsMenu
-                  onEdit={() => handleEditOrder(order)}
-                  onDelete={() => handleDeleteOrder(order)}
-                  canMarkDelivered={order.status !== "delivered"}
-                  onMarkDelivered={() => handleStatusChange(order, "delivered")}
-                />
-              </div>
-            </div>
-          </CardHeader>
-
-           <CardContent className="pt-0">
-             <div className="flex items-center justify-between text-sm pt-2 border-t">
-               <div className="flex items-center gap-2">
-                 <Package className="h-4 w-4 text-gray-500" />
-                 <span className="text-gray-600">{order.products.length} items</span>
-               </div>
-               <div className="flex items-center gap-4">
-                 <div className="flex items-center gap-1 text-green-600 font-medium">
-                   <DollarSign className="h-4 w-4" />
-                   <span>₹{orderTotal.toLocaleString()}</span>
-                 </div>
-                 {order.advance_amount > 0 && (
-                   <div className="text-xs text-gray-500">
-                     Advance: ₹{order.advance_amount}
-                   </div>
-                 )}
-                  {pendingAmount > 0 && (
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="flex items-center justify-between text-sm pt-2 border-t">
+                <div className="flex items-center gap-2">
+                  <Package className="h-4 w-4 text-gray-500" />
+                  <span className="text-gray-600">{order.products.length} items</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-1 text-green-600 font-medium">
+                    <span>₹{orderTotal.toLocaleString()}</span>
+                  </div>
+                  {order.advance_amount > 0 && (
+                    <div className="text-xs text-gray-500">
+                      Advance: ₹{order.advance_amount}
+                    </div>
+                  )}
+                  {pendingAmount > 0 && order.status === 'pending' && (
+                    <div className="text-xs text-red-600 font-medium">
+                      Pending: ₹{pendingAmount}
+                    </div>
+                  )}
+                  {pendingAmount > 0 && order.status === 'delivered' && (
                     <div className="text-xs text-red-600 font-medium">
                       Credit: ₹{pendingAmount}
                     </div>
                   )}
-                {order.status === 'pending' && (
-                  <span className="ml-2 px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 text-xs font-semibold">Pending</span>
-                )}
-               </div>
-             </div>
-           </CardContent>
-        </Card>
-      </div>
+                </div>
+              </div>
+              {order.status === "pending" && (
+                <div className="mt-3 pt-3 border-t border-gray-100 flex flex-col gap-3">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setModalOrder(order);
+                    }}
+                    className="w-full font-semibold text-base rounded-full border-blue-200 hover:bg-blue-50"
+                  >
+                    <Eye className="h-5 w-5 mr-2" />
+                    View Details
+                  </Button>
+                </div>
+              )}
+              {order.status === "delivered" && (
+                <div className="mt-3 pt-3 border-t border-gray-100 flex flex-col gap-3">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setModalOrder(order);
+                    }}
+                    className="w-full font-semibold text-base rounded-full border-blue-200 hover:bg-blue-50"
+                  >
+                    <Eye className="h-5 w-5 mr-2" />
+                    View Details
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleGenerateBill(order);
+                    }}
+                    className="w-full font-semibold text-base rounded-full border-blue-200 hover:bg-blue-50"
+                  >
+                    <Receipt className="h-5 w-5 mr-2" />
+                    Generate Bill
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
     );
   };
 
@@ -507,28 +527,31 @@ export function OrderList() {
 
   return (
     <div className="space-y-6 overflow-x-hidden w-full max-w-full">
-      <div className="flex flex-col sm:flex-row gap-4 mb-2">
+      <div className="flex flex-row gap-3 mb-2 items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
             placeholder="Search by customer, phone, address..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-10 rounded-full"
           />
         </div>
-        <Button onClick={() => setShowAddModal(true)} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl flex items-center gap-2 text-base font-semibold hover:bg-blue-700 transition-all shadow-sm">
+        <Button
+          onClick={() => setShowAddModal(true)}
+          className="bg-blue-600 text-white px-6 py-2.5 rounded-full flex items-center gap-2 text-base font-semibold hover:bg-blue-700 transition-all shadow-sm flex-shrink-0"
+        >
           <Plus className="h-4 w-4" />
           Add Order
         </Button>
       </div>
 
       <Tabs defaultValue="pending" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="pending">
+        <TabsList className="flex w-full bg-transparent border border-blue-200 rounded-full p-1 mb-4 h-12">
+          <TabsTrigger value="pending" className="flex-1 rounded-full h-10 text-base font-semibold data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-blue-700 data-[state=inactive]:bg-transparent transition-all">
             Pending ({getOrdersByStatus("pending").length})
           </TabsTrigger>
-          <TabsTrigger value="delivered">
+          <TabsTrigger value="delivered" className="flex-1 rounded-full h-10 text-base font-semibold data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-blue-700 data-[state=inactive]:bg-transparent transition-all">
             Completed ({getOrdersByStatus("delivered").length})
           </TabsTrigger>
         </TabsList>
@@ -774,6 +797,14 @@ function OrderDetailsModal({ order, customers, products, isMobile, onClose, onSt
       <DialogContent
         className={`w-full ${isMobile ? 'max-w-sm mx-auto min-h-[40vh] rounded-2xl p-5 shadow-2xl' : 'max-w-lg'}`}
       >
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
+        >
+          <CloseIcon className="h-6 w-6 text-gray-400" />
+        </button>
         <div className="mb-4 break-words">
           <h2 className="text-xl font-bold mb-1 break-words">{customer?.name || "Unknown Customer"}</h2>
           <div className="text-sm text-gray-600 mb-2 break-words">{order.job_date} | {customer?.phone}</div>
@@ -815,16 +846,18 @@ function OrderDetailsModal({ order, customers, products, isMobile, onClose, onSt
           <div className="mb-2 text-xs text-gray-600 bg-gray-50 p-2 rounded-md break-words">Remarks: {order.remarks}</div>
         )}
         
-        <div className="flex gap-2 mb-4">
-          <Button 
-            onClick={onGenerateBill}
-            variant="outline"
-            className="flex-1"
-          >
-            <Receipt className="h-4 w-4 mr-2" />
-            Generate Bill
-          </Button>
-        </div>
+        {order.status === "delivered" && (
+          <div className="flex gap-2 mb-4">
+            <Button 
+              onClick={onGenerateBill}
+              variant="outline"
+              className="flex-1"
+            >
+              <Receipt className="h-4 w-4 mr-2" />
+              Generate Bill
+            </Button>
+          </div>
+        )}
 
         {isMobile ? (
           <div className="mt-4">

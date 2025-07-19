@@ -25,11 +25,11 @@ export function OrderActionsMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className="p-2 rounded-full transition-colors text-blue-700 shadow"
+          className="p-2 rounded-full transition-colors text-gray-600 hover:text-gray-800"
           aria-label="Show actions"
           type="button"
         >
-          <MoreVertical size={22} />
+          <MoreVertical size={20} />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="z-50 w-52 rounded-xl shadow-2xl border border-blue-100 p-2 bg-white">
