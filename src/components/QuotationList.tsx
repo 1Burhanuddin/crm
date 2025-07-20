@@ -251,51 +251,49 @@ export function QuotationList() {
               <Package className="h-4 w-4 text-gray-500" />
               <span className="text-gray-600">{productName}</span>
             </div>
-            <div className="flex items-center gap-1 text-green-600 font-medium">
-              <DollarSign className="h-4 w-4" />
+            <div className="text-green-600 font-medium">
               <span>₹{quotationTotal.toLocaleString()}</span>
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-3 mb-4">
+          <div className="flex items-center gap-2 ">
             <Button
               variant="outline"
-              size="lg"
-              className="flex-1 font-semibold py-3 text-base border-blue-200 hover:bg-blue-50 rounded-full"
-              onClick={(e) => {
-                e.stopPropagation();
-                handlePreviewQuotation(quotation);
-              }}
-            >
-              <Eye className="h-5 w-5 mr-2" />
-              Preview
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              className="flex-1 font-semibold py-3 text-base border-blue-200 hover:bg-blue-50 rounded-full"
-              onClick={(e) => {
-                e.stopPropagation();
-                handlePrintQuotation(quotation);
-              }}
-            >
-              <FileText className="h-5 w-5 mr-2" />
-              Download
-            </Button>
-          </div>
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              size="lg"
-              className="flex-1 font-semibold py-3 text-base border-blue-200 hover:bg-blue-50 rounded-full"
+              size="sm"
+              className="flex-[2] h-9 rounded-full border-blue-200 hover:bg-blue-50 flex items-center gap-1 text-sm font-medium justify-center min-w-0"
               onClick={(e) => {
                 e.stopPropagation();
                 setModalQuotation(quotation);
               }}
+              title="View Details"
             >
-              <Eye className="h-5 w-5 mr-2" />
+              <Eye className="h-4 w-4 mr-1" />
               View Details
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="flex-1 h-9 w-9 rounded-full border-blue-200 hover:bg-blue-50 flex items-center justify-center min-w-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePreviewQuotation(quotation);
+              }}
+              title="Preview"
+            >
+              <Eye className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="flex-1 h-9 w-9 rounded-full border-blue-200 hover:bg-blue-50 flex items-center justify-center min-w-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePrintQuotation(quotation);
+              }}
+              title="Download PDF"
+            >
+              <FileText className="h-5 w-5" />
             </Button>
           </div>
         </CardContent>
@@ -535,53 +533,53 @@ export function QuotationList() {
   return (
     <div className="space-y-6 overflow-x-hidden w-full max-w-full">
       {/* Search and Add Quotation Button */}
-      <div className="flex flex-row gap-3 mb-2 items-center">
+      <div className="flex flex-row gap-2 mb-2 items-center">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-3 w-3" />
           <Input
             placeholder="Search by customer, phone, product..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 rounded-full"
+            className="pl-8 h-9 text-sm rounded-full"
           />
         </div>
         <Button
           onClick={() => setShowAddModal(true)}
-          className="bg-blue-600 text-white px-6 py-2.5 rounded-full flex items-center gap-2 text-base font-semibold hover:bg-blue-700 transition-all shadow-sm flex-shrink-0"
+          className="bg-blue-600 text-white px-4 py-2 rounded-full flex items-center gap-1.5 text-sm font-semibold hover:bg-blue-700 transition-all shadow-sm flex-shrink-0 h-9"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-3 w-3" />
           Add Quotation
         </Button>
       </div>
 
       {/* Quotations Tabs */}
       <Tabs defaultValue="pending" className="w-full">
-        <TabsList className="flex w-full bg-transparent border border-blue-200 rounded-full p-1 mb-4 h-12">
-          <TabsTrigger value="pending" className="flex-1 rounded-full h-10 text-base font-semibold data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-blue-700 data-[state=inactive]:bg-transparent transition-all">
+        <TabsList className="flex w-full bg-transparent border border-blue-200 rounded-full p-1 mb-3 h-10">
+          <TabsTrigger value="pending" className="flex-1 rounded-full h-8 text-sm font-semibold data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-blue-700 data-[state=inactive]:bg-transparent transition-all">
             Pending ({getQuotationsByStatus("pending").length})
           </TabsTrigger>
-          <TabsTrigger value="approved" className="flex-1 rounded-full h-10 text-base font-semibold data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-blue-700 data-[state=inactive]:bg-transparent transition-all">
+          <TabsTrigger value="approved" className="flex-1 rounded-full h-8 text-sm font-semibold data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-blue-700 data-[state=inactive]:bg-transparent transition-all">
             Approved ({getQuotationsByStatus("approved").length})
           </TabsTrigger>
-          <TabsTrigger value="rejected" className="flex-1 rounded-full h-10 text-base font-semibold data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-blue-700 data-[state=inactive]:bg-transparent transition-all">
+          <TabsTrigger value="rejected" className="flex-1 rounded-full h-8 text-sm font-semibold data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-blue-700 data-[state=inactive]:bg-transparent transition-all">
             Rejected ({getQuotationsByStatus("rejected").length})
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="pending" className="mt-6">
-          {getQuotationsByStatus("pending").length === 0 ? (
+          {filteredQuotations.filter(quotation => quotation.status === "pending").length === 0 ? (
             <div className="text-center py-12">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No pending quotations
+                {searchTerm ? "No pending quotations found" : "No pending quotations"}
               </h3>
               <p className="text-gray-500">
-                Quotations with pending status will appear here
+                {searchTerm ? "Try adjusting your search" : "Quotations with pending status will appear here"}
               </p>
             </div>
           ) : (
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-              {getQuotationsByStatus("pending").map((quotation) => (
+              {filteredQuotations.filter(quotation => quotation.status === "pending").map((quotation) => (
                 <PendingQuotationCard key={quotation.id} quotation={quotation} />
               ))}
             </div>
@@ -589,19 +587,19 @@ export function QuotationList() {
         </TabsContent>
 
         <TabsContent value="approved" className="mt-6">
-          {getQuotationsByStatus("approved").length === 0 ? (
+          {filteredQuotations.filter(quotation => quotation.status === "approved").length === 0 ? (
             <div className="text-center py-12">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No approved quotations
+                {searchTerm ? "No approved quotations found" : "No approved quotations"}
               </h3>
               <p className="text-gray-500">
-                Approved quotations will appear here
+                {searchTerm ? "Try adjusting your search" : "Approved quotations will appear here"}
               </p>
             </div>
           ) : (
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-              {getQuotationsByStatus("approved").map((quotation) => (
+              {filteredQuotations.filter(quotation => quotation.status === "approved").map((quotation) => (
                 <QuotationCard key={quotation.id} quotation={quotation} />
               ))}
             </div>
@@ -609,19 +607,19 @@ export function QuotationList() {
         </TabsContent>
 
         <TabsContent value="rejected" className="mt-6">
-          {getQuotationsByStatus("rejected").length === 0 ? (
+          {filteredQuotations.filter(quotation => quotation.status === "rejected").length === 0 ? (
             <div className="text-center py-12">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No rejected quotations
+                {searchTerm ? "No rejected quotations found" : "No rejected quotations"}
               </h3>
               <p className="text-gray-500">
-                Rejected quotations will appear here
+                {searchTerm ? "Try adjusting your search" : "Rejected quotations will appear here"}
               </p>
             </div>
           ) : (
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-              {getQuotationsByStatus("rejected").map((quotation) => (
+              {filteredQuotations.filter(quotation => quotation.status === "rejected").map((quotation) => (
                 <QuotationCard key={quotation.id} quotation={quotation} />
               ))}
             </div>

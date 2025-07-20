@@ -527,31 +527,31 @@ export function OrderList() {
 
   return (
     <div className="space-y-6 overflow-x-hidden w-full max-w-full">
-      <div className="flex flex-row gap-3 mb-2 items-center">
+      <div className="flex flex-row gap-2 mb-2 items-center">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-3 w-3" />
           <Input
             placeholder="Search by customer, phone, address..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 rounded-full"
+            className="pl-8 h-9 text-sm rounded-full"
           />
         </div>
         <Button
           onClick={() => setShowAddModal(true)}
-          className="bg-blue-600 text-white px-6 py-2.5 rounded-full flex items-center gap-2 text-base font-semibold hover:bg-blue-700 transition-all shadow-sm flex-shrink-0"
+          className="bg-blue-600 text-white px-4 py-2 rounded-full flex items-center gap-1.5 text-sm font-semibold hover:bg-blue-700 transition-all shadow-sm flex-shrink-0 h-9"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-3 w-3" />
           Add Order
         </Button>
       </div>
 
       <Tabs defaultValue="pending" className="w-full">
-        <TabsList className="flex w-full bg-transparent border border-blue-200 rounded-full p-1 mb-4 h-12">
-          <TabsTrigger value="pending" className="flex-1 rounded-full h-10 text-base font-semibold data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-blue-700 data-[state=inactive]:bg-transparent transition-all">
+        <TabsList className="flex w-full bg-transparent border border-blue-200 rounded-full p-1 mb-3 h-10">
+          <TabsTrigger value="pending" className="flex-1 rounded-full h-8 text-sm font-semibold data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-blue-700 data-[state=inactive]:bg-transparent transition-all">
             Pending ({getOrdersByStatus("pending").length})
           </TabsTrigger>
-          <TabsTrigger value="delivered" className="flex-1 rounded-full h-10 text-base font-semibold data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-blue-700 data-[state=inactive]:bg-transparent transition-all">
+          <TabsTrigger value="delivered" className="flex-1 rounded-full h-8 text-sm font-semibold data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-blue-700 data-[state=inactive]:bg-transparent transition-all">
             Completed ({getOrdersByStatus("delivered").length})
           </TabsTrigger>
         </TabsList>
@@ -583,19 +583,19 @@ export function OrderList() {
         </TabsContent>
 
         <TabsContent value="pending" className="mt-6">
-          {getOrdersByStatus("pending").length === 0 ? (
+          {filteredOrders.filter(order => order.status === "pending").length === 0 ? (
             <div className="text-center py-12">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No pending orders
+                {searchTerm ? "No pending orders found" : "No pending orders"}
               </h3>
               <p className="text-gray-500">
-                Orders with pending status will appear here
+                {searchTerm ? "Try adjusting your search" : "Orders with pending status will appear here"}
               </p>
             </div>
           ) : (
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-              {getOrdersByStatus("pending").map((order) => (
+              {filteredOrders.filter(order => order.status === "pending").map((order) => (
                 <OrderCard key={order.id} order={order} />
               ))}
             </div>
@@ -603,19 +603,19 @@ export function OrderList() {
         </TabsContent>
 
         <TabsContent value="delivered" className="mt-6">
-          {getOrdersByStatus("delivered").length === 0 ? (
+          {filteredOrders.filter(order => order.status === "delivered").length === 0 ? (
             <div className="text-center py-12">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No completed orders
+                {searchTerm ? "No completed orders found" : "No completed orders"}
               </h3>
               <p className="text-gray-500">
-                Orders with completed status will appear here
+                {searchTerm ? "Try adjusting your search" : "Orders with completed status will appear here"}
               </p>
             </div>
           ) : (
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-              {getOrdersByStatus("delivered").map((order) => (
+              {filteredOrders.filter(order => order.status === "delivered").map((order) => (
                 <OrderCard key={order.id} order={order} />
               ))}
             </div>

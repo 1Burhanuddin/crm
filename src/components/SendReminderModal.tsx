@@ -1,9 +1,9 @@
 
 import React, { useState, useMemo } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { Copy, Send } from "lucide-react";
+import { Copy, X } from "lucide-react";
 // Removed: import { Whatsapp } from "lucide-react";
 
 interface SendReminderModalProps {
@@ -74,43 +74,60 @@ export function SendReminderModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Send Payment Reminder</DialogTitle>
+      <DialogContent className="sm:max-w-md p-6">
+        <DialogHeader className="relative">
+          <DialogTitle className="text-lg font-semibold text-blue-900">Send Payment Reminder</DialogTitle>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onOpenChange(false)}
+            className="absolute right-0 top-0 h-8 w-8 p-0 rounded-full hover:bg-gray-100"
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </DialogHeader>
         {customer && (
-          <div>
-            <div className="mb-2">
-              <div>
-                <span className="font-semibold text-blue-900">{customer.name}</span>
-                {customer.phone && (
-                  <span className="ml-2 text-gray-500 text-xs">({customer.phone})</span>
-                )}
+          <div className="space-y-4">
+            <div className="bg-gray-50 p-3 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="font-semibold text-blue-900">{customer.name}</span>
+                  {customer.phone && (
+                    <span className="ml-2 text-gray-500 text-sm">({customer.phone})</span>
+                  )}
+                </div>
+                <div className="text-red-600 font-bold">₹{customer.pending}</div>
               </div>
-              <div className="text-red-700 text-sm mb-1">Pending: ₹{customer.pending}</div>
+              <div className="text-gray-600 text-sm mt-1">Pending Amount</div>
             </div>
-            <label className="block mb-2 text-sm font-medium">Message Preview (editable)</label>
-            <textarea
-              className="w-full border px-2 py-1 rounded mb-3 min-h-[80px] text-gray-800"
-              value={customMsg}
-              onChange={(e) => setCustomMsg(e.target.value)}
-              spellCheck={false}
-            />
-            <div className="flex gap-2 mt-3">
+            
+            <div>
+              <label className="block mb-2 text-sm font-medium text-gray-700">Message Preview</label>
+              <textarea
+                className="w-full border border-gray-300 px-3 py-2 rounded-lg mb-4 min-h-[100px] text-gray-800 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={customMsg}
+                onChange={(e) => setCustomMsg(e.target.value)}
+                spellCheck={false}
+                readOnly
+              />
+            </div>
+            
+            <div className="flex gap-3">
               <Button
                 variant="outline"
                 type="button"
                 onClick={handleCopy}
                 title="Copy to clipboard"
+                className="flex-1 h-10 border-gray-300 hover:bg-gray-50"
               >
-                <Copy size={16} className="mr-1" /> Copy
+                <Copy size={16} className="mr-2" /> Copy
               </Button>
               <Button
                 type="button"
                 asChild
                 disabled={!customer.phone}
                 title={customer.phone ? "Send via WhatsApp" : "No phone number"}
-                className="bg-[#25D366] hover:bg-[#218e4d] text-white flex items-center"
+                className="flex-1 h-10 bg-green-600 hover:bg-green-700 text-white"
               >
                 <a
                   href={whatsappLink || "#"}
@@ -127,11 +144,6 @@ export function SendReminderModal({
             </div>
           </div>
         )}
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            Close
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

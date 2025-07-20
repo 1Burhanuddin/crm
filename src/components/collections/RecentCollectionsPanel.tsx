@@ -85,26 +85,6 @@ export function RecentCollectionsPanel({
                       <div className="text-green-700 text-xl font-bold mt-1">
                         ₹{collection.amount}
                       </div>
-                      {/* Due Date Indicator */}
-                      {collection.collection_date && (
-                        <div className="mt-2">
-                          {(() => {
-                            const dueDateInfo = getDueDateInfo(parseISO(collection.collection_date));
-                            return (
-                              <span 
-                                className={cn(
-                                  "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
-                                  dueDateInfo.color,
-                                  dueDateInfo.bgColor,
-                                  dueDateInfo.isUrgent && "animate-pulse"
-                                )}
-                              >
-                                {dueDateInfo.text}
-                              </span>
-                            );
-                          })()}
-                        </div>
-                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-gray-600 mt-3 bg-gray-50 px-3 py-2 rounded-lg">

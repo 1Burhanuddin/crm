@@ -6,6 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { SendReminderModal } from "@/components/SendReminderModal";
 import { CollectionEditModal } from "@/components/CollectionEditModal";
+import { CollectionDetailsModal } from "@/components/CollectionDetailsModal";
 import { BackButton } from "@/components/ui/BackButton";
 import { format, parseISO, isToday, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -13,7 +14,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Loader2, CalendarIcon, MessageSquare } from "lucide-react";
+import { Loader2, CalendarIcon, MessageSquare, Eye } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // Refactored components
 import { PendingCollectionsPanel } from "@/components/collections/PendingCollectionsPanel";
@@ -50,6 +52,7 @@ interface PendingOrderWithCredit {
 
 export default function Collections() {
   const { user } = useSession();
+  const isMobile = useIsMobile();
   const {
     data: collections = [],
     isLoading,
@@ -85,6 +88,7 @@ export default function Collections() {
   }>(null);
   const [deleteDialog, setDeleteDialog] = useState<null | { id: string; name: string }>(null);
   const [pendingOrdersWithCredit, setPendingOrdersWithCredit] = useState<PendingOrderWithCredit[]>([]);
+  const [selectedCollection, setSelectedCollection] = useState<any>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -318,6 +322,34 @@ export default function Collections() {
     setEditingCollection(null);
   };
 
+  const handleViewDetails = (customer: CustomerWithPending) => {
+    setSelectedCollection(customer);
+  };
+
+  const handleCollectFromModal = (customer: CustomerWithPending) => {
+    setForm({
+      customer_id: customer.id,
+      amount: customer.pending ? String(customer.pending) : "",
+      remarks: "",
+      order_id:
+        customerDeliveredOrders[customer.id] && customerDeliveredOrders[customer.id].length === 1
+          ? customerDeliveredOrders[customer.id][0].id
+          : "",
+      collection_date: customerDates[customer.id] ?? addDays(new Date(), 1),
+    });
+    setShowForm(true);
+    setSelectedCollection(null);
+  };
+
+  const handleRemindFromModal = (customer: CustomerWithPending) => {
+    handleOpenReminderModal(customer);
+    setSelectedCollection(null);
+  };
+
+  const handleCall = (phone: string) => {
+    window.open(`tel:${phone}`, '_self');
+  };
+
   // Calculate collections due today properly from actual data
   const dueToday = collections.filter(
     (c) =>
@@ -375,14 +407,13 @@ export default function Collections() {
   return (
     <AppLayout title="Collections">
       <div className="p-4 max-w-lg mx-auto">
-        <h2 className="text-xl font-semibold text-blue-900 mb-4">Collections</h2>
 
         <Tabs defaultValue="pending" className="w-full">
-          <TabsList className="flex w-full bg-transparent border border-blue-200 rounded-full p-1 mb-4 h-12">
-            <TabsTrigger value="pending" className="flex-1 rounded-full h-10 text-base font-semibold data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-blue-700 data-[state=inactive]:bg-transparent transition-all">
+          <TabsList className="flex w-full bg-transparent border border-blue-200 rounded-full p-1 mb-3 h-10">
+            <TabsTrigger value="pending" className="flex-1 rounded-full h-8 text-sm font-semibold data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-blue-700 data-[state=inactive]:bg-transparent transition-all">
               Pending
             </TabsTrigger>
-            <TabsTrigger value="history" className="flex-1 rounded-full h-10 text-base font-semibold data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-blue-700 data-[state=inactive]:bg-transparent transition-all">
+            <TabsTrigger value="history" className="flex-1 rounded-full h-8 text-sm font-semibold data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-blue-700 data-[state=inactive]:bg-transparent transition-all">
               History
             </TabsTrigger>
           </TabsList>
@@ -403,108 +434,78 @@ export default function Collections() {
               {pendingCustomers.map((customer) => (
                 <li
                   key={customer.id}
-                  className="bg-white rounded-xl shadow-lg border hover:shadow-xl transition-all duration-200 relative overflow-hidden"
+                  className="bg-white rounded-lg shadow-md border hover:shadow-lg transition-all duration-200 relative overflow-hidden"
                 >
-                  <div className="p-4">
+                  <div className="p-3">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-blue-900">
+                        <h3 className="text-base font-semibold text-blue-900">
                           {customer.name}
                         </h3>
                         {customer.phone && (
-                          <p className="text-sm text-gray-600 mt-1">{customer.phone}</p>
+                          <p className="text-xs text-gray-600 mt-1">{customer.phone}</p>
                         )}
-                        
-                        {/* Collection Date Selector */}
-                        <div className="mt-3 flex items-center gap-2">
-                          <Popover
-                            open={dateMenuOpen[customer.id] || false}
-                            onOpenChange={(open) => {
-                              if (open) {
-                                openDateMenu(customer.id);
-                              } else {
-                                setDateMenuOpen(prev => ({ ...prev, [customer.id]: false }));
-                              }
-                            }}
-                          >
-                            <PopoverTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className={cn(
-                                  "justify-start text-left font-normal text-xs h-8",
-                                  !customerDates[customer.id] && "text-muted-foreground"
-                                )}
-                              >
-                                <CalendarIcon className="mr-2 h-3 w-3" />
-                                {customerDates[customer.id] 
-                                  ? displayDate(customerDates[customer.id]) 
-                                  : "Set collection date"
-                                }
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={customerDates[customer.id]}
-                                onSelect={(date) => {
-                                  if (date) {
-                                    handleDateChangeForCustomer(customer.id, date);
-                                  }
-                                }}
-                                disabled={(date) => date < new Date()}
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="mt-3 flex gap-2">
-                          <Button
-                            onClick={() => {
-                              setForm({
-                                customer_id: customer.id,
-                                amount: customer.pending ? String(customer.pending) : "",
-                                remarks: "",
-                                order_id:
-                                  customerDeliveredOrders[customer.id] && customerDeliveredOrders[customer.id].length === 1
-                                    ? customerDeliveredOrders[customer.id][0].id
-                                    : "",
-                                collection_date: customerDates[customer.id] ?? addDays(new Date(), 1),
-                              });
-                              setShowForm(true);
-                            }}
-                            disabled={isAdding}
-                            size="sm"
-                            className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8"
-                          >
-                            {isAdding ? (
-                              <>
-                                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                                Adding...
-                              </>
-                            ) : (
-                              "Collect ₹" + customer.pending
-                            )}
-                          </Button>
-                          <Button
-                            onClick={() => handleOpenReminderModal(customer)}
-                            variant="outline"
-                            size="sm"
-                            className="text-xs h-8"
-                          >
-                            <MessageSquare className="mr-1 h-3 w-3" />
-                            Remind
-                          </Button>
-                        </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-2xl font-bold text-red-600">
+                        <div className="text-base font-bold text-red-600">
                           ₹{customer.pending}
                         </div>
-                        <div className="text-sm text-gray-500">Pending Amount</div>
+                        <div className="text-xs text-gray-500">Pending Amount</div>
                       </div>
+                    </div>
+                    
+                    {/* Collection Date Selector and Action Buttons in next row */}
+                    <div className="mt-3 flex items-center gap-2">
+                      <Popover
+                        open={dateMenuOpen[customer.id] || false}
+                        onOpenChange={(open) => {
+                          if (open) {
+                            openDateMenu(customer.id);
+                          } else {
+                            setDateMenuOpen(prev => ({ ...prev, [customer.id]: false }));
+                          }
+                        }}
+                      >
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className={cn(
+                              "flex-1 justify-start text-left font-normal text-sm h-9 rounded-full",
+                              !customerDates[customer.id] && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {customerDates[customer.id] 
+                              ? displayDate(customerDates[customer.id]) 
+                              : "Set collection date"
+                            }
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={customerDates[customer.id]}
+                            onSelect={(date) => {
+                              if (date) {
+                                handleDateChangeForCustomer(customer.id, date);
+                              }
+                            }}
+                            disabled={(date) => date < new Date()}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      
+                      <Button
+                        onClick={() => handleViewDetails(customer)}
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 text-sm h-9 rounded-full border-blue-200 hover:bg-blue-50"
+                      >
+                        <Eye className="mr-2 h-4 w-4" />
+                        View Details
+                      </Button>
                     </div>
                   </div>
                 </li>
@@ -566,6 +567,15 @@ export default function Collections() {
         setDeleteDialog={setDeleteDialog}
         isDeleting={isDeleting}
         performDelete={performDelete}
+      />
+
+      <CollectionDetailsModal
+        customer={selectedCollection}
+        onClose={() => setSelectedCollection(null)}
+        onCollect={handleCollectFromModal}
+        onRemind={handleRemindFromModal}
+        onCall={handleCall}
+        isMobile={isMobile}
       />
       </div>
     </AppLayout>

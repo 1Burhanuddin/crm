@@ -255,19 +255,29 @@ export default function Dashboard() {
         priceMap.set(p.id, Number(p.price) || 0);
       });
 
-      // Get all collections with dates
+      // Get all collections with order_id linking
       const { data: collections } = await supabase
         .from("collections")
-        .select("customer_id, amount, collection_date")
+        .select("order_id, customer_id, amount, collection_date")
         .eq("user_id", user.id);
 
-      const collectionsByCustomer = new Map();
+      // Group collections by order_id for accurate calculation
+      const collectionsByOrder = new Map<string, number>();
+      const collectionsByCustomer = new Map<string, number>();
+      
       (collections || []).forEach((c) => {
-        const existing = collectionsByCustomer.get(c.customer_id) || 0;
-        collectionsByCustomer.set(c.customer_id, existing + Number(c.amount));
+        if (c.order_id) {
+          // Collections linked to specific orders
+          const existing = collectionsByOrder.get(c.order_id) || 0;
+          collectionsByOrder.set(c.order_id, existing + Number(c.amount));
+        } else {
+          // Collections not linked to specific orders (legacy data)
+          const existing = collectionsByCustomer.get(c.customer_id) || 0;
+          collectionsByCustomer.set(c.customer_id, existing + Number(c.amount));
+        }
       });
 
-      // Calculate pending amounts with collection dates
+      // Calculate pending amounts per order, then group by customer
       const pendingByCustomer = new Map<string, { amount: number; collection_date?: string }>();
       
       orders.forEach((order) => {
@@ -283,8 +293,20 @@ export default function Dashboard() {
         }
         
         const totalDue = orderTotal - Number(order.advance_amount || 0);
-        const collected = collectionsByCustomer.get(order.customer_id) || 0;
-        const pending = totalDue - collected;
+        const collectedFromOrder = collectionsByOrder.get(order.id) || 0;
+        const collectedFromCustomer = collectionsByCustomer.get(order.customer_id) || 0;
+        
+        // Calculate pending amount considering both order-linked and customer-level collections
+        let pending = totalDue;
+        
+        // First, subtract order-specific collections
+        pending -= collectedFromOrder;
+        
+        // If there are still pending amounts and we have customer-level collections,
+        // use them proportionally or as a fallback
+        if (pending > 0 && collectedFromCustomer > 0) {
+          pending -= Math.min(pending, collectedFromCustomer);
+        }
         
         if (pending > 0) {
           const existing = pendingByCustomer.get(order.customer_id);
@@ -310,6 +332,14 @@ export default function Dashboard() {
         amount: data.amount,
         collection_date: data.collection_date
       }));
+
+      console.log('Pending Collections Debug:', {
+        totalOrders: orders.length,
+        totalCollections: collections?.length || 0,
+        collectionsByOrder: Object.fromEntries(collectionsByOrder),
+        collectionsByCustomer: Object.fromEntries(collectionsByCustomer),
+        pendingArray
+      });
 
       setPendingCollections(pendingArray);
     }
