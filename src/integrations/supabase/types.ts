@@ -91,6 +91,33 @@ export type Database = {
           },
         ]
       }
+      customer_collection_preferences: {
+        Row: {
+          created_at: string
+          customer_id: string
+          id: string
+          preferred_collection_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          id?: string
+          preferred_collection_date: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          id?: string
+          preferred_collection_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           created_at: string | null

@@ -103,6 +103,26 @@ export default function Collections() {
     loadCustomers();
   }, [user]);
 
+  // Load customer collection date preferences
+  useEffect(() => {
+    if (!user) return;
+    async function loadCustomerDates() {
+      const { data } = await supabase
+        .from("customer_collection_preferences")
+        .select("customer_id, preferred_collection_date")
+        .eq("user_id", user.id);
+      
+      if (data) {
+        const dateMap: Record<string, Date> = {};
+        data.forEach(pref => {
+          dateMap[pref.customer_id] = new Date(pref.preferred_collection_date);
+        });
+        setCustomerDates(dateMap);
+      }
+    }
+    loadCustomerDates();
+  }, [user]);
+
   const calculatePending = useCallback(async () => {
     if (!user) return;
     const { data: orders } = await supabase
@@ -220,12 +240,40 @@ export default function Collections() {
     setForm({ ...form, order_id: e.target.value });
   };
 
-  const handleDateChangeForCustomer = (customerId: string, date: Date) => {
+  const handleDateChangeForCustomer = async (customerId: string, date: Date) => {
     setCustomerDates(prev => ({
       ...prev,
       [customerId]: date,
     }));
     setDateMenuOpen(prev => ({ ...prev, [customerId]: false }));
+    
+    // Save to database
+    if (user) {
+      try {
+        const dateString = format(date, "yyyy-MM-dd");
+        
+        // Use upsert to insert or update the preference
+        await supabase
+          .from("customer_collection_preferences")
+          .upsert(
+            {
+              user_id: user.id,
+              customer_id: customerId,
+              preferred_collection_date: dateString,
+            },
+            {
+              onConflict: "user_id,customer_id"
+            }
+          );
+      } catch (error) {
+        console.error("Error saving collection date preference:", error);
+        toast({
+          title: "Warning",
+          description: "Failed to save date preference. It will reset after refresh.",
+          variant: "destructive"
+        });
+      }
+    }
   };
 
   const openDateMenu = (customerId: string) => {
