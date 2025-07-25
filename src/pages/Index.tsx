@@ -143,10 +143,14 @@ export default function Dashboard() {
         let total = 0;
         if (Array.isArray(o.products)) {
           (o.products as any[]).forEach((item) => {
-            if (item && typeof item === 'object' && 'productId' in item && 'qty' in item) {
-              const price = priceMap.get(item.productId) || 0;
+            if (item && typeof item === 'object') {
+              // Handle both productId and product_id field names
+              const productId = item.productId || item.product_id;
               const qty = Number(item.qty) || 0;
-              total += price * qty;
+              if (productId) {
+                const price = priceMap.get(productId) || 0;
+                total += price * qty;
+              }
             }
           });
         }
@@ -284,10 +288,14 @@ export default function Dashboard() {
         let orderTotal = 0;
         if (Array.isArray(order.products)) {
           (order.products as any[]).forEach((item) => {
-            if (item && typeof item === 'object' && 'productId' in item && 'qty' in item) {
-              const price = priceMap.get(item.productId) || 0;
+            if (item && typeof item === 'object') {
+              // Handle both productId and product_id field names
+              const productId = item.productId || item.product_id;
               const qty = Number(item.qty) || 0;
-              orderTotal += price * qty;
+              if (productId) {
+                const price = priceMap.get(productId) || 0;
+                orderTotal += price * qty;
+              }
             }
           });
         }
