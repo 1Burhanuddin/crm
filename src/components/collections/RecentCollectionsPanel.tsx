@@ -94,7 +94,7 @@ export function RecentCollectionsPanel({
                   {collection.collection_date && (
                     <div className="flex items-center gap-2 text-sm text-gray-600 mt-2 bg-blue-50 px-3 py-2 rounded-lg">
                       <CalendarIcon size={16} className="text-blue-600" />
-                      <span>Was due: {format(parseISO(collection.collection_date), "PPP")}</span>
+                      <span>Planned for: {format(parseISO(collection.collection_date), "PPP")}</span>
                     </div>
                   )}
                   {collection.remarks && (

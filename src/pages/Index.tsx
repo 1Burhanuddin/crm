@@ -341,18 +341,37 @@ export default function Dashboard() {
         collection_date: data.collection_date
       }));
 
+      // Filter out collections with unknown customers
+      const validPendingArray = pendingArray.filter(collection => {
+        const customer = customers.find(c => c.id === collection.customer_id);
+        const isValid = customer && customer.name;
+        console.log(`Collection for customer ${collection.customer_id}:`, {
+          customerFound: !!customer,
+          customerName: customer?.name,
+          isValid,
+          amount: collection.amount
+        });
+        return isValid; // Only include if customer exists and has a name
+      });
+
       console.log('Pending Collections Debug:', {
         totalOrders: orders.length,
         totalCollections: collections?.length || 0,
         collectionsByOrder: Object.fromEntries(collectionsByOrder),
         collectionsByCustomer: Object.fromEntries(collectionsByCustomer),
-        pendingArray
+        pendingArray,
+        validPendingArray,
+        filteredOut: pendingArray.length - validPendingArray.length,
+        customersCount: customers.length,
+        customerIds: customers.map(c => ({ id: c.id, name: c.name }))
       });
 
-      setPendingCollections(pendingArray);
+      setPendingCollections(validPendingArray);
     }
-    fetchPendingCollections();
-  }, [user]);
+    if (user && customers.length > 0) {
+      fetchPendingCollections();
+    }
+  }, [user, customers]);
 
   const getCustomerName = (customerId: string) => {
     const customer = customers.find(c => c.id === customerId);

@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { getDueDateInfo } from "@/utils/dueDateUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
+import { useCollections } from "@/hooks/useCollections";
 import { toast } from "@/hooks/use-toast";
 
 interface Customer {
@@ -46,10 +47,9 @@ export function DashboardCollectionModal({
   onCollectionAdded,
 }: DashboardCollectionModalProps) {
   const { user } = useSession();
+  const { addCollection, isAdding } = useCollections();
   const [collectionDate, setCollectionDate] = useState<Date>(addDays(new Date(), 1));
   const [amount, setAmount] = useState("");
-  const [remarks, setRemarks] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [showReminder, setShowReminder] = useState(false);
   const [reminderMessage, setReminderMessage] = useState("");
   const [deliveredOrders, setDeliveredOrders] = useState<DeliveredOrder[]>([]);
@@ -59,7 +59,6 @@ export function DashboardCollectionModal({
     if (customer && open) {
       setAmount(customer.pending.toString());
       setCollectionDate(addDays(new Date(), 1));
-      setRemarks("");
       setShowReminder(false);
       setReminderMessage(`Hi ${customer.name}, this is a friendly reminder about your pending payment of ₹${customer.pending}. Please let us know when you can make the payment. Thank you!`);
       
@@ -141,37 +140,23 @@ export function DashboardCollectionModal({
       return;
     }
 
-    setIsLoading(true);
     try {
       const collectionDateStr = format(collectionDate, "yyyy-MM-dd");
 
-      // Add collection
-      const { error: collectionError } = await supabase
-        .from("collections")
-        .insert({
-          user_id: user.id,
-          customer_id: customer.id,
-          amount: Number(amount),
-          collection_date: collectionDateStr,
-          order_id: selectedOrderId || null,
-          remarks: remarks || null,
-        });
+      console.log("Adding collection from dashboard modal:", {
+        customer_id: customer.id,
+        amount: Number(amount),
+        collection_date: collectionDateStr,
+        order_id: selectedOrderId || null,
+      });
 
-      if (collectionError) throw collectionError;
-
-      // Add transaction
-      const { error: transactionError } = await supabase
-        .from("transactions")
-        .insert({
-          user_id: user.id,
-          customer_id: customer.id,
-          amount: Number(amount),
-          type: "credit",
-          date: collectionDateStr,
-          note: remarks || `Collection from ${customer.name}`,
-        });
-
-      if (transactionError) throw transactionError;
+      // Use the addCollection hook which handles both collection and transaction
+      await addCollection({
+        customer_id: customer.id,
+        amount: Number(amount),
+        collection_date: collectionDateStr,
+        order_id: selectedOrderId || null,
+      });
 
       toast({
         title: "Success!",
@@ -187,8 +172,6 @@ export function DashboardCollectionModal({
         description: "Failed to add collection. Please try again.",
         variant: "destructive"
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -226,7 +209,7 @@ export function DashboardCollectionModal({
             </div>
           </div>
 
-          {/* Due Date */}
+          {/* Collection Date */}
           <div className="space-y-2">
             <Label htmlFor="collection-date">Collection Date</Label>
             <div className="flex items-center gap-4">
@@ -235,27 +218,36 @@ export function DashboardCollectionModal({
                   <Button
                     variant="outline"
                     className={cn(
-                      "justify-start text-left font-normal flex-1",
+                      "justify-start text-left font-normal flex-1 rounded-full",
                       !collectionDate && "text-muted-foreground"
                     )}
+                    onClick={() => console.log('Calendar button clicked')}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {collectionDate ? format(collectionDate, "PPP") : "Pick a date"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={collectionDate}
-                    onSelect={(date) => date && setCollectionDate(date)}
-                    initialFocus
-                    className="pointer-events-auto"
-                  />
+                <PopoverContent className="w-auto p-0 z-50" align="start">
+                  <div className="p-3">
+                    <Calendar
+                      mode="single"
+                      selected={collectionDate}
+                      onSelect={(date) => {
+                        console.log('Calendar date selected:', date);
+                        if (date) {
+                          setCollectionDate(date);
+                        }
+                      }}
+                      initialFocus
+                      className="pointer-events-auto"
+                      disabled={(date) => date < new Date()}
+                    />
+                  </div>
                 </PopoverContent>
               </Popover>
               <span 
                 className={cn(
-                  "inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium",
+                  "inline-flex items-center px-3 py-2 rounded-full text-sm font-medium",
                   dueDateInfo.color,
                   dueDateInfo.bgColor,
                   dueDateInfo.isUrgent && "animate-pulse"
@@ -275,7 +267,7 @@ export function DashboardCollectionModal({
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="Enter amount"
-              className="text-lg font-semibold"
+              className="text-lg font-semibold rounded-full pl-6"
             />
           </div>
 
@@ -287,7 +279,7 @@ export function DashboardCollectionModal({
                 id="order"
                 value={selectedOrderId}
                 onChange={(e) => setSelectedOrderId(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-md"
+                className="w-full p-2 border border-gray-300 rounded-full"
               >
                 <option value="">Select an order</option>
                 {deliveredOrders.map((order) => (
@@ -299,27 +291,17 @@ export function DashboardCollectionModal({
             </div>
           )}
 
-          {/* Remarks */}
-          <div className="space-y-2">
-            <Label htmlFor="remarks">Remarks (Optional)</Label>
-            <Textarea
-              id="remarks"
-              value={remarks}
-              onChange={(e) => setRemarks(e.target.value)}
-              placeholder="Add any notes about this collection..."
-              rows={3}
-            />
-          </div>
+
 
           {/* Action Buttons */}
           <div className="flex flex-col gap-3">
             <Button
               onClick={handleCollectPayment}
-              disabled={isLoading || !amount}
-              className="w-full bg-blue-600 hover:bg-blue-700"
+              disabled={isAdding || !amount}
+              className="w-full bg-blue-600 hover:bg-blue-700 rounded-full"
               size="lg"
             >
-              {isLoading ? (
+              {isAdding ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                   Processing...
@@ -333,21 +315,30 @@ export function DashboardCollectionModal({
               <Button
                 variant="outline"
                 onClick={() => setShowReminder(true)}
-                className="flex-1 flex items-center justify-center text-black border-gray-300"
+                className="flex-1 flex items-center justify-center text-black border-black hover:bg-gray-100 rounded-full"
               >
                 <MessageSquare className="h-4 w-4 mr-2" />
                 Send Reminder
               </Button>
-                <Button
-                  variant="outline"
-                onClick={() => customer.phone && window.open(`tel:${customer.phone}`, '_self')}
-                className="flex-1 flex items-center justify-center text-black border-gray-300"
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (customer.phone) {
+                    console.log('Calling customer:', customer.phone);
+                    // Clean the phone number (remove spaces, dashes, etc.)
+                    const cleanPhone = customer.phone.replace(/[\s\-\(\)]/g, '');
+                    // Add country code if not present
+                    const phoneWithCode = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
+                    window.open(`tel:${phoneWithCode}`, '_self');
+                  }
+                }}
+                className="flex-1 flex items-center justify-center text-black border-black hover:bg-gray-100 rounded-full"
                 disabled={!customer.phone}
-                title={customer.phone ? undefined : 'No phone number available'}
-                >
-                  <Phone className="h-4 w-4 mr-2" />
-                  Call Customer
-                </Button>
+                title={customer.phone ? `Call ${customer.phone}` : 'No phone number available'}
+              >
+                <Phone className="h-4 w-4 mr-2" />
+                Call Customer
+              </Button>
             </div>
           </div>
         </div>

@@ -12,7 +12,7 @@ export function getDueDateInfo(collectionDate: Date): DueDateInfo {
   
   if (isToday(collectionDate)) {
     return {
-      text: "Due Today",
+      text: "Collection Today",
       color: "text-orange-700",
       bgColor: "bg-orange-100",
       isUrgent: true
@@ -21,7 +21,7 @@ export function getDueDateInfo(collectionDate: Date): DueDateInfo {
   
   if (isTomorrow(collectionDate)) {
     return {
-      text: "Due Tomorrow",
+      text: "Collection Tomorrow",
       color: "text-yellow-700",
       bgColor: "bg-yellow-100",
       isUrgent: true
@@ -30,7 +30,7 @@ export function getDueDateInfo(collectionDate: Date): DueDateInfo {
   
   if (isYesterday(collectionDate)) {
     return {
-      text: "Due Yesterday",
+      text: "Collection Yesterday",
       color: "text-red-700",
       bgColor: "bg-red-100",
       isUrgent: true
@@ -40,27 +40,27 @@ export function getDueDateInfo(collectionDate: Date): DueDateInfo {
   if (isPast(collectionDate)) {
     const daysOverdue = Math.abs(differenceInDays(today, collectionDate));
     return {
-      text: `${daysOverdue} day${daysOverdue > 1 ? 's' : ''} overdue`,
+      text: `Collection ${daysOverdue} day${daysOverdue > 1 ? 's' : ''} ago`,
       color: "text-red-800",
       bgColor: "bg-red-100",
       isUrgent: true
     };
   }
   
-  const daysUntilDue = differenceInDays(collectionDate, today);
+  const daysUntilCollection = differenceInDays(collectionDate, today);
   
-  if (daysUntilDue <= 3) {
+  if (daysUntilCollection <= 3) {
     return {
-      text: `Due in ${daysUntilDue} day${daysUntilDue > 1 ? 's' : ''}`,
+      text: `Collection in ${daysUntilCollection} day${daysUntilCollection > 1 ? 's' : ''}`,
       color: "text-yellow-700",
       bgColor: "bg-yellow-100",
       isUrgent: false
     };
   }
   
-  if (daysUntilDue <= 7) {
+  if (daysUntilCollection <= 7) {
     return {
-      text: `Due in ${daysUntilDue} days`,
+      text: `Collection in ${daysUntilCollection} days`,
       color: "text-blue-700",
       bgColor: "bg-blue-100",
       isUrgent: false
@@ -68,7 +68,7 @@ export function getDueDateInfo(collectionDate: Date): DueDateInfo {
   }
   
   return {
-    text: format(collectionDate, "MMM dd"),
+    text: `Collection on ${format(collectionDate, "MMM dd")}`,
     color: "text-gray-700",
     bgColor: "bg-gray-100",
     isUrgent: false
