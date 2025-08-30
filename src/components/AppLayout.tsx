@@ -92,11 +92,8 @@ export function AppLayout({ children, title, shopName, loadingTitle }: AppLayout
             }
           </span>
         </div>
-        <div className="flex items-center">
-          <ProfileSidebar />
-        </div>
         {/* Navigation items for large screens */}
-        <div className="hidden md:flex items-center gap-1">
+        <div className="hidden md:flex items-center gap-1 mr-4">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
@@ -110,10 +107,13 @@ export function AppLayout({ children, title, shopName, loadingTitle }: AppLayout
                 }`}
               >
                 <item.icon size={18} className="stroke-[2.5]" />
-                <span className="font-medium">{item.title}</span>
+                <span className="font-medium text-sm">{item.title}</span>
               </button>
             );
           })}
+        </div>
+        <div className="flex items-center">
+          <ProfileSidebar />
         </div>
 
         {isOffline && (

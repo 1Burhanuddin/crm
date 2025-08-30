@@ -58,43 +58,10 @@ export function FloatingActionButton() {
     queryClient.invalidateQueries({ queryKey: ['customers', user?.id] });
   };
 
-  // Add Order mutation
-  const addOrderMutation = useMutation({
-    mutationFn: async (orderData: Omit<Order, 'id'>) => {
-      if (!user) throw new Error('User not authenticated');
-      const { data, error } = await supabase
-        .from("orders")
-        .insert({
-          customer_id: orderData.customerId,
-          user_id: user.id,
-          products: orderData.products as unknown as any,
-          status: "pending",
-          job_date: orderData.jobDate,
-          advance_amount: orderData.advanceAmount || 0,
-        })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["orders", user?.id] });
-      toast({ title: "Order Added", description: "New order has been added successfully." });
-      setShowOrderModal(false);
-      navigate('/orders');
-    },
-    onError: (error: any) => {
-      toast({ 
-        title: "Error", 
-        description: error.message || "Failed to add order", 
-        variant: "destructive" 
-      });
-    }
-  });
-
-  // Add Order
-  const handleAddOrder = (orderData: Omit<Order, 'id'>) => {
-    addOrderMutation.mutate(orderData);
+  // Add Order - let the modal handle the submission
+  const handleAddOrder = () => {
+    setShowOrderModal(false);
+    navigate('/orders');
   };
 
   // Add Quotation

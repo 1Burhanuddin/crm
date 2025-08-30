@@ -327,9 +327,15 @@ export function DashboardCollectionModal({
                     console.log('Calling customer:', customer.phone);
                     // Clean the phone number (remove spaces, dashes, etc.)
                     const cleanPhone = customer.phone.replace(/[\s\-\(\)]/g, '');
-                    // Add country code if not present
-                    const phoneWithCode = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
-                    window.open(`tel:${phoneWithCode}`, '_self');
+                    // For mobile devices, use tel: protocol directly
+                    if (/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+                      window.location.href = `tel:+91${cleanPhone}`;
+                    } else {
+                      // For desktop, try to open tel: in new window
+                      window.open(`tel:+91${cleanPhone}`, '_self');
+                    }
+                  } else {
+                    console.log('No phone number available for customer');
                   }
                 }}
                 className="flex-1 flex items-center justify-center text-black border-black hover:bg-gray-100 rounded-full"
