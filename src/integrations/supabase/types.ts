@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -17,31 +17,55 @@ export type Database = {
       bills: {
         Row: {
           bill_date: string
+          bill_number: string | null
           created_at: string
           customer_name: string
           customer_phone: string | null
+          discount_amount: number | null
+          due_date: string | null
           id: string
           items: Json
+          notes: string | null
+          payment_terms: string | null
+          subtotal: number | null
+          tax_amount: number | null
+          tax_rate: number | null
           total: number
           user_id: string | null
         }
         Insert: {
           bill_date?: string
+          bill_number?: string | null
           created_at?: string
           customer_name: string
           customer_phone?: string | null
+          discount_amount?: number | null
+          due_date?: string | null
           id?: string
           items: Json
+          notes?: string | null
+          payment_terms?: string | null
+          subtotal?: number | null
+          tax_amount?: number | null
+          tax_rate?: number | null
           total: number
           user_id?: string | null
         }
         Update: {
           bill_date?: string
+          bill_number?: string | null
           created_at?: string
           customer_name?: string
           customer_phone?: string | null
+          discount_amount?: number | null
+          due_date?: string | null
           id?: string
           items?: Json
+          notes?: string | null
+          payment_terms?: string | null
+          subtotal?: number | null
+          tax_amount?: number | null
+          tax_rate?: number | null
           total?: number
           user_id?: string | null
         }
@@ -142,6 +166,36 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory: {
+        Row: {
+          created_at: string
+          id: string
+          last_updated: string
+          product_id: string
+          quantity_in_stock: number
+          reorder_level: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_updated?: string
+          product_id: string
+          quantity_in_stock?: number
+          reorder_level?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_updated?: string
+          product_id?: string
+          quantity_in_stock?: number
+          reorder_level?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           advance_amount: number
@@ -222,31 +276,64 @@ export type Database = {
       }
       profiles: {
         Row: {
+          account_number: string | null
+          bank_name: string | null
+          business_address: string | null
+          business_type: string | null
           created_at: string
           email: string
+          gst_number: string | null
           id: string
+          ifsc_code: string | null
           name: string | null
+          pan_number: string | null
           pin_hash: string | null
+          pincode: string | null
           profile_image_url: string | null
           shop_name: string | null
+          state: string | null
+          terms_conditions: string | null
+          upi_id: string | null
         }
         Insert: {
+          account_number?: string | null
+          bank_name?: string | null
+          business_address?: string | null
+          business_type?: string | null
           created_at?: string
           email: string
+          gst_number?: string | null
           id: string
+          ifsc_code?: string | null
           name?: string | null
+          pan_number?: string | null
           pin_hash?: string | null
+          pincode?: string | null
           profile_image_url?: string | null
           shop_name?: string | null
+          state?: string | null
+          terms_conditions?: string | null
+          upi_id?: string | null
         }
         Update: {
+          account_number?: string | null
+          bank_name?: string | null
+          business_address?: string | null
+          business_type?: string | null
           created_at?: string
           email?: string
+          gst_number?: string | null
           id?: string
+          ifsc_code?: string | null
           name?: string | null
+          pan_number?: string | null
           pin_hash?: string | null
+          pincode?: string | null
           profile_image_url?: string | null
           shop_name?: string | null
+          state?: string | null
+          terms_conditions?: string | null
+          upi_id?: string | null
         }
         Relationships: []
       }
@@ -381,17 +468,17 @@ export type Database = {
       get_all_users: {
         Args: Record<PropertyKey, never>
         Returns: {
-          id: string
-          email: string
           created_at: string
-          last_sign_in_at: string
+          email: string
           email_confirmed_at: string
+          id: string
+          last_sign_in_at: string
         }[]
       }
       has_role: {
         Args: {
-          _user_id: string
           _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
         }
         Returns: boolean
       }

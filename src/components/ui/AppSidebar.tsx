@@ -1,4 +1,4 @@
-import { Home, ClipboardList, FileText, UserCircle } from "lucide-react";
+import { Home, ClipboardList, FileText, UserCircle, Package } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -33,6 +33,11 @@ const navItems = [
     title: "Quotations",
     icon: FileText,
     path: "/quotations",
+  },
+  {
+    title: "Inventory",
+    icon: Package,
+    path: "/inventory",
   },
   {
     title: "Profile",

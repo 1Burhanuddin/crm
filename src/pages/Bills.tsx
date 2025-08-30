@@ -5,6 +5,7 @@ import { useSession } from "@/hooks/useSession";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { BillCreateModal } from "@/components/BillCreateModal";
+import { EnhancedBillCreateModal } from "@/components/EnhancedBillCreateModal";
 import { BillHtmlPreview } from "@/components/BillHtmlPreview";
 import { AppLayout } from "@/components/AppLayout";
 import html2pdf from "html2pdf.js";
@@ -255,7 +256,8 @@ export default function Bills() {
         )}
       </div>
 
-      <BillCreateModal
+      {/* Enhanced Bill Create Modal */}
+      <EnhancedBillCreateModal
         open={showCreate}
         setOpen={setShowCreate}
         onBillCreated={fetchBills}

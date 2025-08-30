@@ -4,6 +4,7 @@ import { useSession } from "@/hooks/useSession";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { BillCreateModal } from "@/components/BillCreateModal";
+import { EnhancedBillCreateModal } from "@/components/EnhancedBillCreateModal";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { Download } from "lucide-react";
 import { BackButton } from "@/components/ui/BackButton";
@@ -86,11 +87,13 @@ export function BillList() {
         <div className="text-xl font-bold text-blue-900">Bills</div>
         <Button onClick={() => setShowCreate(true)}>+ New Bill</Button>
       </div>
-      <BillCreateModal
-        open={showCreate}
-        setOpen={setShowCreate}
-        onBillCreated={fetchBills}
-      />
+        {showCreate && (
+          <EnhancedBillCreateModal
+            open={showCreate}
+            setOpen={setShowCreate}
+            onBillCreated={fetchBills}
+          />
+        )}
       {loading ? (
         <div>Loading...</div>
       ) : bills.length === 0 ? (

@@ -9,6 +9,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { LogOut, User, Store, AtSign, Edit2, FileText, Wallet2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useReportsData } from "@/hooks/useReportsData";
+import { EnhancedProfileForm } from "@/components/EnhancedProfileForm";
 
 export default function ProfilePage() {
   const { user, status, refresh, signOut } = useSession();
@@ -167,7 +168,7 @@ export default function ProfilePage() {
     }
   }
 
-  // UI for profile
+  // UI for enhanced profile
   return (
     <AppLayout
       shopName={profile?.shop_name || undefined}
@@ -175,152 +176,12 @@ export default function ProfilePage() {
       title="Profile"
     >
       {loading ? (
-        <div className="flex flex-col items-center justify-center min-h-[60vh] ">
-          <div className="text-blue-800 text-lg font-semibold">Loading...</div>
+        <div className="flex flex-col items-center justify-center min-h-[60vh]">
+          <div className="text-primary text-lg font-semibold">Loading...</div>
         </div>
       ) : (
-        <div className="w-full p-4 pb-24 relative">
-          <div className="p-0 border-0 relative overflow-visible min-h-[40vh] w-full">
-            {/* Clean minimalist form design */}
-            <div className="flex flex-col items-center justify-center pb-2 pt-7 px-4 relative">
-              {/* Profile form container */}
-              <div className="w-full max-w-md mx-auto">
-                  {/* Welcome header with edit button */}
-                  <div className="text-center mb-8 bg-gray-50 rounded-xl p-6 border border-gray-100 relative">
-                    {!editing && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleEdit}
-                        className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-full p-2"
-                        title="Edit Profile"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                    <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                      Welcome back!
-                    </h1>
-                    <p className="text-gray-600">
-                      Manage your profile information
-                    </p>
-                  </div>
-                
-                {/* Clean form with three fields */}
-                <div className="space-y-6">
-                  {/* Name field */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-gray-900">
-                      Name
-                    </label>
-                    {editing ? (
-                      <Input
-                        type="text"
-                        value={newName}
-                        onChange={(e) => setNewName(e.target.value)}
-                        className="w-full h-12 px-4 rounded-full border-gray-200 bg-white focus:border-blue-500 focus:ring-blue-500"
-                        placeholder="Alexa"
-                        maxLength={50}
-                      />
-                    ) : (
-                      <div className="w-full h-12 px-4 rounded-full border border-gray-200 bg-gray-50 flex items-center">
-                        <span className="text-gray-600">
-                          {profile?.name || "Alexa"}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Username field */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-gray-900">
-                      Shop name
-                    </label>
-                    {editing ? (
-                      <Input
-                        type="text"
-                        value={newShopName}
-                        onChange={(e) => setNewShopName(e.target.value)}
-                        className="w-full h-12 px-4 rounded-full border-gray-200 bg-white focus:border-blue-500 focus:ring-blue-500"
-                        placeholder="Alexa"
-                        maxLength={60}
-                      />
-                    ) : (
-                      <div className="w-full h-12 px-4 rounded-full border border-gray-200 bg-gray-50 flex items-center">
-                        <span className="text-gray-600">
-                          {profile?.shop_name || "Alexa"}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Email field */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-gray-900">
-                      Email address
-                    </label>
-                    {editing ? (
-                      <Input
-                        type="email"
-                        value={newEmail}
-                        onChange={(e) => setNewEmail(e.target.value)}
-                        className="w-full h-12 px-4 rounded-full border-gray-200 bg-white focus:border-blue-500 focus:ring-blue-500"
-                        placeholder="Alexa@gmail.com"
-                      />
-                    ) : (
-                      <div className="w-full h-12 px-4 rounded-full border border-gray-200 bg-gray-50 flex items-center">
-                        <span className="text-gray-600">
-                          {profile?.email || "Alexa@gmail.com"}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Edit Actions */}
-                {editing && (
-                  <div className="flex w-full gap-3 mt-8">
-                    <Button
-                      className="w-full h-12 bg-blue-600 text-white hover:bg-blue-700 rounded-full"
-                      variant="default"
-                      type="button"
-                      onClick={handleSave}
-                      disabled={loading || imageUploading}
-                    >
-                      {loading || imageUploading ? "Saving..." : "Save"}
-                    </Button>
-                    <Button
-                      className="w-full h-12 rounded-full"
-                      variant="outline"
-                      type="button"
-                      onClick={() => setEditing(false)}
-                      disabled={loading || imageUploading}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                )}
-
-                {/* Logout button */}
-                {status === "signed_in" && user && !editing && (
-                  <div className="w-full mt-8">
-                    <Button
-                      className="w-full h-12 bg-red-600 text-white hover:bg-red-700 rounded-full"
-                      variant="default"
-                      type="button"
-                      onClick={async () => {
-                        await signOut();
-                        navigate("/auth");
-                      }}
-                    >
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Log Out
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+        <div className="w-full pb-24">
+          <EnhancedProfileForm />
         </div>
       )}
     </AppLayout>
