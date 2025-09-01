@@ -37,7 +37,7 @@ import {
 import { AddOrderModal } from "./AddOrderModal";
 import { EditOrderModal } from "./EditOrderModal";
 import { OrderActionsMenu } from "./OrderActionsMenu";
-import { BillCreateModal } from "./BillCreateModal";
+import { EnhancedBillCreateModal } from "./EnhancedBillCreateModal";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -151,9 +151,14 @@ export function OrderList() {
 
       if (error) throw error;
 
+      // Auto-generate bill when order is completed
+      if (newStatus === "delivered") {
+        await generateBillFromOrder(order);
+      }
+
       toast({
         title: "Success",
-        description: `Order marked as ${newStatus}`,
+        description: `Order marked as ${newStatus}${newStatus === "delivered" ? " and bill generated" : ""}`,
       });
 
       // Always close the modal after status change
@@ -175,6 +180,55 @@ export function OrderList() {
     setTimeout(() => {
       setCompletionAnimation(null);
     }, 1000);
+  };
+
+  const generateBillFromOrder = async (order: Order) => {
+    try {
+      const customer = customers.find(c => c.id === order.customer_id);
+      const orderItems = order.products.map(item => {
+        const product = products.find(p => p.id === item.productId);
+        return {
+          name: product?.name || "Unknown Product",
+          qty: item.qty,
+          price: product?.price || 0
+        };
+      });
+
+      const subtotal = orderItems.reduce((sum, item) => sum + (item.price * item.qty), 0);
+      const taxRate = 18; // Default GST rate
+      const taxAmount = (subtotal * taxRate) / 100;
+      const total = subtotal + taxAmount;
+
+      const { error } = await supabase
+        .from("bills")
+        .insert({
+          user_id: user?.id,
+          customer_name: customer?.name || "Unknown Customer",
+          customer_phone: customer?.phone || "",
+          items: orderItems,
+          subtotal,
+          tax_rate: taxRate,
+          tax_amount: taxAmount,
+          total,
+          bill_date: new Date().toISOString().split('T')[0],
+          due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
+          notes: `Auto-generated from order completed on ${format(new Date(), "MMM dd, yyyy")}`
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Bill Generated",
+        description: "Bill has been automatically created for the completed order",
+      });
+    } catch (error) {
+      console.error("Error generating bill:", error);
+      toast({
+        title: "Warning",
+        description: "Order completed but failed to generate bill",
+        variant: "destructive",
+      });
+    }
   };
 
   const fetchOrders = async () => {
@@ -644,7 +698,7 @@ export function OrderList() {
         />
       )}
 
-      <BillCreateModal
+      <EnhancedBillCreateModal
         open={showBillModal}
         setOpen={setShowBillModal}
         onBillCreated={() => {

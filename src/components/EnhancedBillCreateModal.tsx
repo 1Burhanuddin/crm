@@ -13,6 +13,7 @@ import { CalendarIcon, Plus, Minus, Share, Calculator } from "lucide-react";
 import { format } from "date-fns";
 
 type Item = { 
+  productId: string;
   name: string; 
   qty: number; 
   price: number; 
@@ -25,6 +26,19 @@ type InitialData = {
   customerPhone?: string;
   items?: Item[];
 };
+
+interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  unit: string;
+}
 
 interface Profile {
   name: string;
@@ -54,11 +68,12 @@ export function EnhancedBillCreateModal({
   const { user } = useSession();
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   
   // Bill data
   const [billNumber, setBillNumber] = useState(`INV-${Date.now()}`);
-  const [customerName, setCustomerName] = useState(initialData?.customerName || "");
-  const [customerPhone, setCustomerPhone] = useState(initialData?.customerPhone || "");
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
   const [billDate, setBillDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [dueDate, setDueDate] = useState(format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"));
@@ -66,18 +81,39 @@ export function EnhancedBillCreateModal({
   const [notes, setNotes] = useState("");
   
   // Items and calculations
-  const [items, setItems] = useState<Item[]>([{ name: "", qty: 1, price: 0, tax_rate: 18 }]);
+  const [items, setItems] = useState<Item[]>([{ productId: "", name: "", qty: 1, price: 0, tax_rate: 18 }]);
   const [discountAmount, setDiscountAmount] = useState(0);
   const [taxRate, setTaxRate] = useState(18);
 
   useEffect(() => {
     if (user && open) {
       fetchProfile();
+      fetchCustomers();
+      fetchProducts();
+      
       if (initialData?.items?.length) {
-        setItems(initialData.items.map(item => ({ ...item, tax_rate: 18 })));
+        setItems(initialData.items.map(item => ({ 
+          productId: item.productId || "",
+          name: item.name,
+          qty: item.qty,
+          price: item.price,
+          tax_rate: 18 
+        })));
+      }
+      
+      // Set customer if provided in initial data
+      if (initialData?.customerName) {
+        // Find customer by name and set the ID
+        const timer = setTimeout(() => {
+          const customer = customers.find(c => c.name === initialData.customerName);
+          if (customer) {
+            setSelectedCustomerId(customer.id);
+          }
+        }, 100);
+        return () => clearTimeout(timer);
       }
     }
-  }, [user, open, initialData]);
+  }, [user, open, initialData, customers]);
 
   const fetchProfile = async () => {
     if (!user) return;
@@ -118,18 +154,69 @@ export function EnhancedBillCreateModal({
     }
   };
 
+  const fetchCustomers = async () => {
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .from("customers")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("name");
+    
+    if (error) {
+      console.error("Error fetching customers:", error);
+      return;
+    }
+    
+    setCustomers(data || []);
+  };
+
+  const fetchProducts = async () => {
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("name");
+    
+    if (error) {
+      console.error("Error fetching products:", error);
+      return;
+    }
+    
+    setProducts(data || []);
+  };
+
+  const getSelectedCustomer = () => {
+    return customers.find(c => c.id === selectedCustomerId);
+  };
+
   // Calculations
   const subtotal = items.reduce((sum, item) => sum + (item.qty * item.price), 0);
   const taxAmount = (subtotal - discountAmount) * (taxRate / 100);
   const total = subtotal - discountAmount + taxAmount;
 
   const handleAddItem = () => {
-    setItems([...items, { name: "", qty: 1, price: 0, tax_rate: taxRate }]);
+    setItems([...items, { productId: "", name: "", qty: 1, price: 0, tax_rate: taxRate }]);
   };
 
   const handleItemChange = (index: number, field: keyof Item, value: any) => {
     const newItems = [...items];
-    newItems[index] = { ...newItems[index], [field]: value };
+    
+    if (field === 'productId') {
+      // Auto-populate name and price when product is selected
+      const product = products.find(p => p.id === value);
+      newItems[index] = {
+        ...newItems[index],
+        productId: value,
+        name: product?.name || "",
+        price: product?.price || 0
+      };
+    } else {
+      newItems[index] = { ...newItems[index], [field]: value };
+    }
+    
     setItems(newItems);
   };
 
@@ -143,13 +230,15 @@ export function EnhancedBillCreateModal({
     e.preventDefault();
     if (!user) return;
 
-    if (!customerName.trim()) {
-      toast({ title: "Customer name is required", variant: "destructive" });
+    const selectedCustomer = getSelectedCustomer();
+    
+    if (!selectedCustomer) {
+      toast({ title: "Please select a customer", variant: "destructive" });
       return;
     }
 
-    if (items.some(item => !item.name.trim() || item.qty <= 0 || item.price < 0)) {
-      toast({ title: "All items must have valid name, quantity and price", variant: "destructive" });
+    if (items.some(item => !item.productId || item.qty <= 0 || item.price < 0)) {
+      toast({ title: "All items must have valid product, quantity and price", variant: "destructive" });
       return;
     }
 
@@ -158,8 +247,8 @@ export function EnhancedBillCreateModal({
     const billData = {
       user_id: user.id,
       bill_number: billNumber,
-      customer_name: customerName,
-      customer_phone: customerPhone,
+      customer_name: selectedCustomer.name,
+      customer_phone: selectedCustomer.phone,
       bill_date: billDate,
       due_date: dueDate,
       items: items.map(item => ({
@@ -193,10 +282,9 @@ export function EnhancedBillCreateModal({
       
       // Reset form
       setBillNumber(`INV-${Date.now()}`);
-      setCustomerName("");
-      setCustomerPhone("");
+      setSelectedCustomerId("");
       setCustomerAddress("");
-      setItems([{ name: "", qty: 1, price: 0, tax_rate: 18 }]);
+      setItems([{ productId: "", name: "", qty: 1, price: 0, tax_rate: 18 }]);
       setDiscountAmount(0);
       setNotes("");
       
@@ -206,7 +294,8 @@ export function EnhancedBillCreateModal({
   };
 
   const shareViaWhatsApp = () => {
-    if (!customerPhone) {
+    const selectedCustomer = getSelectedCustomer();
+    if (!selectedCustomer?.phone) {
       toast({ title: "Customer phone number required for WhatsApp", variant: "destructive" });
       return;
     }
@@ -220,8 +309,8 @@ ${profile?.gst_number ? `🆔 GST: ${profile.gst_number}` : ''}
 ${profile?.pan_number ? `📄 PAN: ${profile.pan_number}` : ''}
 
 💼 *BILL TO:*
-${customerName}
-📞 ${customerPhone}
+${selectedCustomer.name}
+📞 ${selectedCustomer.phone}
 ${customerAddress ? `📍 ${customerAddress}` : ''}
 
 📅 Date: ${format(new Date(billDate), "dd/MM/yyyy")}
@@ -244,7 +333,7 @@ Thank you for your business! 🙏
     `.trim();
 
     const encodedMessage = encodeURIComponent(message);
-    const cleanPhone = customerPhone.replace(/[\s\-\(\)]/g, '');
+    const cleanPhone = selectedCustomer.phone.replace(/[\s\-\(\)]/g, '');
     const whatsappUrl = `https://wa.me/91${cleanPhone}?text=${encodedMessage}`;
     
     window.open(whatsappUrl, '_blank');
@@ -301,23 +390,28 @@ Thank you for your business! 🙏
             <h3 className="font-semibold">Customer Details</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="customer_name">Customer Name *</Label>
-                <Input
-                  id="customer_name"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="Customer Name"
-                  required
-                />
+                <Label htmlFor="customer">Customer *</Label>
+                <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select customer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {customers.map((customer) => (
+                      <SelectItem key={customer.id} value={customer.id}>
+                        {customer.name} ({customer.phone})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="customer_phone">Phone Number</Label>
+                <Label>Phone Number</Label>
                 <Input
-                  id="customer_phone"
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                  placeholder="Phone Number"
+                  value={getSelectedCustomer()?.phone || ""}
+                  disabled
+                  placeholder="Phone will auto-populate"
+                  className="bg-muted/50"
                 />
               </div>
             </div>
@@ -350,13 +444,22 @@ Thank you for your business! 🙏
               {items.map((item, index) => (
                 <div key={index} className="grid grid-cols-12 gap-2 items-end">
                   <div className="col-span-4">
-                    <Label>Item Name</Label>
-                    <Input
-                      value={item.name}
-                      onChange={(e) => handleItemChange(index, "name", e.target.value)}
-                      placeholder="Item name"
-                      required
-                    />
+                    <Label>Product</Label>
+                    <Select 
+                      value={item.productId} 
+                      onValueChange={(value) => handleItemChange(index, "productId", value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select product" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {products.map((product) => (
+                          <SelectItem key={product.id} value={product.id}>
+                            {product.name} - ₹{product.price}/{product.unit}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   
                   <div className="col-span-2">
@@ -516,7 +619,7 @@ Thank you for your business! 🙏
               {loading ? "Creating..." : "Create Bill"}
             </Button>
             
-            {customerPhone && (
+            {getSelectedCustomer()?.phone && (
               <Button
                 type="button"
                 variant="outline"

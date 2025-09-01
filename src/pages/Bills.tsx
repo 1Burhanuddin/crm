@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { BillCreateModal } from "@/components/BillCreateModal";
 import { EnhancedBillCreateModal } from "@/components/EnhancedBillCreateModal";
 import { BillHtmlPreview } from "@/components/BillHtmlPreview";
 import { AppLayout } from "@/components/AppLayout";
