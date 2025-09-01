@@ -27,12 +27,16 @@ type InitialData = {
 };
 
 interface Profile {
+  name: string;
   shop_name: string;
   business_address: string;
   gst_number: string;
   pan_number: string;
   state: string;
   pincode: string;
+  bank_name: string;
+  ifsc_code: string;
+  upi_id: string;
   terms_conditions: string;
 }
 
@@ -80,15 +84,37 @@ export function EnhancedBillCreateModal({
     
     const { data, error } = await supabase
       .from("profiles")
-      .select("shop_name, business_address, gst_number, pan_number, state, pincode, terms_conditions")
+      .select("name, shop_name, business_address, gst_number, pan_number, state, pincode, bank_name, ifsc_code, upi_id, terms_conditions")
       .eq("id", user.id)
       .maybeSingle();
 
     if (data) {
-      setProfile(data);
+      setProfile({
+        name: data.name || "",
+        shop_name: data.shop_name || "",
+        business_address: data.business_address || "",
+        gst_number: data.gst_number || "",
+        pan_number: data.pan_number || "",
+        state: data.state || "",
+        pincode: data.pincode || "",
+        bank_name: data.bank_name || "",
+        ifsc_code: data.ifsc_code || "",
+        upi_id: data.upi_id || "",
+        terms_conditions: data.terms_conditions || ""
+      });
+      
       if (data.terms_conditions) {
         setPaymentTerms(data.terms_conditions);
       }
+    }
+    
+    if (error) {
+      console.error("Error fetching profile:", error);
+      toast({
+        title: "Profile incomplete",
+        description: "Please complete your business profile first for proper GST billing.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -185,24 +211,37 @@ export function EnhancedBillCreateModal({
       return;
     }
     
+    const businessName = profile?.shop_name || profile?.name || 'Business';
     const message = `
-*INVOICE ${billNumber}*
-From: ${profile?.shop_name || 'Business'}
+*TAX INVOICE - ${billNumber}*
+${businessName}
+${profile?.business_address ? `📍 ${profile.business_address}` : ''}
+${profile?.gst_number ? `🆔 GST: ${profile.gst_number}` : ''}
+${profile?.pan_number ? `📄 PAN: ${profile.pan_number}` : ''}
 
-Customer: ${customerName}
-Date: ${format(new Date(billDate), "dd/MM/yyyy")}
-Due Date: ${format(new Date(dueDate), "dd/MM/yyyy")}
+💼 *BILL TO:*
+${customerName}
+📞 ${customerPhone}
+${customerAddress ? `📍 ${customerAddress}` : ''}
 
-*ITEMS:*
-${items.map(item => `${item.name} - ${item.qty} × ₹${item.price} = ₹${item.qty * item.price}`).join('\n')}
+📅 Date: ${format(new Date(billDate), "dd/MM/yyyy")}
+📅 Due Date: ${format(new Date(dueDate), "dd/MM/yyyy")}
 
+📋 *ITEMS:*
+${items.map(item => `• ${item.name}\n  ${item.qty} × ₹${item.price} = ₹${(item.qty * item.price).toFixed(2)}`).join('\n')}
+
+💰 *CALCULATION:*
 Subtotal: ₹${subtotal.toFixed(2)}
 ${discountAmount > 0 ? `Discount: -₹${discountAmount.toFixed(2)}\n` : ''}Tax (${taxRate}%): ₹${taxAmount.toFixed(2)}
-*Total: ₹${total.toFixed(2)}*
+*Total Amount: ₹${total.toFixed(2)}*
 
-${paymentTerms ? `Payment Terms: ${paymentTerms}` : ''}
-${notes ? `\nNotes: ${notes}` : ''}
-`;
+${paymentTerms ? `⏰ Payment Terms: ${paymentTerms}` : ''}
+${profile?.upi_id ? `💳 UPI: ${profile.upi_id}` : ''}
+${profile?.bank_name ? `🏦 Bank: ${profile.bank_name}` : ''}
+${notes ? `\n📝 ${notes}` : ''}
+
+Thank you for your business! 🙏
+    `.trim();
 
     const encodedMessage = encodeURIComponent(message);
     const cleanPhone = customerPhone.replace(/[\s\-\(\)]/g, '');
