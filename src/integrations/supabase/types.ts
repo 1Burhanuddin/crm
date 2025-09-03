@@ -285,6 +285,7 @@ export type Database = {
           gst_number: string | null
           id: string
           ifsc_code: string | null
+          mobile_number: string | null
           name: string | null
           pan_number: string | null
           pin_hash: string | null
@@ -305,6 +306,7 @@ export type Database = {
           gst_number?: string | null
           id: string
           ifsc_code?: string | null
+          mobile_number?: string | null
           name?: string | null
           pan_number?: string | null
           pin_hash?: string | null
@@ -325,6 +327,7 @@ export type Database = {
           gst_number?: string | null
           id?: string
           ifsc_code?: string | null
+          mobile_number?: string | null
           name?: string | null
           pan_number?: string | null
           pin_hash?: string | null

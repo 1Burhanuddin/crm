@@ -28,6 +28,80 @@ import { useSession } from "@/hooks/useSession";
 import { AddProductModal } from "./AddProductModal";
 import { useQueryClient } from "@tanstack/react-query";
 
+// WhatsApp notification function
+const sendWhatsAppNotification = async (orderData: any, userId: string) => {
+  try {
+    // Get user profile data to get mobile number
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("mobile_number, name, shop_name")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (!profileData?.mobile_number) {
+      console.log("No mobile number found in profile for WhatsApp notification");
+      return;
+    }
+
+    // Get customer details
+    const { data: customerData } = await supabase
+      .from("customers")
+      .select("name, phone")
+      .eq("id", orderData.customer_id)
+      .maybeSingle();
+
+    // Get product details
+    const products = orderData.products as any[];
+    let productDetails = "";
+    let totalAmount = 0;
+
+    for (const item of products) {
+      const { data: productData } = await supabase
+        .from("products")
+        .select("name, price")
+        .eq("id", item.product_id)
+        .maybeSingle();
+      
+      if (productData) {
+        const lineTotal = productData.price * item.qty;
+        totalAmount += lineTotal;
+        productDetails += `• ${productData.name} - Qty: ${item.qty} - ₹${lineTotal}\n`;
+      }
+    }
+
+    // Create WhatsApp message
+    const message = `🆕 *NEW ORDER RECEIVED*
+
+📋 *Order Details:*
+Customer: ${customerData?.name || "Unknown"}
+Phone: ${customerData?.phone || "N/A"}
+Date: ${new Date(orderData.job_date).toLocaleDateString()}
+Assigned To: ${orderData.assigned_to}
+
+📦 *Products:*
+${productDetails}
+💰 *Total: ₹${totalAmount}*
+💳 *Advance: ₹${orderData.advance_amount || 0}*
+⏳ *Pending: ₹${totalAmount - (orderData.advance_amount || 0)}*
+
+${orderData.site_address ? `📍 Site: ${orderData.site_address}\n` : ""}${orderData.remarks ? `📝 Remarks: ${orderData.remarks}` : ""}
+
+---
+${profileData.shop_name || profileData.name || "Your Business"}`;
+
+    // Create WhatsApp URL
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/${profileData.mobile_number.replace(/[^0-9]/g, "")}?text=${encodedMessage}`;
+    
+    // Open WhatsApp (this will work on mobile devices)
+    if (typeof window !== "undefined") {
+      window.open(whatsappUrl, "_blank");
+    }
+  } catch (error) {
+    console.error("Error sending WhatsApp notification:", error);
+  }
+};
+
 interface AddOrderModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -308,6 +382,10 @@ export function AddOrderModal({
       };
 
       onAdd(uiOrder);
+      
+      // Send WhatsApp notification to owner
+      await sendWhatsAppNotification(data, user?.id!);
+      
       toast({
         title: "Success",
         description: "Order added successfully",

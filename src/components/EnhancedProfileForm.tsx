@@ -8,12 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "@/hooks/use-toast";
-import { Building2, CreditCard, Banknote, FileText, MapPin, User, ChevronDown, Edit3 } from "lucide-react";
+import { Building2, CreditCard, Banknote, FileText, MapPin, User, ChevronDown, Edit3, Phone } from "lucide-react";
 
 interface ProfileData {
   email: string;
   name: string | null;
   shop_name: string | null;
+  mobile_number: string | null;
   business_address: string | null;
   gst_number: string | null;
   pan_number: string | null;
@@ -44,6 +45,7 @@ export function EnhancedProfileForm() {
     email: "",
     name: null,
     shop_name: null,
+    mobile_number: null,
     business_address: null,
     gst_number: null,
     pan_number: null,
@@ -77,6 +79,7 @@ export function EnhancedProfileForm() {
         email: data.email,
         name: data.name,
         shop_name: data.shop_name,
+        mobile_number: data.mobile_number,
         business_address: data.business_address,
         gst_number: data.gst_number,
         pan_number: data.pan_number,
@@ -178,17 +181,17 @@ export function EnhancedProfileForm() {
         
         <div className="space-y-3">
           <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-2xl">
+            <Phone className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <p className="text-xs text-muted-foreground">Mobile</p>
+              <p className="text-sm font-medium">{profile.mobile_number || "Not set"}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-2xl">
             <FileText className="h-4 w-4 text-muted-foreground" />
             <div>
               <p className="text-xs text-muted-foreground">GST Number</p>
               <p className="text-sm font-medium">{profile.gst_number || "Not registered"}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-2xl">
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-            <div>
-              <p className="text-xs text-muted-foreground">Location</p>
-              <p className="text-sm font-medium">{profile.state || "Not set"}</p>
             </div>
           </div>
         </div>
@@ -273,6 +276,17 @@ export function EnhancedProfileForm() {
                 value={profile.email}
                 onChange={(e) => updateProfile("email", e.target.value)}
                 placeholder="your@email.com"
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="mobile_number">Mobile Number</Label>
+              <Input
+                id="mobile_number"
+                type="tel"
+                value={profile.mobile_number || ""}
+                onChange={(e) => updateProfile("mobile_number", e.target.value)}
+                placeholder="+91 9876543210"
                 className="rounded-xl"
               />
             </div>
