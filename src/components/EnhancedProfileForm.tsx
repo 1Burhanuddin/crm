@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
-import { Building2, CreditCard, Banknote, FileText, MapPin, User, ChevronDown, Edit3, Phone } from "lucide-react";
+import { Building2, CreditCard, Banknote, FileText, MapPin, User, ChevronDown, Edit3, Phone, LogOut } from "lucide-react";
 
 interface ProfileData {
   email: string;
@@ -38,7 +39,7 @@ const indianStates = [
 ];
 
 export function EnhancedProfileForm() {
-  const { user } = useSession();
+  const { user, signOut } = useSession();
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [profile, setProfile] = useState<ProfileData>({
@@ -150,15 +151,43 @@ export function EnhancedProfileForm() {
             </p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setIsEditing(true)}
-          className="rounded-full px-6"
-        >
-          <Edit3 className="h-4 w-4 mr-2" />
-          Edit
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsEditing(true)}
+            className="rounded-full px-6"
+          >
+            <Edit3 className="h-4 w-4 mr-2" />
+            Edit
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-full px-6 text-destructive hover:text-destructive"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirm Logout</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to log out? You will need to sign in again to access your account.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={signOut} className="bg-destructive hover:bg-destructive/90">
+                  Logout
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
