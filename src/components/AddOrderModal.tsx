@@ -381,8 +381,6 @@ export function AddOrderModal({
         advanceAmount: data.advance_amount
       };
 
-      onAdd(uiOrder);
-      
       // Send WhatsApp notification to owner
       await sendWhatsAppNotification(data, user?.id!);
       
@@ -391,7 +389,9 @@ export function AddOrderModal({
         description: "Order added successfully",
       });
       resetForm();
-      onOpenChange(false);
+      
+      // Let the parent handle modal closing and navigation
+      onAdd(uiOrder);
 
       // Invalidate orders query to trigger a refresh
       queryClient.invalidateQueries({ queryKey: ["orders"] });
