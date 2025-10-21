@@ -3,7 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { BillCreateModal } from "@/components/BillCreateModal";
 import { EnhancedBillCreateModal } from "@/components/EnhancedBillCreateModal";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { Download } from "lucide-react";

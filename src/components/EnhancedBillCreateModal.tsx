@@ -74,7 +74,6 @@ export function EnhancedBillCreateModal({
   // Bill data
   const [billNumber, setBillNumber] = useState(`INV-${Date.now()}`);
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
-  const [customerAddress, setCustomerAddress] = useState("");
   const [billDate, setBillDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [dueDate, setDueDate] = useState(format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"));
   const [paymentTerms, setPaymentTerms] = useState("30 days");
@@ -283,7 +282,6 @@ export function EnhancedBillCreateModal({
       // Reset form
       setBillNumber(`INV-${Date.now()}`);
       setSelectedCustomerId("");
-      setCustomerAddress("");
       setItems([{ productId: "", name: "", qty: 1, price: 0, tax_rate: 18 }]);
       setDiscountAmount(0);
       setNotes("");
@@ -311,7 +309,6 @@ ${profile?.pan_number ? `📄 PAN: ${profile.pan_number}` : ''}
 💼 *BILL TO:*
 ${selectedCustomer.name}
 📞 ${selectedCustomer.phone}
-${customerAddress ? `📍 ${customerAddress}` : ''}
 
 📅 Date: ${format(new Date(billDate), "dd/MM/yyyy")}
 📅 Due Date: ${format(new Date(dueDate), "dd/MM/yyyy")}
@@ -414,17 +411,6 @@ Thank you for your business! 🙏
                   className="bg-muted/50"
                 />
               </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="customer_address">Customer Address</Label>
-              <Textarea
-                id="customer_address"
-                value={customerAddress}
-                onChange={(e) => setCustomerAddress(e.target.value)}
-                placeholder="Customer Address"
-                rows={2}
-              />
             </div>
           </div>
 
