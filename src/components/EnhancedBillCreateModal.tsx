@@ -338,63 +338,68 @@ Thank you for your business! 🙏
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Calculator className="h-5 w-5" />
-            Create GST Bill
-          </DialogTitle>
+      <DialogContent className="w-full h-full max-w-4xl sm:max-w-5xl md:max-w-6xl lg:max-w-[90vw] xl:max-w-[1200px] max-h-[90vh] min-h-[90vh] overflow-y-auto bg-blue-50 p-0 rounded-2xl shadow-xl border-0">
+        <DialogHeader className="bg-blue-50 rounded-t-2xl px-6 pt-6 pb-2">
+          <div className="flex items-center justify-between w-full">
+            <DialogTitle className="text-2xl font-bold text-blue-900 flex items-center gap-2 m-0 p-0">
+              <Calculator className="h-6 w-6" />
+              Create GST Bill
+            </DialogTitle>
+          </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 pt-2 pb-6 px-6">
           {/* Bill Header */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="bill_number">Bill Number</Label>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2 text-blue-900">Bill Number</label>
               <Input
                 id="bill_number"
                 value={billNumber}
                 onChange={(e) => setBillNumber(e.target.value)}
                 required
+                className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 h-14 min-h-[56px]"
               />
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="bill_date">Bill Date</Label>
+            <div>
+              <label className="block text-sm font-medium mb-2 text-blue-900">Bill Date</label>
               <Input
                 id="bill_date"
                 type="date"
                 value={billDate}
                 onChange={(e) => setBillDate(e.target.value)}
                 required
+                className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 h-14 min-h-[56px]"
               />
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="due_date">Due Date</Label>
+            <div>
+              <label className="block text-sm font-medium mb-2 text-blue-900">Due Date</label>
               <Input
                 id="due_date"
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
                 required
+                className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 h-14 min-h-[56px]"
               />
             </div>
           </div>
 
           {/* Customer Information */}
           <div className="space-y-4">
-            <h3 className="font-semibold">Customer Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="customer">Customer *</Label>
+            <h3 className="text-lg font-semibold text-blue-900">Customer Details</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-blue-900">Customer *</label>
                 <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 h-14 min-h-[56px]">
                     <SelectValue placeholder="Select customer" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white rounded-xl border border-gray-200">
                     {customers.map((customer) => (
-                      <SelectItem key={customer.id} value={customer.id}>
+                      <SelectItem key={customer.id} value={customer.id} className="text-base py-3">
                         {customer.name} ({customer.phone})
                       </SelectItem>
                     ))}
@@ -402,13 +407,13 @@ Thank you for your business! 🙏
                 </Select>
               </div>
               
-              <div className="space-y-2">
-                <Label>Phone Number</Label>
+              <div>
+                <label className="block text-sm font-medium mb-2 text-blue-900">Phone Number</label>
                 <Input
                   value={getSelectedCustomer()?.phone || ""}
                   disabled
                   placeholder="Phone will auto-populate"
-                  className="bg-muted/50"
+                  className="bg-gray-100 rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-500 h-14 min-h-[56px]"
                 />
               </div>
             </div>
@@ -419,8 +424,8 @@ Thank you for your business! 🙏
           {/* Items */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold">Items</h3>
-              <Button type="button" onClick={handleAddItem} size="sm" variant="outline">
+              <h3 className="text-lg font-semibold text-blue-900">Items</h3>
+              <Button type="button" onClick={handleAddItem} size="sm" className="bg-blue-600 text-white rounded-xl hover:bg-blue-700">
                 <Plus className="h-4 w-4 mr-1" />
                 Add Item
               </Button>
@@ -428,85 +433,93 @@ Thank you for your business! 🙏
 
             <div className="space-y-3">
               {items.map((item, index) => (
-                <div key={index} className="grid grid-cols-12 gap-2 items-end">
-                  <div className="col-span-4">
-                    <Label>Product</Label>
-                    <Select 
-                      value={item.productId} 
-                      onValueChange={(value) => handleItemChange(index, "productId", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select product" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {products.map((product) => (
-                          <SelectItem key={product.id} value={product.id}>
-                            {product.name} - ₹{product.price}/{product.unit}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="col-span-2">
-                    <Label>Qty</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={item.qty}
-                      onChange={(e) => handleItemChange(index, "qty", Number(e.target.value))}
-                      required
-                    />
-                  </div>
-                  
-                  <div className="col-span-2">
-                    <Label>Price</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={item.price}
-                      onChange={(e) => handleItemChange(index, "price", Number(e.target.value))}
-                      required
-                    />
-                  </div>
-                  
-                  <div className="col-span-2">
-                    <Label>Tax %</Label>
-                    <Select 
-                      value={String(item.tax_rate || taxRate)} 
-                      onValueChange={(value) => handleItemChange(index, "tax_rate", Number(value))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="0">0%</SelectItem>
-                        <SelectItem value="5">5%</SelectItem>
-                        <SelectItem value="12">12%</SelectItem>
-                        <SelectItem value="18">18%</SelectItem>
-                        <SelectItem value="28">28%</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="col-span-1">
-                    <Label>Amount</Label>
-                    <div className="h-10 flex items-center text-sm text-muted-foreground">
-                      ₹{(item.qty * item.price).toFixed(2)}
+                <div key={index} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                    <div className="sm:col-span-5">
+                      <label className="block text-xs font-medium mb-1.5 text-blue-900">Product</label>
+                      <Select 
+                        value={item.productId} 
+                        onValueChange={(value) => handleItemChange(index, "productId", value)}
+                      >
+                        <SelectTrigger className="bg-white rounded-xl border border-gray-200 px-3 py-2 text-sm h-10">
+                          <SelectValue placeholder="Select product" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white rounded-xl border border-gray-200">
+                          {products.map((product) => (
+                            <SelectItem key={product.id} value={product.id} className="text-sm">
+                              {product.name} - ₹{product.price}/{product.unit}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-medium mb-1.5 text-blue-900">Qty</label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={item.qty}
+                        onChange={(e) => handleItemChange(index, "qty", Number(e.target.value))}
+                        required
+                        className="bg-white rounded-xl border border-gray-200 px-3 py-2 text-sm h-10"
+                      />
+                    </div>
+                    
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-medium mb-1.5 text-blue-900">Price</label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={item.price}
+                        onChange={(e) => handleItemChange(index, "price", Number(e.target.value))}
+                        required
+                        className="bg-white rounded-xl border border-gray-200 px-3 py-2 text-sm h-10"
+                      />
+                    </div>
+                    
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-medium mb-1.5 text-blue-900">Tax %</label>
+                      <Select 
+                        value={String(item.tax_rate || taxRate)} 
+                        onValueChange={(value) => handleItemChange(index, "tax_rate", Number(value))}
+                      >
+                        <SelectTrigger className="bg-white rounded-xl border border-gray-200 px-3 py-2 text-sm h-10">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white rounded-xl border border-gray-200">
+                          <SelectItem value="0" className="text-sm">0%</SelectItem>
+                          <SelectItem value="5" className="text-sm">5%</SelectItem>
+                          <SelectItem value="12" className="text-sm">12%</SelectItem>
+                          <SelectItem value="18" className="text-sm">18%</SelectItem>
+                          <SelectItem value="28" className="text-sm">28%</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="sm:col-span-1 flex items-end justify-between sm:justify-center gap-2">
+                      <div className="flex-1 sm:hidden">
+                        <label className="block text-xs font-medium mb-1.5 text-blue-900">Amount</label>
+                        <div className="text-sm font-semibold text-blue-900">
+                          ₹{(item.qty * item.price).toFixed(2)}
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeItem(index)}
+                        disabled={items.length === 1}
+                        className="hover:bg-red-50 hover:text-red-600 rounded-lg"
+                      >
+                        <Minus className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                  
-                  <div className="col-span-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeItem(index)}
-                      disabled={items.length === 1}
-                    >
-                      <Minus className="h-4 w-4" />
-                    </Button>
+                  <div className="hidden sm:block mt-2 text-right">
+                    <span className="text-xs text-gray-500">Amount: </span>
+                    <span className="text-sm font-semibold text-blue-900">₹{(item.qty * item.price).toFixed(2)}</span>
                   </div>
                 </div>
               ))}
@@ -517,9 +530,9 @@ Thank you for your business! 🙏
 
           {/* Calculations */}
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="discount">Discount Amount</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-blue-900">Discount Amount</label>
                 <Input
                   id="discount"
                   type="number"
@@ -527,44 +540,45 @@ Thank you for your business! 🙏
                   step="0.01"
                   value={discountAmount}
                   onChange={(e) => setDiscountAmount(Number(e.target.value))}
+                  className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 h-14 min-h-[56px]"
                 />
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="tax_rate">Overall Tax Rate %</Label>
+              <div>
+                <label className="block text-sm font-medium mb-2 text-blue-900">Overall Tax Rate %</label>
                 <Select value={String(taxRate)} onValueChange={(value) => setTaxRate(Number(value))}>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 h-14 min-h-[56px]">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0">0%</SelectItem>
-                    <SelectItem value="5">5%</SelectItem>
-                    <SelectItem value="12">12%</SelectItem>
-                    <SelectItem value="18">18%</SelectItem>
-                    <SelectItem value="28">28%</SelectItem>
+                  <SelectContent className="bg-white rounded-xl border border-gray-200">
+                    <SelectItem value="0" className="text-base py-3">0%</SelectItem>
+                    <SelectItem value="5" className="text-base py-3">5%</SelectItem>
+                    <SelectItem value="12" className="text-base py-3">12%</SelectItem>
+                    <SelectItem value="18" className="text-base py-3">18%</SelectItem>
+                    <SelectItem value="28" className="text-base py-3">28%</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
             {/* Bill Summary */}
-            <div className="bg-muted/50 p-4 rounded-lg space-y-2">
-              <div className="flex justify-between text-sm">
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 space-y-3">
+              <div className="flex justify-between text-base text-gray-700">
                 <span>Subtotal:</span>
-                <span>₹{subtotal.toFixed(2)}</span>
+                <span className="font-medium">₹{subtotal.toFixed(2)}</span>
               </div>
               {discountAmount > 0 && (
-                <div className="flex justify-between text-sm text-green-600">
+                <div className="flex justify-between text-base text-green-600">
                   <span>Discount:</span>
-                  <span>-₹{discountAmount.toFixed(2)}</span>
+                  <span className="font-medium">-₹{discountAmount.toFixed(2)}</span>
                 </div>
               )}
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-base text-gray-700">
                 <span>Tax ({taxRate}%):</span>
-                <span>₹{taxAmount.toFixed(2)}</span>
+                <span className="font-medium">₹{taxAmount.toFixed(2)}</span>
               </div>
-              <Separator />
-              <div className="flex justify-between font-semibold">
+              <Separator className="my-2" />
+              <div className="flex justify-between text-lg font-bold text-blue-900">
                 <span>Total:</span>
                 <span>₹{total.toFixed(2)}</span>
               </div>
@@ -572,26 +586,26 @@ Thank you for your business! 🙏
           </div>
 
           {/* Additional Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="payment_terms">Payment Terms</Label>
-              <Input
-                id="payment_terms"
-                value={paymentTerms}
-                onChange={(e) => setPaymentTerms(e.target.value)}
-                placeholder="Payment terms"
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium mb-2 text-blue-900">Payment Terms</label>
+            <Input
+              id="payment_terms"
+              value={paymentTerms}
+              onChange={(e) => setPaymentTerms(e.target.value)}
+              placeholder="Payment terms"
+              className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 h-14 min-h-[56px]"
+            />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
+          <div>
+            <label className="block text-sm font-medium mb-2 text-blue-900">Notes</label>
             <Textarea
               id="notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Additional notes or terms"
               rows={3}
+              className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 resize-none"
             />
           </div>
 
@@ -600,7 +614,7 @@ Thank you for your business! 🙏
             <Button 
               type="submit" 
               disabled={loading}
-              className="flex-1"
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl px-6 py-4 text-base font-semibold h-14 min-h-[56px]"
             >
               {loading ? "Creating..." : "Create Bill"}
             </Button>
@@ -610,9 +624,9 @@ Thank you for your business! 🙏
                 type="button"
                 variant="outline"
                 onClick={shareViaWhatsApp}
-                className="flex-1"
+                className="flex-1 bg-green-50 text-green-700 border-green-200 hover:bg-green-100 rounded-2xl px-6 py-4 text-base font-semibold h-14 min-h-[56px]"
               >
-                <Share className="h-4 w-4 mr-2" />
+                <Share className="h-5 w-5 mr-2" />
                 Share via WhatsApp
               </Button>
             )}
