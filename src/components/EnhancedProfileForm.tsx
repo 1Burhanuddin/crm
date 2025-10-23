@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSession } from "@/hooks/useSession";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -130,46 +130,46 @@ export function EnhancedProfileForm() {
     }
   };
 
-  const updateProfile = (field: keyof ProfileData, value: string) => {
+  const updateProfile = useCallback((field: keyof ProfileData, value: string) => {
     setProfile(prev => ({ ...prev, [field]: value }));
-  };
+  }, []);
 
   // Profile summary view
   const ProfileSummary = () => (
-    <div className="bg-card rounded-3xl p-8 border border-border shadow-sm">
-      <div className="flex items-center justify-between mb-6">
+    <div className="bg-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 border border-border shadow-sm">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-            <User className="h-6 w-6 text-primary" />
+          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+            <User className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
           </div>
-          <div>
-            <h2 className="text-xl font-semibold text-foreground">
+          <div className="min-w-0">
+            <h2 className="text-lg sm:text-xl font-semibold text-foreground truncate">
               {profile.name || "Business Profile"}
             </h2>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground truncate">
               {profile.shop_name || "Add your business details"}
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full sm:w-auto">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setIsEditing(true)}
-            className="rounded-full px-6"
+            className="rounded-full px-4 sm:px-6 flex-1 sm:flex-none"
           >
-            <Edit3 className="h-4 w-4 mr-2" />
-            Edit
+            <Edit3 className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Edit</span>
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button
                 variant="outline"
                 size="sm"
-                className="rounded-full px-6 text-destructive hover:text-destructive"
+                className="rounded-full px-4 sm:px-6 text-destructive hover:text-destructive flex-1 sm:flex-none"
               >
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
+                <LogOut className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Logout</span>
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
@@ -190,54 +190,54 @@ export function EnhancedProfileForm() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-3">
-          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-2xl">
-            <User className="h-4 w-4 text-muted-foreground" />
-            <div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
+        <div className="space-y-2 sm:space-y-3">
+          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl sm:rounded-2xl">
+            <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            <div className="min-w-0 flex-1">
               <p className="text-xs text-muted-foreground">Name</p>
-              <p className="text-sm font-medium">{profile.name || "Not set"}</p>
+              <p className="text-sm font-medium truncate">{profile.name || "Not set"}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-2xl">
-            <Building2 className="h-4 w-4 text-muted-foreground" />
-            <div>
+          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl sm:rounded-2xl">
+            <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            <div className="min-w-0 flex-1">
               <p className="text-xs text-muted-foreground">Business</p>
-              <p className="text-sm font-medium">{profile.shop_name || "Not set"}</p>
+              <p className="text-sm font-medium truncate">{profile.shop_name || "Not set"}</p>
             </div>
           </div>
         </div>
         
-        <div className="space-y-3">
-          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-2xl">
-            <Phone className="h-4 w-4 text-muted-foreground" />
-            <div>
+        <div className="space-y-2 sm:space-y-3">
+          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl sm:rounded-2xl">
+            <Phone className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            <div className="min-w-0 flex-1">
               <p className="text-xs text-muted-foreground">Mobile</p>
-              <p className="text-sm font-medium">{profile.mobile_number || "Not set"}</p>
+              <p className="text-sm font-medium truncate">{profile.mobile_number || "Not set"}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-2xl">
-            <FileText className="h-4 w-4 text-muted-foreground" />
-            <div>
+          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl sm:rounded-2xl">
+            <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            <div className="min-w-0 flex-1">
               <p className="text-xs text-muted-foreground">GST Number</p>
-              <p className="text-sm font-medium">{profile.gst_number || "Not registered"}</p>
+              <p className="text-sm font-medium truncate">{profile.gst_number || "Not registered"}</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Expandable sections */}
-      <div className="mt-6 space-y-2">
+      <div className="mt-4 sm:mt-6 space-y-2">
         <Collapsible>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-muted/30 rounded-2xl hover:bg-muted/50 transition-colors">
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-muted/30 rounded-xl sm:rounded-2xl hover:bg-muted/50 transition-colors">
             <span className="text-sm font-medium flex items-center gap-2">
-              <Banknote className="h-4 w-4" />
+              <Banknote className="h-4 w-4 flex-shrink-0" />
               Banking Details
             </span>
-            <ChevronDown className="h-4 w-4" />
+            <ChevronDown className="h-4 w-4 flex-shrink-0" />
           </CollapsibleTrigger>
           <CollapsibleContent className="px-3 pt-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground">Bank: {profile.bank_name || "Not set"}</p>
                 <p className="text-muted-foreground">UPI: {profile.upi_id || "Not set"}</p>
@@ -251,15 +251,15 @@ export function EnhancedProfileForm() {
         </Collapsible>
 
         <Collapsible>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-muted/30 rounded-2xl hover:bg-muted/50 transition-colors">
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-muted/30 rounded-xl sm:rounded-2xl hover:bg-muted/50 transition-colors">
             <span className="text-sm font-medium flex items-center gap-2">
-              <CreditCard className="h-4 w-4" />
+              <CreditCard className="h-4 w-4 flex-shrink-0" />
               Terms & Conditions
             </span>
-            <ChevronDown className="h-4 w-4" />
+            <ChevronDown className="h-4 w-4 flex-shrink-0" />
           </CollapsibleTrigger>
           <CollapsibleContent className="px-3 pt-3">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground break-words">
               {profile.terms_conditions || "No default terms set"}
             </p>
           </CollapsibleContent>
@@ -270,10 +270,10 @@ export function EnhancedProfileForm() {
 
   // Full edit form
   const EditForm = () => (
-    <div className="space-y-6">
-      <div className="bg-card rounded-3xl p-8 border border-border shadow-sm">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold">Edit Profile</h2>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="bg-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 border border-border shadow-sm">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
+          <h2 className="text-lg sm:text-xl font-semibold">Edit Profile</h2>
           <Button
             variant="ghost"
             size="sm"
@@ -505,11 +505,11 @@ export function EnhancedProfileForm() {
           </Collapsible>
         </div>
 
-        <div className="flex gap-3 pt-6">
+        <div className="flex gap-3 pt-4 sm:pt-6">
           <Button 
             onClick={handleSave} 
             disabled={loading}
-            className="flex-1 h-12 rounded-xl"
+            className="flex-1 h-11 sm:h-12 rounded-xl text-sm sm:text-base"
           >
             {loading ? "Saving..." : "Save Changes"}
           </Button>
@@ -519,7 +519,7 @@ export function EnhancedProfileForm() {
   );
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
       {isEditing ? <EditForm /> : <ProfileSummary />}
     </div>
   );
