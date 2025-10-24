@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -6,11 +6,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
-import { CalendarIcon, Plus, Minus, Share, Calculator } from "lucide-react";
+import { CalendarIcon, Plus, Minus, Share, Calculator, Search, ChevronDown, X } from "lucide-react";
 import { format } from "date-fns";
+import { AddCustomerDialog } from "./AddCustomerDialog";
+import { AddProductModal } from "./AddProductModal";
+import { useQueryClient } from "@tanstack/react-query";
 
 type Item = { 
   productId: string;
@@ -66,6 +70,7 @@ export function EnhancedBillCreateModal({
   initialData?: InitialData;
 }) {
   const { user } = useSession();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -83,6 +88,17 @@ export function EnhancedBillCreateModal({
   const [items, setItems] = useState<Item[]>([{ productId: "", name: "", qty: 1, price: 0, tax_rate: 18 }]);
   const [discountAmount, setDiscountAmount] = useState(0);
   const [taxRate, setTaxRate] = useState(18);
+  
+  // UI state
+  const [customerSheetOpen, setCustomerSheetOpen] = useState(false);
+  const [productSheetOpen, setProductSheetOpen] = useState(false);
+  const [addCustomerDialogOpen, setAddCustomerDialogOpen] = useState(false);
+  const [addProductDialogOpen, setAddProductDialogOpen] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [productSearch, setProductSearch] = useState("");
+  const [currentItemIndex, setCurrentItemIndex] = useState<number | null>(null);
+  const customerSearchRef = useRef<HTMLInputElement>(null);
+  const productSearchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (user && open) {
@@ -169,6 +185,14 @@ export function EnhancedBillCreateModal({
     
     setCustomers(data || []);
   };
+  
+  const refreshCustomers = () => {
+    fetchCustomers();
+  };
+  
+  const refreshProducts = () => {
+    fetchProducts();
+  };
 
   const fetchProducts = async () => {
     if (!user) return;
@@ -195,6 +219,42 @@ export function EnhancedBillCreateModal({
   const subtotal = items.reduce((sum, item) => sum + (item.qty * item.price), 0);
   const taxAmount = (subtotal - discountAmount) * (taxRate / 100);
   const total = subtotal - discountAmount + taxAmount;
+  
+  // Filtered lists
+  const filteredCustomers = customers.filter((c) =>
+    c.name.toLowerCase().includes(customerSearch.toLowerCase())
+  );
+  
+  const filteredProducts = products.filter((p) =>
+    p.name.toLowerCase().includes(productSearch.toLowerCase())
+  );
+  
+  // Add new customer handler
+  const handleAddCustomer = async (name: string, phone: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("customers")
+        .insert([{ name, phone, user_id: user?.id }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Customer added successfully",
+      });
+      setAddCustomerDialogOpen(false);
+      setSelectedCustomerId(data.id);
+      refreshCustomers();
+    } catch (error: any) {
+      toast({
+        title: "Error adding customer",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleAddItem = () => {
     setItems([...items, { productId: "", name: "", qty: 1, price: 0, tax_rate: taxRate }]);
@@ -352,13 +412,12 @@ Thank you for your business! 🙏
           {/* Bill Header */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2 text-blue-900">Bill Number</label>
+              <label className="block text-sm font-medium mb-2 text-blue-900">Bill Number (Auto-generated)</label>
               <Input
                 id="bill_number"
                 value={billNumber}
-                onChange={(e) => setBillNumber(e.target.value)}
-                required
-                className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 h-14 min-h-[56px]"
+                disabled
+                className="bg-gray-100 rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-500 h-14 min-h-[56px]"
               />
             </div>
             
@@ -390,32 +449,76 @@ Thank you for your business! 🙏
           {/* Customer Information */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-blue-900">Customer Details</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2 text-blue-900">Customer *</label>
-                <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
-                  <SelectTrigger className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 h-14 min-h-[56px]">
-                    <SelectValue placeholder="Select customer" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white rounded-xl border border-gray-200">
-                    {customers.map((customer) => (
-                      <SelectItem key={customer.id} value={customer.id} className="text-base py-3">
-                        {customer.name} ({customer.phone})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div>
+              <label className="block text-sm font-medium mb-2 text-blue-900">Customer *</label>
+              <button
+                type="button"
+                className="w-full bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-700 focus:ring-2 focus:ring-blue-200 flex items-center justify-between h-14 min-h-[56px]"
+                onClick={() => setCustomerSheetOpen(true)}
+              >
+                {selectedCustomerId ? getSelectedCustomer()?.name : "Select customer"}
+                <ChevronDown className="ml-2 w-6 h-6 text-gray-400" />
+              </button>
               
-              <div>
-                <label className="block text-sm font-medium mb-2 text-blue-900">Phone Number</label>
-                <Input
-                  value={getSelectedCustomer()?.phone || ""}
-                  disabled
-                  placeholder="Phone will auto-populate"
-                  className="bg-gray-100 rounded-2xl border border-gray-200 shadow-sm px-5 py-3 text-base font-medium text-gray-500 h-14 min-h-[56px]"
-                />
-              </div>
+              <Sheet open={customerSheetOpen} onOpenChange={setCustomerSheetOpen}>
+                <SheetContent side="bottom" className="w-full max-h-[80vh] min-h-[80vh] rounded-t-3xl p-0 bg-blue-50 border-0 shadow-2xl">
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="text-xl font-bold text-blue-900">Select Customer</div>
+                      <button
+                        type="button"
+                        className="ml-4 p-2 rounded-full hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        onClick={() => setCustomerSheetOpen(false)}
+                      >
+                        <X className="h-6 w-6" />
+                      </button>
+                    </div>
+                    <div className="flex items-center bg-white rounded-xl px-4 py-3 mb-4 border border-gray-200">
+                      <Search className="w-6 h-6 text-gray-400 mr-2" />
+                      <input
+                        ref={customerSearchRef}
+                        type="text"
+                        className="flex-1 bg-transparent outline-none text-base placeholder:text-gray-400"
+                        placeholder="Search customers..."
+                        value={customerSearch}
+                        onChange={(e) => setCustomerSearch(e.target.value)}
+                        autoFocus
+                      />
+                    </div>
+                    <div className="max-h-[calc(80vh-280px)] overflow-y-auto rounded-xl bg-white mb-4">
+                      {filteredCustomers.length === 0 ? (
+                        <div className="text-gray-400 text-lg text-center py-8">No customers found.</div>
+                      ) : (
+                        filteredCustomers.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            className={`w-full text-left px-5 py-3 text-base font-medium rounded-xl hover:bg-blue-100 transition mb-1 h-14 min-h-[56px] ${selectedCustomerId === c.id ? "bg-blue-50 text-blue-700" : "text-gray-900"}`}
+                            onClick={() => {
+                              setSelectedCustomerId(c.id);
+                              setCustomerSheetOpen(false);
+                              setCustomerSearch("");
+                            }}
+                          >
+                            {c.name} - {c.phone}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        setAddCustomerDialogOpen(true);
+                        setCustomerSheetOpen(false);
+                      }}
+                      className="w-full bg-blue-600 text-white rounded-xl hover:bg-blue-700 h-14"
+                    >
+                      <Plus className="w-5 h-5 mr-2" />
+                      Add New Customer
+                    </Button>
+                  </div>
+                </SheetContent>
+              </Sheet>
             </div>
           </div>
 
@@ -437,21 +540,17 @@ Thank you for your business! 🙏
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
                     <div className="sm:col-span-5">
                       <label className="block text-xs font-medium mb-1.5 text-blue-900">Product</label>
-                      <Select 
-                        value={item.productId} 
-                        onValueChange={(value) => handleItemChange(index, "productId", value)}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCurrentItemIndex(index);
+                          setProductSheetOpen(true);
+                        }}
+                        className="w-full bg-white rounded-xl border border-gray-200 px-3 py-2 text-sm h-14 min-h-[56px] text-left flex items-center justify-between"
                       >
-                        <SelectTrigger className="bg-white rounded-xl border border-gray-200 px-3 py-2 text-sm h-10">
-                          <SelectValue placeholder="Select product" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white rounded-xl border border-gray-200">
-                          {products.map((product) => (
-                            <SelectItem key={product.id} value={product.id} className="text-sm">
-                              {product.name} - ₹{product.price}/{product.unit}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        <span>{item.name || "Select product"}</span>
+                        <ChevronDown className="w-4 h-4 text-gray-400" />
+                      </button>
                     </div>
                     
                     <div className="sm:col-span-2">
@@ -462,7 +561,7 @@ Thank you for your business! 🙏
                         value={item.qty}
                         onChange={(e) => handleItemChange(index, "qty", Number(e.target.value))}
                         required
-                        className="bg-white rounded-xl border border-gray-200 px-3 py-2 text-sm h-10"
+                        className="bg-white rounded-xl border border-gray-200 px-3 py-2 text-sm h-14 min-h-[56px]"
                       />
                     </div>
                     
@@ -475,7 +574,7 @@ Thank you for your business! 🙏
                         value={item.price}
                         onChange={(e) => handleItemChange(index, "price", Number(e.target.value))}
                         required
-                        className="bg-white rounded-xl border border-gray-200 px-3 py-2 text-sm h-10"
+                        className="bg-white rounded-xl border border-gray-200 px-3 py-2 text-sm h-14 min-h-[56px]"
                       />
                     </div>
                     
@@ -485,7 +584,7 @@ Thank you for your business! 🙏
                         value={String(item.tax_rate || taxRate)} 
                         onValueChange={(value) => handleItemChange(index, "tax_rate", Number(value))}
                       >
-                        <SelectTrigger className="bg-white rounded-xl border border-gray-200 px-3 py-2 text-sm h-10">
+                        <SelectTrigger className="bg-white rounded-xl border border-gray-200 px-3 py-2 text-sm h-14 min-h-[56px]">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="bg-white rounded-xl border border-gray-200">
@@ -632,6 +731,85 @@ Thank you for your business! 🙏
             )}
           </div>
         </form>
+        
+        {/* Product Selection Sheet */}
+        <Sheet open={productSheetOpen} onOpenChange={setProductSheetOpen}>
+          <SheetContent side="bottom" className="w-full max-h-[80vh] min-h-[80vh] rounded-t-3xl p-0 bg-blue-50 border-0 shadow-2xl">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-xl font-bold text-blue-900">Select Product</div>
+                <button
+                  type="button"
+                  className="ml-4 p-2 rounded-full hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  onClick={() => setProductSheetOpen(false)}
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              <div className="flex items-center bg-white rounded-xl px-4 py-3 mb-4 border border-gray-200">
+                <Search className="w-6 h-6 text-gray-400 mr-2" />
+                <input
+                  ref={productSearchRef}
+                  type="text"
+                  className="flex-1 bg-transparent outline-none text-base placeholder:text-gray-400"
+                  placeholder="Search products..."
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div className="max-h-[calc(80vh-280px)] overflow-y-auto rounded-xl bg-white mb-4">
+                {filteredProducts.length === 0 ? (
+                  <div className="text-gray-400 text-lg text-center py-8">No products found.</div>
+                ) : (
+                  filteredProducts.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className="w-full flex items-center justify-between px-5 py-3 text-base font-medium rounded-xl hover:bg-blue-100 transition mb-1 h-14 min-h-[56px] text-gray-900"
+                      onClick={() => {
+                        if (currentItemIndex !== null) {
+                          handleItemChange(currentItemIndex, "productId", p.id);
+                        }
+                        setProductSheetOpen(false);
+                        setProductSearch("");
+                        setCurrentItemIndex(null);
+                      }}
+                    >
+                      <span>{p.name}</span>
+                      <span className="text-sm text-gray-500 font-normal whitespace-nowrap">₹{p.price} / {p.unit}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+              <Button
+                type="button"
+                onClick={() => {
+                  setAddProductDialogOpen(true);
+                  setProductSheetOpen(false);
+                }}
+                className="w-full bg-blue-600 text-white rounded-xl hover:bg-blue-700 h-14"
+              >
+                <Plus className="w-5 h-5 mr-2" />
+                Add New Product
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
+        
+        {/* Add Customer Dialog */}
+        <AddCustomerDialog
+          open={addCustomerDialogOpen}
+          onOpenChange={setAddCustomerDialogOpen}
+          onAdd={handleAddCustomer}
+        />
+        
+        {/* Add Product Modal */}
+        <AddProductModal
+          open={addProductDialogOpen}
+          onOpenChange={setAddProductDialogOpen}
+          onSuccess={refreshProducts}
+        />
       </DialogContent>
     </Dialog>
   );
